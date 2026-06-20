@@ -185,12 +185,23 @@ async function makeUniqueSlug(baseSlug: string) {
   }
 }
 
+function normalizeNameForMatch(name: string) {
+  return name.trim().toLowerCase();
+}
+
 export async function activateWedding(input: {
   brideName: string;
   groomName: string;
   token: string;
 }) {
   const supabase = getSupabaseAdmin();
+  const brideName = input.brideName.trim();
+  const groomName = input.groomName.trim();
+
+  if (!brideName || !groomName) {
+    return { ok: false as const, message: "Add both names so we can open the right studio." };
+  }
+
   const tokenHash = hashToken(input.token);
   const { data: tokenRow, error: tokenError } = await supabase
     .from("tokens")
@@ -204,15 +215,37 @@ export async function activateWedding(input: {
 
   const token = tokenRow ? tokenFromRow(tokenRow) : null;
 
-  if (!token || token.status !== "unused") {
-    return { ok: false as const, message: "Invalid or already used token." };
+  if (!token || token.status === "revoked") {
+    return { ok: false as const, message: "That token does not look right. Check your Etsy email and try again." };
   }
 
-  const brideName = input.brideName.trim();
-  const groomName = input.groomName.trim();
+  if (token.status === "active") {
+    if (!token.weddingId) {
+      return { ok: false as const, message: "That token is active, but its studio could not be found." };
+    }
 
-  if (!brideName || !groomName) {
-    return { ok: false as const, message: "Bride and groom names are required." };
+    const existingWedding = await getWeddingById(token.weddingId);
+
+    if (!existingWedding) {
+      return { ok: false as const, message: "That token is active, but its studio could not be found." };
+    }
+
+    const sameCouple =
+      normalizeNameForMatch(existingWedding.brideName) === normalizeNameForMatch(brideName) &&
+      normalizeNameForMatch(existingWedding.groomName) === normalizeNameForMatch(groomName);
+
+    if (!sameCouple) {
+      return {
+        ok: false as const,
+        message: "This token already opens another studio. Use the same names you entered the first time.",
+      };
+    }
+
+    return { ok: true as const, wedding: existingWedding };
+  }
+
+  if (token.status !== "unused") {
+    return { ok: false as const, message: "That token cannot open a studio right now." };
   }
 
   const now = new Date().toISOString();
@@ -409,6 +442,22 @@ export async function listWeddingMedia(weddingId: string) {
   return Promise.all((data ?? []).map((row) => mediaFromRow(row)));
 }
 
+export async function getWeddingMediaById(mediaId: string, weddingId: string) {
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("wedding_media")
+    .select("*")
+    .eq("id", mediaId)
+    .eq("wedding_id", weddingId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data ? mediaFromRow(data) : null;
+}
+
 export async function addWeddingMedia(input: {
   weddingId: string;
   guestName: string;
@@ -445,9 +494,7 @@ export async function addWeddingMedia(input: {
     throw new Error(error.message);
   }
 
-  const media = await mediaFromRow(data);
-  await broadcastWeddingMedia(input.weddingId, "media-created", media);
-  return media;
+  return mediaFromRow(data);
 }
 
 export async function updateMediaForWedding(
@@ -472,9 +519,7 @@ export async function updateMediaForWedding(
     return null;
   }
 
-  const media = await mediaFromRow(data);
-  await broadcastWeddingMedia(weddingId, "media-updated", media);
-  return media;
+  return mediaFromRow(data);
 }
 
 export async function deleteMedia(mediaId: string, weddingId: string) {
@@ -494,6 +539,8 @@ export async function deleteMedia(mediaId: string, weddingId: string) {
     return false;
   }
 
+  await deleteStoredFile(existing.storage_path);
+
   const { error } = await supabase
     .from("wedding_media")
     .delete()
@@ -504,37 +551,5 @@ export async function deleteMedia(mediaId: string, weddingId: string) {
     throw new Error(error.message);
   }
 
-  await deleteStoredFile(existing.storage_path);
-  await broadcastWeddingMedia(weddingId, "media-deleted", { id: mediaId });
   return true;
-}
-
-export async function broadcastWeddingMedia(
-  weddingId: string,
-  event: string,
-  payload: unknown,
-) {
-  const wedding = await getWeddingById(weddingId);
-
-  if (!wedding?.realtimeTopic) {
-    return;
-  }
-
-  const supabase = getSupabaseAdmin();
-  const channel = supabase.channel(`wedding:${wedding.realtimeTopic}`);
-  await new Promise<void>((resolve) => {
-    channel.subscribe((status) => {
-      if (status === "SUBSCRIBED" || status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-        resolve();
-      }
-    });
-    setTimeout(() => resolve(), 1200);
-  });
-
-  await channel.send({
-    type: "broadcast",
-    event,
-    payload,
-  });
-  await supabase.removeChannel(channel);
 }

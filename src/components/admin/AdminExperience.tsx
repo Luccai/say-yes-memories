@@ -1,19 +1,16 @@
 "use client";
 
-import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import {
-  ArrowUpRight,
   CalendarDays,
   Copy,
   Download,
-  Eye,
-  EyeOff,
-  Heart,
   ImagePlus,
   Loader2,
   Lock,
   LogOut,
+  Menu,
   Play,
   QrCode,
   RefreshCw,
@@ -23,7 +20,6 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import type { MediaKind, Wedding, WeddingMedia } from "@/lib/types";
-import { BrandMark } from "@/components/shared/BrandMark";
 import { MediaOrb } from "@/components/shared/MediaOrb";
 import { getSupabaseBrowser } from "@/lib/supabase/browser";
 import { useCopy } from "@/lib/i18n";
@@ -34,8 +30,25 @@ type AdminExperienceProps = {
   demoMode?: boolean;
 };
 
-type FilterKey = "all" | "favorite" | MediaKind;
+type FilterKey = "all" | MediaKind;
+type AdminPanel = "memories" | "identity" | "qr";
 type AdminCopy = ReturnType<typeof useCopy>["admin"];
+type SignedUploadResponse = {
+  upload: {
+    bucket: string;
+    path: string;
+    token: string;
+    object: {
+      id: string;
+      storagePath: string;
+      kind: MediaKind;
+      mimeType: string;
+      fileName: string;
+      byteSize: number;
+      createdAt: string;
+    };
+  };
+};
 
 export function AdminExperience({
   initialWedding,
@@ -46,8 +59,15 @@ export function AdminExperience({
   const [media, setMedia] = useState(initialMedia);
   const [origin, setOrigin] = useState("");
   const [filter, setFilter] = useState<FilterKey>("all");
+  const [activePanel, setActivePanel] = useState<AdminPanel>("memories");
+  const [menuOpen, setMenuOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [profileUploading, setProfileUploading] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const nameplateRef = useRef<HTMLDivElement>(null);
+  const nameRef = useRef<HTMLHeadingElement>(null);
+  const [nameplateFontSize, setNameplateFontSize] = useState(34);
+  const [menuPosition, setMenuPosition] = useState({ top: 20, right: 16 });
   const text = useCopy();
   const adminText = text.admin;
 
@@ -58,6 +78,51 @@ export function AdminExperience({
   useEffect(() => {
     queueMicrotask(() => setOrigin(window.location.origin));
   }, []);
+
+  useLayoutEffect(() => {
+    if (!menuOpen) {
+      return;
+    }
+
+    const updateMenuPosition = () => {
+      const button = menuButtonRef.current;
+
+      if (!button) {
+        return;
+      }
+
+      const rect = button.getBoundingClientRect();
+      setMenuPosition({
+        top: Math.max(16, Math.round(rect.bottom + 10)),
+        right: Math.max(16, Math.round(window.innerWidth - rect.right)),
+      });
+    };
+
+    updateMenuPosition();
+    window.addEventListener("resize", updateMenuPosition);
+
+    return () => {
+      window.removeEventListener("resize", updateMenuPosition);
+    };
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (!menuOpen) {
+      return;
+    }
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", closeOnEscape);
+
+    return () => {
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [menuOpen]);
 
   useEffect(() => {
     if (!demoMode) {
@@ -88,12 +153,11 @@ export function AdminExperience({
   }, [demoMode, media, wedding]);
 
   useEffect(() => {
-    if (demoMode || !wedding.realtimeTopic) {
+    if (demoMode) {
       return;
     }
 
     let active = true;
-    const supabase = getSupabaseBrowser();
     const syncMedia = async () => {
       const response = await fetch("/api/weddings/current/media", { cache: "no-store" });
 
@@ -104,53 +168,101 @@ export function AdminExperience({
       const payload = (await response.json()) as { media: WeddingMedia[] };
       setMedia(payload.media ?? []);
     };
-    const channel = supabase
-      .channel(`wedding:${wedding.realtimeTopic}`)
-      .on("broadcast", { event: "media-created" }, ({ payload }) => {
-        const item = payload as WeddingMedia;
-        setMedia((current) => [item, ...current.filter((existing) => existing.id !== item.id)]);
-      })
-      .on("broadcast", { event: "media-updated" }, ({ payload }) => {
-        const item = payload as WeddingMedia;
-        setMedia((current) =>
-          current.map((existing) => (existing.id === item.id ? item : existing)),
-        );
-      })
-      .on("broadcast", { event: "media-deleted" }, ({ payload }) => {
-        const item = payload as { id: string };
-        setMedia((current) => current.filter((existing) => existing.id !== item.id));
-      })
-      .subscribe();
+    const syncIfVisible = () => {
+      if (!document.hidden) {
+        void syncMedia();
+      }
+    };
+
+    void syncMedia();
     const interval = window.setInterval(syncMedia, 2500);
+    window.addEventListener("focus", syncIfVisible);
+    document.addEventListener("visibilitychange", syncIfVisible);
 
     return () => {
       active = false;
       window.clearInterval(interval);
-      void supabase.removeChannel(channel);
+      window.removeEventListener("focus", syncIfVisible);
+      document.removeEventListener("visibilitychange", syncIfVisible);
     };
-  }, [demoMode, wedding.realtimeTopic]);
+  }, [demoMode]);
 
   const filteredMedia = useMemo(() => {
     if (filter === "all") {
       return media;
     }
 
-    if (filter === "favorite") {
-      return media.filter((item) => item.favorite);
-    }
-
     return media.filter((item) => item.kind === filter);
   }, [filter, media]);
 
-  const stats = useMemo(
-    () => ({
-      total: media.length,
-      favorite: media.filter((item) => item.favorite).length,
-      hidden: media.filter((item) => item.hidden).length,
-      visible: media.filter((item) => !item.hidden && item.approved).length,
-    }),
-    [media],
-  );
+  useLayoutEffect(() => {
+    const nameplate = nameplateRef.current;
+    const name = nameRef.current;
+
+    if (!nameplate || !name) {
+      return;
+    }
+
+    const maxFontSize = 58;
+    const minFontSize = 8;
+    let frame = 0;
+
+    const fitName = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        const nameplateStyle = window.getComputedStyle(nameplate);
+        const horizontalPadding =
+          Number.parseFloat(nameplateStyle.paddingLeft) +
+          Number.parseFloat(nameplateStyle.paddingRight);
+        const availableWidth = Math.max(1, nameplate.clientWidth - horizontalPadding - 2);
+
+        if (availableWidth <= 0) {
+          return;
+        }
+
+        const nameStyle = window.getComputedStyle(name);
+        const probe = document.createElement("span");
+        probe.textContent = wedding.coupleName;
+        probe.style.position = "fixed";
+        probe.style.left = "-9999px";
+        probe.style.top = "-9999px";
+        probe.style.visibility = "hidden";
+        probe.style.whiteSpace = "nowrap";
+        probe.style.fontFamily = nameStyle.fontFamily;
+        probe.style.fontStyle = nameStyle.fontStyle;
+        probe.style.fontStretch = nameStyle.fontStretch;
+        probe.style.fontWeight = nameStyle.fontWeight;
+        probe.style.letterSpacing = nameStyle.letterSpacing;
+        probe.style.fontSize = `${maxFontSize}px`;
+        document.body.appendChild(probe);
+
+        const naturalWidth = Math.ceil(probe.getBoundingClientRect().width) + 10;
+        probe.remove();
+        const nextFontSize =
+          naturalWidth > availableWidth
+            ? Math.max(
+                minFontSize,
+                Math.floor((maxFontSize * availableWidth * 0.92) / naturalWidth),
+              )
+            : maxFontSize;
+
+        setNameplateFontSize((current) => (current === nextFontSize ? current : nextFontSize));
+      });
+    };
+
+    fitName();
+    const resizeObserver = new ResizeObserver(fitName);
+    resizeObserver.observe(nameplate);
+
+    void document.fonts?.ready.then(fitName);
+    window.addEventListener("resize", fitName);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", fitName);
+    };
+  }, [wedding.coupleName]);
 
   async function saveIdentity(patch: Partial<Wedding>) {
     if (demoMode) {
@@ -214,13 +326,50 @@ export function AdminExperience({
         return;
       }
 
-      const formData = new FormData();
-      formData.append("file", file);
-      const response = await fetch("/api/weddings/current/profile-media", {
+      const prepareResponse = await fetch("/api/weddings/current/profile-media/prepare", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileName: file.name,
+          mimeType: file.type || "application/octet-stream",
+          byteSize: file.size,
+        }),
       });
-      const payload = (await response.json()) as { wedding: Wedding };
+      const preparePayload = (await prepareResponse.json()) as SignedUploadResponse & {
+        message?: string;
+      };
+
+      if (!prepareResponse.ok) {
+        throw new Error(preparePayload.message ?? "Profile upload could not be prepared.");
+      }
+
+      const supabase = getSupabaseBrowser();
+      const { error: uploadError } = await supabase.storage
+        .from(preparePayload.upload.bucket)
+        .uploadToSignedUrl(
+          preparePayload.upload.path,
+          preparePayload.upload.token,
+          file,
+          {
+            cacheControl: "31536000",
+            contentType: preparePayload.upload.object.mimeType,
+          },
+        );
+
+      if (uploadError) {
+        throw new Error(uploadError.message);
+      }
+
+      const completeResponse = await fetch("/api/weddings/current/profile-media/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ object: preparePayload.upload.object }),
+      });
+      const payload = (await completeResponse.json()) as { wedding?: Wedding; message?: string };
+
+      if (!completeResponse.ok) {
+        throw new Error(payload.message ?? "Profile upload could not be completed.");
+      }
 
       if (payload.wedding) {
         setWedding(payload.wedding);
@@ -241,28 +390,6 @@ export function AdminExperience({
     setMedia(payload.media ?? []);
   }
 
-  async function patchMedia(mediaId: string, patch: Partial<WeddingMedia>) {
-    if (demoMode) {
-      setMedia((current) =>
-        current.map((item) => (item.id === mediaId ? { ...item, ...patch } : item)),
-      );
-      return;
-    }
-
-    const response = await fetch(`/api/media/${mediaId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(patch),
-    });
-    const payload = (await response.json()) as { media: WeddingMedia };
-
-    if (payload.media) {
-      setMedia((current) =>
-        current.map((item) => (item.id === mediaId ? payload.media : item)),
-      );
-    }
-  }
-
   async function removeMedia(mediaId: string) {
     if (demoMode) {
       setMedia((current) => current.filter((item) => item.id !== mediaId));
@@ -271,9 +398,12 @@ export function AdminExperience({
 
     const response = await fetch(`/api/media/${mediaId}`, { method: "DELETE" });
 
-    if (response.ok) {
-      setMedia((current) => current.filter((item) => item.id !== mediaId));
+    if (!response.ok) {
+      const payload = (await response.json()) as { message?: string };
+      throw new Error(payload.message ?? "Media could not be deleted.");
     }
+
+    setMedia((current) => current.filter((item) => item.id !== mediaId));
   }
 
   async function logout() {
@@ -282,38 +412,99 @@ export function AdminExperience({
   }
 
   return (
-    <main className="min-h-screen text-[var(--ink)]">
+    <main className="min-h-[100dvh] text-[var(--ink)]">
       <div className="mx-auto flex max-w-[96rem] flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
-        <header className="paper-grain overflow-hidden rounded-[34px] border border-white/75 bg-[rgba(255,250,243,0.78)] p-5 shadow-[var(--shadow-soft)] backdrop-blur-xl sm:p-7">
-          <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center gap-5">
-              <MediaOrb media={wedding.profileMedia} label={wedding.coupleName} className="h-24 w-20" />
-              <div>
-                <BrandMark compact />
-                <h1 className="mt-4 font-[var(--font-display)] text-5xl font-semibold leading-none sm:text-6xl">
-                  {wedding.coupleName}
-                </h1>
-                <a
-                  href={eventUrl}
-                  target="_blank"
-                  className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-[var(--champagne-deep)]"
+        <header className="paper-grain overflow-hidden rounded-[34px] border border-white/75 bg-[rgba(255,250,243,0.78)] p-4 shadow-[var(--shadow-soft)] backdrop-blur-xl sm:p-7">
+          <div className="relative z-20 grid gap-4">
+            <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 sm:gap-4">
+              <MediaOrb
+                media={wedding.profileMedia}
+                label={wedding.coupleName}
+                className="h-20 w-16 shrink-0 sm:h-24 sm:w-20"
+              />
+              <div className="min-w-0">
+                <div
+                  ref={nameplateRef}
+                  className="w-full max-w-full overflow-hidden rounded-[28px] border border-white/65 bg-white/36 px-2.5 py-3 shadow-[0_18px_44px_rgba(58,40,25,0.08)] backdrop-blur sm:px-4"
                 >
-                  /{wedding.slug}
-                  <ArrowUpRight className="size-4" />
-                </a>
+                  <h1
+                    ref={nameRef}
+                    className="block max-w-full overflow-hidden whitespace-nowrap font-[var(--font-display)] font-semibold leading-[0.92] text-[var(--ink)]"
+                    style={{ fontSize: `${nameplateFontSize}px` }}
+                  >
+                    {wedding.coupleName}
+                  </h1>
+                </div>
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:min-w-[32rem]">
-              <StatTile label={adminText.memories} value={stats.total} />
-              <StatTile label={adminText.featured} value={stats.favorite} />
-              <StatTile label={adminText.visible} value={stats.visible} />
-              <StatTile label={adminText.hidden} value={stats.hidden} />
+              <button
+                ref={menuButtonRef}
+                type="button"
+                onClick={() => setMenuOpen((current) => !current)}
+                className="focus-ring grid size-12 shrink-0 place-items-center rounded-full border border-[var(--line)] bg-white/62 text-[var(--ink)] shadow-[0_12px_28px_rgba(58,40,25,0.1)] transition hover:bg-white"
+                aria-expanded={menuOpen}
+                aria-label={adminText.menu}
+              >
+                <Menu className="size-5" />
+              </button>
             </div>
           </div>
         </header>
 
-        <section className="grid gap-5 xl:grid-cols-[0.92fr_1.08fr]">
-          <div className="grid gap-5">
+        {menuOpen ? (
+          <div className="fixed inset-0 z-50">
+            <button
+              type="button"
+              className="absolute inset-0 cursor-default bg-transparent"
+              aria-label={text.close}
+              onClick={() => setMenuOpen(false)}
+            />
+            <motion.nav
+              initial={{ opacity: 0, y: -8, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              className="fixed grid w-[min(calc(100vw-2rem),22rem)] gap-2 rounded-[30px] border border-white/75 bg-[var(--paper-soft)] p-3 shadow-[0_24px_70px_rgba(58,40,25,0.2)]"
+              style={{ top: menuPosition.top, right: menuPosition.right }}
+              aria-label={adminText.menu}
+            >
+              <AdminMenuButton
+                active={activePanel === "memories"}
+                label={adminText.memoryRoom}
+                onClick={() => {
+                  setActivePanel("memories");
+                  setMenuOpen(false);
+                }}
+              />
+              <AdminMenuButton
+                active={activePanel === "identity"}
+                label={adminText.weddingPage}
+                onClick={() => {
+                  setActivePanel("identity");
+                  setMenuOpen(false);
+                }}
+              />
+              <AdminMenuButton
+                active={activePanel === "qr"}
+                label={adminText.qrAndLink}
+                onClick={() => {
+                  setActivePanel("qr");
+                  setMenuOpen(false);
+                }}
+              />
+              <div className="mt-1 flex justify-end border-t border-[var(--line)] pt-2">
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="focus-ring inline-flex items-center justify-center gap-1.5 rounded-full border border-[var(--line)] bg-white/42 px-3 py-2 text-xs font-bold text-[var(--ink-soft)] transition hover:bg-white"
+                >
+                  {adminText.logout}
+                  <LogOut className="size-3.5" />
+                </button>
+              </div>
+            </motion.nav>
+          </div>
+        ) : null}
+
+        <section className="grid gap-5">
+          {activePanel === "identity" ? (
             <IdentityCard
               wedding={wedding}
               saving={saving}
@@ -322,45 +513,50 @@ export function AdminExperience({
               onSave={saveIdentity}
               text={adminText}
             />
-            <GuestPreview wedding={wedding} eventUrl={eventUrl} text={adminText} />
-          </div>
-          <div className="grid gap-5">
+          ) : null}
+
+          {activePanel === "qr" ? (
             <QrStudio wedding={wedding} eventUrl={eventUrl} text={adminText} />
+          ) : null}
+
+          {activePanel === "memories" ? (
             <MemoryInbox
               filter={filter}
               media={filteredMedia}
+              demoMode={demoMode}
               onFilterChange={setFilter}
               onRefresh={refreshMedia}
-              onPatchMedia={patchMedia}
               onRemoveMedia={removeMedia}
               text={adminText}
             />
-          </div>
+          ) : null}
         </section>
-
-        {demoMode ? null : (
-          <button
-            type="button"
-            onClick={logout}
-            className="focus-ring self-start rounded-full border border-[var(--line)] bg-white/58 px-5 py-3 text-sm font-bold text-[var(--ink-soft)] transition hover:bg-white"
-          >
-            <span className="inline-flex items-center gap-2">
-              <LogOut className="size-4" />
-              {adminText.logout}
-            </span>
-          </button>
-        )}
       </div>
     </main>
   );
 }
 
-function StatTile({ label, value }: { label: string; value: number }) {
+function AdminMenuButton({
+  active,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+}) {
   return (
-    <div className="rounded-3xl border border-[var(--line)] bg-white/48 p-4">
-      <p className="text-xs font-bold uppercase text-[var(--ink-soft)]">{label}</p>
-      <p className="mt-2 font-[var(--font-display)] text-4xl font-semibold">{value}</p>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`focus-ring rounded-2xl px-4 py-3 text-left text-sm font-bold transition ${
+        active
+          ? "bg-[var(--ink)] text-[var(--paper-soft)]"
+          : "border border-[var(--line)] bg-white/50 text-[var(--ink)] hover:bg-white"
+      }`}
+    >
+      {label}
+    </button>
   );
 }
 
@@ -394,17 +590,14 @@ function IdentityCard({
             <Settings2 className="size-4" />
             {text.identity}
           </p>
-          <h2 className="mt-2 font-[var(--font-display)] text-4xl font-semibold">
-            {text.identityTitle}
-          </h2>
         </div>
         {saving ? <Loader2 className="size-5 animate-spin text-[var(--champagne-deep)]" /> : null}
       </div>
 
       <div className="grid gap-5 sm:grid-cols-[9rem_1fr]">
-        <div>
+        <div className="flex flex-col items-center">
           <MediaOrb media={wedding.profileMedia} label={wedding.coupleName} className="h-44 w-36" />
-          <label className="focus-ring mt-4 flex cursor-pointer items-center justify-center gap-2 rounded-full bg-[var(--ink)] px-4 py-3 text-sm font-bold text-[var(--paper-soft)] transition hover:bg-black">
+          <label className="focus-ring mt-4 flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-[var(--ink)] px-4 py-3 text-sm font-bold text-[var(--paper-soft)] transition hover:bg-black">
             {profileUploading ? <Loader2 className="size-4 animate-spin" /> : <ImagePlus className="size-4" />}
             {text.upload}
             <input
@@ -537,29 +730,15 @@ function QrStudio({
             <QrCode className="size-4" />
             {text.qrStudio}
           </p>
-          <h2 className="mt-2 font-[var(--font-display)] text-4xl font-semibold">
-            {text.qrTitle}
-          </h2>
         </div>
-        <a
-          href={eventUrl}
-          target="_blank"
-          className="focus-ring inline-flex items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white/65 px-4 py-3 text-sm font-bold transition hover:bg-white"
-        >
-          {text.openPage}
-          <ArrowUpRight className="size-4" />
-        </a>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[17rem_1fr]">
         <div className="paper-grain relative overflow-hidden rounded-[30px] border border-[var(--line)] bg-[#f3eadf] p-5 text-center">
-          <p className="relative z-10 font-[var(--font-display)] text-3xl font-semibold">
-            {wedding.coupleName}
-          </p>
-          <p className="relative z-10 mt-1 text-xs font-bold uppercase text-[var(--champagne-deep)]">
+          <p className="relative z-10 text-xs font-bold uppercase text-[var(--champagne-deep)]">
             {text.scan}
           </p>
-          <div className="relative z-10 mx-auto mt-5 grid size-56 place-items-center rounded-[26px] border border-white/80 bg-[var(--paper-soft)] shadow-[0_18px_38px_rgba(58,40,25,0.12)]">
+          <div className="relative z-10 mx-auto mt-4 grid size-56 place-items-center rounded-[26px] border border-white/80 bg-[var(--paper-soft)] shadow-[0_18px_38px_rgba(58,40,25,0.12)]">
             <canvas ref={canvasRef} className="size-52" aria-label="Wedding QR code" />
           </div>
         </div>
@@ -607,187 +786,199 @@ function QrStudio({
   );
 }
 
-function GuestPreview({
-  wedding,
-  eventUrl,
-  text,
-}: {
-  wedding: Wedding;
-  eventUrl: string;
-  text: AdminCopy;
-}) {
-  return (
-    <article className="rounded-[34px] border border-white/75 bg-[var(--ink)] p-5 text-[var(--paper-soft)] shadow-[0_20px_58px_rgba(58,40,25,0.12)]">
-      <p className="mb-4 text-xs font-bold uppercase text-[var(--champagne)]">{text.guestPreview}</p>
-      <div className="mx-auto max-w-[22rem] rounded-[34px] border border-white/15 bg-[#120f0d] p-3 shadow-[0_22px_55px_rgba(0,0,0,0.22)]">
-        <div className="rounded-[26px] bg-[var(--paper-soft)] p-5 text-center text-[var(--ink)]">
-          <MediaOrb media={wedding.profileMedia} label={wedding.coupleName} className="mx-auto h-28 w-24" />
-          <p className="mt-4 text-xs font-bold uppercase text-[var(--champagne-deep)]">
-            {text.welcomeTo}
-          </p>
-          <h3 className="mt-1 font-[var(--font-display)] text-4xl font-semibold">
-            {wedding.coupleName}
-          </h3>
-          <p className="mt-3 text-sm leading-6 text-[var(--ink-soft)]">{wedding.welcomeNote}</p>
-          <div className="mt-5 rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-3 text-sm font-semibold">
-            {text.acceptedTypes}
-          </div>
-        </div>
-      </div>
-      <p className="mt-4 break-all text-xs text-white/58">{eventUrl}</p>
-    </article>
-  );
-}
-
 function MemoryInbox({
   filter,
   media,
+  demoMode,
   onFilterChange,
   onRefresh,
-  onPatchMedia,
   onRemoveMedia,
   text,
 }: {
   filter: FilterKey;
   media: WeddingMedia[];
+  demoMode: boolean;
   onFilterChange: (filter: FilterKey) => void;
   onRefresh: () => void;
-  onPatchMedia: (mediaId: string, patch: Partial<WeddingMedia>) => void;
-  onRemoveMedia: (mediaId: string) => void;
+  onRemoveMedia: (mediaId: string) => Promise<void>;
   text: AdminCopy;
 }) {
+  const [deleteTarget, setDeleteTarget] = useState<WeddingMedia | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const filters: { key: FilterKey; label: string }[] = [
     { key: "all", label: text.all },
-    { key: "favorite", label: text.featured },
     { key: "image", label: text.photos },
     { key: "video", label: text.videos },
     { key: "audio", label: text.voice },
   ];
 
+  async function confirmDelete() {
+    if (!deleteTarget) {
+      return;
+    }
+
+    setDeleting(true);
+    setDeleteError("");
+
+    try {
+      await onRemoveMedia(deleteTarget.id);
+      setDeleteTarget(null);
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : text.deleteFailed);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
-    <article className="rounded-[34px] border border-white/75 bg-[var(--paper-soft)] p-6 shadow-[0_20px_58px_rgba(58,40,25,0.1)]">
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="flex items-center gap-2 text-xs font-bold uppercase text-[var(--champagne-deep)]">
-            <CalendarDays className="size-4" />
-            {text.inbox}
-          </p>
-          <h2 className="mt-2 font-[var(--font-display)] text-4xl font-semibold">
-            {text.uploads}
-          </h2>
-        </div>
-        <button
-          type="button"
-          onClick={onRefresh}
-          className="focus-ring inline-flex items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white/65 px-4 py-3 text-sm font-bold transition hover:bg-white"
-        >
-          <RefreshCw className="size-4" />
-          {text.refresh}
-        </button>
-      </div>
-
-      <div className="mb-5 flex flex-wrap gap-2">
-        {filters.map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            onClick={() => onFilterChange(item.key)}
-            className={`focus-ring rounded-full px-4 py-2 text-sm font-bold transition ${
-              filter === item.key
-                ? "bg-[var(--ink)] text-[var(--paper-soft)]"
-                : "border border-[var(--line)] bg-white/55 text-[var(--ink-soft)] hover:bg-white"
-            }`}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
-
-      {media.length === 0 ? (
-        <div className="grid min-h-[18rem] place-items-center rounded-[30px] border border-dashed border-[var(--line)] bg-white/45 p-8 text-center">
+    <>
+      <article className="rounded-[34px] border border-white/75 bg-[var(--paper-soft)] p-6 shadow-[0_20px_58px_rgba(58,40,25,0.1)]">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="font-[var(--font-display)] text-4xl font-semibold">{text.noMemories}</p>
-            <p className="mt-2 max-w-sm text-sm leading-6 text-[var(--ink-soft)]">
-              {text.noMemoriesBody}
+            <p className="flex items-center gap-2 text-xs font-bold uppercase text-[var(--champagne-deep)]">
+              <CalendarDays className="size-4" />
+              {text.inbox}
             </p>
           </div>
+          {demoMode ? null : (
+            <button
+              type="button"
+              onClick={onRefresh}
+              className="focus-ring inline-flex items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white/65 px-4 py-3 text-sm font-bold transition hover:bg-white"
+            >
+              <RefreshCw className="size-4" />
+              {text.refresh}
+            </button>
+          )}
         </div>
-      ) : (
-        <div className="luxury-scroll grid max-h-[42rem] gap-4 overflow-auto pr-1 sm:grid-cols-2 xl:grid-cols-3">
-          {media.map((item) => (
-            <div key={item.id} className="rounded-[28px] border border-[var(--line)] bg-white/55 p-3">
-              <div className="relative overflow-hidden rounded-[22px] bg-[#ede1d3]">
-                {item.kind === "image" ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={item.url} alt={item.note ?? item.fileName} className="h-52 w-full object-cover" />
-                ) : item.kind === "video" && item.url.startsWith("data:image/") ? (
-                  <div className="relative">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={item.url} alt={item.note ?? item.fileName} className="h-52 w-full object-cover" />
-                    <div className="absolute inset-0 grid place-items-center bg-black/18">
-                      <div className="grid size-14 place-items-center rounded-full bg-[var(--paper-soft)] text-[var(--ink)] shadow-[0_16px_36px_rgba(0,0,0,0.2)]">
-                        <Play className="ml-1 size-6 fill-current" />
-                      </div>
-                    </div>
-                  </div>
-                ) : item.kind === "video" ? (
-                  <video src={item.url} className="h-52 w-full object-cover" controls />
-                ) : (
-                  <div className="grid h-52 place-items-center p-5">
-                    <Play className="mb-3 size-8 text-[var(--champagne-deep)]" />
-                    <audio src={item.url} controls className="w-full" />
-                  </div>
-                )}
-                {item.favorite ? (
-                  <span className="absolute right-3 top-3 rounded-full bg-[var(--ink)] px-3 py-1 text-xs font-bold text-[var(--paper-soft)]">
-                    {text.featured}
-                  </span>
-                ) : null}
-              </div>
-              <div className="p-2">
-                <p className="mt-2 text-sm font-bold">{item.guestName}</p>
-                <p className="mt-1 line-clamp-2 min-h-10 text-sm leading-5 text-[var(--ink-soft)]">
-                  {item.note || text.noNote}
-                </p>
-                <div className="mt-4 grid grid-cols-4 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onPatchMedia(item.id, { favorite: !item.favorite })}
-                    className="focus-ring rounded-full border border-[var(--line)] bg-white/65 p-2 transition hover:bg-white"
-                    aria-label="Toggle favorite"
-                  >
-                    <Heart className={`mx-auto size-4 ${item.favorite ? "fill-[var(--rosewood)] text-[var(--rosewood)]" : ""}`} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onPatchMedia(item.id, { hidden: !item.hidden })}
-                    className="focus-ring rounded-full border border-[var(--line)] bg-white/65 p-2 transition hover:bg-white"
-                    aria-label="Toggle visibility"
-                  >
-                    {item.hidden ? <EyeOff className="mx-auto size-4" /> : <Eye className="mx-auto size-4" />}
-                  </button>
-                  <a
-                    href={item.url}
-                    download={item.fileName}
-                    className="focus-ring rounded-full border border-[var(--line)] bg-white/65 p-2 text-center transition hover:bg-white"
-                    aria-label="Download media"
-                  >
-                    <Download className="mx-auto size-4" />
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => onRemoveMedia(item.id)}
-                    className="focus-ring rounded-full border border-[var(--line)] bg-white/65 p-2 text-[var(--rosewood)] transition hover:bg-white"
-                    aria-label="Delete media"
-                  >
-                    <Trash2 className="mx-auto size-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
+
+        <div className="mb-5 flex flex-wrap gap-2">
+          {filters.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => onFilterChange(item.key)}
+              className={`focus-ring rounded-full px-4 py-2 text-sm font-bold transition ${
+                filter === item.key
+                  ? "bg-[var(--ink)] text-[var(--paper-soft)]"
+                  : "border border-[var(--line)] bg-white/55 text-[var(--ink-soft)] hover:bg-white"
+              }`}
+            >
+              {item.label}
+            </button>
           ))}
         </div>
-      )}
-    </article>
+
+        {media.length === 0 ? (
+          <div className="grid min-h-[18rem] place-items-center rounded-[30px] border border-dashed border-[var(--line)] bg-white/45 p-8 text-center">
+            <div>
+              <p className="font-[var(--font-display)] text-4xl font-semibold">{text.noMemories}</p>
+              <p className="mt-2 max-w-sm text-sm leading-6 text-[var(--ink-soft)]">
+                {text.noMemoriesBody}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="luxury-scroll grid max-h-[42rem] gap-4 overflow-auto pr-1 sm:grid-cols-2 xl:grid-cols-3">
+            {media.map((item) => (
+              <div key={item.id} className="rounded-[28px] border border-[var(--line)] bg-white/55 p-3">
+                <div className="relative overflow-hidden rounded-[22px] bg-[#ede1d3]">
+                  {item.kind === "image" ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={item.url} alt={item.note ?? item.fileName} className="h-52 w-full object-cover" />
+                  ) : item.kind === "video" && item.url.startsWith("data:image/") ? (
+                    <div className="relative">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={item.url} alt={item.note ?? item.fileName} className="h-52 w-full object-cover" />
+                      <div className="absolute inset-0 grid place-items-center bg-black/18">
+                        <div className="grid size-14 place-items-center rounded-full bg-[var(--paper-soft)] text-[var(--ink)] shadow-[0_16px_36px_rgba(0,0,0,0.2)]">
+                          <Play className="ml-1 size-6 fill-current" />
+                        </div>
+                      </div>
+                    </div>
+                  ) : item.kind === "video" ? (
+                    <video src={item.url} className="h-52 w-full object-cover" controls />
+                  ) : (
+                    <div className="grid h-52 place-items-center p-5">
+                      <Play className="mb-3 size-8 text-[var(--champagne-deep)]" />
+                      <audio src={item.url} controls className="w-full" />
+                    </div>
+                  )}
+                </div>
+                <div className="p-2">
+                  <p className="mt-2 text-sm font-bold">{item.guestName}</p>
+                  <p className="mt-1 line-clamp-2 min-h-10 text-sm leading-5 text-[var(--ink-soft)]">
+                    {item.note || text.noNote}
+                  </p>
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    <a
+                      href={demoMode ? item.url : `/api/media/${item.id}/download`}
+                      download={item.fileName}
+                      className="focus-ring rounded-full border border-[var(--line)] bg-white/65 p-2 text-center transition hover:bg-white"
+                      aria-label="Download media"
+                    >
+                      <Download className="mx-auto size-4" />
+                    </a>
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteTarget(item);
+                  setDeleteError("");
+                }}
+                      className="focus-ring rounded-full border border-[var(--line)] bg-white/65 p-2 text-[var(--rosewood)] transition hover:bg-white"
+                      aria-label="Delete media"
+                    >
+                      <Trash2 className="mx-auto size-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </article>
+
+      {deleteTarget ? (
+        <div className="fixed inset-0 z-[60] grid place-items-center bg-[rgba(31,23,18,0.38)] px-4 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            className="w-full max-w-sm rounded-[28px] border border-white/75 bg-[var(--paper-soft)] p-5 shadow-[0_28px_80px_rgba(31,23,18,0.24)]"
+            role="dialog"
+            aria-modal="true"
+          >
+            <p className="font-[var(--font-display)] text-3xl font-semibold">{text.deleteTitle}</p>
+            <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">{text.deleteBody}</p>
+            {deleteError ? (
+              <p className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+                {deleteError}
+              </p>
+            ) : null}
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteTarget(null);
+                  setDeleteError("");
+                }}
+                disabled={deleting}
+                className="focus-ring rounded-full border border-[var(--line)] bg-white/65 px-4 py-3 text-sm font-bold transition hover:bg-white disabled:opacity-60"
+              >
+                {text.no}
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                disabled={deleting}
+                className="focus-ring rounded-full bg-[var(--rosewood)] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#6f332b] disabled:opacity-60"
+              >
+                {deleting ? <Loader2 className="mx-auto size-4 animate-spin" /> : text.yes}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      ) : null}
+    </>
   );
 }

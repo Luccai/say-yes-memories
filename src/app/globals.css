@@ -1,8 +1,14 @@
 @import "tailwindcss";
 
 :root {
-  --paper: #f7f1e8;
+  --paper: #f1e6d8;
   --paper-soft: #fffaf3;
+  --app-canvas-color: #f1e6d8;
+  --app-canvas:
+    linear-gradient(rgba(255, 250, 243, 0.18), rgba(255, 250, 243, 0.18)),
+    linear-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(128, 101, 72, 0.025) 1px, transparent 1px),
+    linear-gradient(#f1e6d8, #f1e6d8);
   --pearl: #eee5d8;
   --champagne: #c7a66f;
   --champagne-deep: #8b6b3f;
@@ -19,18 +25,52 @@
 }
 
 html {
-  background: var(--paper);
+  min-height: 100%;
+  background-color: var(--app-canvas-color);
+  background-image: var(--app-canvas);
+  background-attachment: fixed;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: auto, 23px 23px, 31px 31px, auto;
   color: var(--ink);
+  color-scheme: light;
   scroll-behavior: smooth;
 }
 
 body {
   min-height: 100vh;
+  min-height: 100dvh;
   margin: 0;
-  background:
-    radial-gradient(circle at top left, rgba(199, 166, 111, 0.22), transparent 32rem),
-    linear-gradient(135deg, #fffaf3 0%, #f4eadf 45%, #eee1d3 100%);
+  background-color: var(--app-canvas-color);
+  background-image: var(--app-canvas);
+  background-attachment: fixed;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: auto, 23px 23px, 31px 31px, auto;
   color: var(--ink);
+  overflow-x: hidden;
+  overscroll-behavior-y: none;
+}
+
+@supports (-webkit-touch-callout: none) {
+  body {
+    position: relative;
+    isolation: isolate;
+    background: transparent;
+  }
+
+  body::before {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    content: "";
+    background-color: var(--app-canvas-color);
+    background-image: var(--app-canvas);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: auto, 23px 23px, 31px 31px, auto;
+  }
 }
 
 button,

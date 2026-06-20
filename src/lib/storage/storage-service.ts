@@ -2,7 +2,21 @@ import type { MediaKind, StoredMediaObject } from "@/lib/types";
 import { createId } from "@/lib/security";
 import { getSupabaseAdmin, SUPABASE_STORAGE_BUCKET } from "@/lib/supabase/admin";
 
-function inferMediaKind(mimeType: string): MediaKind {
+export const MAX_MEDIA_UPLOAD_BYTES = 100 * 1024 * 1024;
+const ALLOWED_MEDIA_PREFIXES = ["image/", "video/", "audio/"];
+
+export type PendingStoredMediaObject = Omit<StoredMediaObject, "url"> & {
+  storagePath: string;
+};
+
+export type SignedUploadTarget = {
+  bucket: string;
+  path: string;
+  token: string;
+  object: PendingStoredMediaObject;
+};
+
+export function inferMediaKind(mimeType: string): MediaKind {
   if (mimeType.startsWith("video/")) {
     return "video";
   }
@@ -28,11 +42,42 @@ function sanitizeFileName(fileName: string) {
   return extension ? `${base}.${extension.toLowerCase()}` : base;
 }
 
-export async function createSignedStorageUrl(storagePath: string, expiresIn = 60 * 60 * 6) {
+export function validateMediaUpload(input: {
+  mimeType: string;
+  byteSize: number;
+  allowedKinds?: MediaKind[];
+}) {
+  const mimeType = input.mimeType || "application/octet-stream";
+  const kind = inferMediaKind(mimeType);
+
+  if (!ALLOWED_MEDIA_PREFIXES.some((prefix) => mimeType.startsWith(prefix))) {
+    throw new Error("Only photo, video, or audio files are accepted.");
+  }
+
+  if (input.allowedKinds && !input.allowedKinds.includes(kind)) {
+    throw new Error("This upload type is not accepted here.");
+  }
+
+  if (!Number.isFinite(input.byteSize) || input.byteSize <= 0) {
+    throw new Error("The selected file is empty.");
+  }
+
+  if (input.byteSize > MAX_MEDIA_UPLOAD_BYTES) {
+    throw new Error("This file is too large. Please upload a file under 100 MB.");
+  }
+
+  return { kind, mimeType };
+}
+
+export async function createSignedStorageUrl(
+  storagePath: string,
+  expiresIn = 60 * 60 * 6,
+  download?: string | boolean,
+) {
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase.storage
     .from(SUPABASE_STORAGE_BUCKET)
-    .createSignedUrl(storagePath, expiresIn);
+    .createSignedUrl(storagePath, expiresIn, download ? { download } : undefined);
 
   if (error || !data?.signedUrl) {
     throw new Error(error?.message ?? "Could not create media URL.");
@@ -47,37 +92,83 @@ export async function deleteStoredFile(storagePath?: string | null) {
   }
 
   const supabase = getSupabaseAdmin();
-  await supabase.storage.from(SUPABASE_STORAGE_BUCKET).remove([storagePath]);
+  const { error } = await supabase.storage.from(SUPABASE_STORAGE_BUCKET).remove([storagePath]);
+
+  if (error) {
+    throw new Error(error.message);
+  }
 }
 
-export async function storeUploadedFile(
-  file: File,
-  options: { weddingId: string; folder: "profile" | "guest" },
-): Promise<StoredMediaObject> {
-  const arrayBuffer = await file.arrayBuffer();
-  const bytes = Buffer.from(arrayBuffer);
-  const mimeType = file.type || "application/octet-stream";
+export async function createSignedUploadTarget(
+  file: { name: string; type: string; size: number },
+  options: { weddingId: string; folder: "profile" | "guest"; allowedKinds?: MediaKind[] },
+): Promise<SignedUploadTarget> {
+  const { kind, mimeType } = validateMediaUpload({
+    mimeType: file.type,
+    byteSize: file.size,
+    allowedKinds: options.allowedKinds,
+  });
   const id = createId("asset");
   const storagePath = `${options.weddingId}/${options.folder}/${id}-${sanitizeFileName(file.name)}`;
   const supabase = getSupabaseAdmin();
-  const { error } = await supabase.storage.from(SUPABASE_STORAGE_BUCKET).upload(storagePath, bytes, {
-    contentType: mimeType,
-    cacheControl: "31536000",
+
+  const { data, error } = await supabase.storage.from(SUPABASE_STORAGE_BUCKET).createSignedUploadUrl(storagePath, {
     upsert: false,
   });
+
+  if (error || !data?.token) {
+    throw new Error(error?.message ?? "Could not create upload URL.");
+  }
+
+  return {
+    bucket: SUPABASE_STORAGE_BUCKET,
+    path: storagePath,
+    token: data.token,
+    object: {
+      id,
+      storagePath,
+      kind,
+      mimeType,
+      fileName: file.name || "upload",
+      byteSize: file.size,
+      createdAt: new Date().toISOString(),
+    },
+  };
+}
+
+export function assertUploadBelongsToWedding(
+  object: PendingStoredMediaObject,
+  options: { weddingId: string; folder: "profile" | "guest"; allowedKinds?: MediaKind[] },
+) {
+  validateMediaUpload({
+    mimeType: object.mimeType,
+    byteSize: object.byteSize,
+    allowedKinds: options.allowedKinds,
+  });
+
+  const expectedPrefix = `${options.weddingId}/${options.folder}/${object.id}-`;
+
+  if (!/^asset_[a-f0-9]{24}$/.test(object.id)) {
+    throw new Error("Upload id is invalid.");
+  }
+
+  if (!object.storagePath.startsWith(expectedPrefix)) {
+    throw new Error("Upload path does not belong to this wedding.");
+  }
+}
+
+export async function finalizeSignedUpload(
+  object: PendingStoredMediaObject,
+): Promise<StoredMediaObject> {
+  const supabase = getSupabaseAdmin();
+  const { error } = await supabase.storage.from(SUPABASE_STORAGE_BUCKET).info(object.storagePath);
 
   if (error) {
     throw new Error(error.message);
   }
 
   return {
-    id,
-    url: await createSignedStorageUrl(storagePath),
-    storagePath,
-    kind: inferMediaKind(mimeType),
-    mimeType,
-    fileName: file.name || "upload",
-    byteSize: file.size,
-    createdAt: new Date().toISOString(),
+    ...object,
+    url: await createSignedStorageUrl(object.storagePath),
   };
 }

@@ -4,34 +4,6 @@ function svgDataUrl(svg: string) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
-function portraitSvg() {
-  return `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 820">
-  <defs>
-    <linearGradient id="paper" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0" stop-color="#fffaf3"/>
-      <stop offset="0.48" stop-color="#eadbc9"/>
-      <stop offset="1" stop-color="#b99662"/>
-    </linearGradient>
-    <radialGradient id="glow" cx="44%" cy="24%" r="72%">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.92"/>
-      <stop offset="0.44" stop-color="#d7c0a0" stop-opacity="0.5"/>
-      <stop offset="1" stop-color="#1f1712" stop-opacity="0.88"/>
-    </radialGradient>
-  </defs>
-  <rect width="640" height="820" fill="url(#paper)"/>
-  <rect width="640" height="820" fill="url(#glow)" opacity="0.62"/>
-  <path d="M108 154c118-76 307-82 424 2" fill="none" stroke="#fffaf3" stroke-width="10" stroke-linecap="round" opacity="0.72"/>
-  <path d="M128 630c104 74 281 88 385 0" fill="none" stroke="#fffaf3" stroke-width="8" stroke-linecap="round" opacity="0.56"/>
-  <circle cx="247" cy="330" r="94" fill="#fffaf3" opacity="0.88"/>
-  <circle cx="390" cy="330" r="94" fill="#efe1d0" opacity="0.9"/>
-  <path d="M228 432c52 40 126 41 178 0 49 37 77 99 77 169H151c0-70 28-132 77-169Z" fill="#1f1712" opacity="0.92"/>
-  <path d="M320 207c49 66 59 146 29 241" fill="none" stroke="#8b6b3f" stroke-width="7" stroke-linecap="round" opacity="0.52"/>
-  <text x="320" y="704" text-anchor="middle" fill="#fffaf3" font-family="Georgia, serif" font-size="76" font-weight="700">M &amp; J</text>
-  <text x="320" y="754" text-anchor="middle" fill="#fffaf3" font-family="Arial, sans-serif" font-size="23" font-weight="700" letter-spacing="7">JUNE 14 2027</text>
-</svg>`;
-}
-
 function memorySvg(title: string, subtitle: string, a: string, b: string) {
   return `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 640">
@@ -71,11 +43,11 @@ export const demoWedding: Wedding = {
   updatedAt: "2026-06-20T17:00:00.000Z",
   profileMedia: {
     id: "demo-profile-media",
-    url: svgDataUrl(portraitSvg()),
+    url: "/demo/beautiful-young-couple-hugging-great-wall-china.jpg",
     kind: "image",
-    mimeType: "image/svg+xml",
-    fileName: "mary-john-profile.svg",
-    byteSize: portraitSvg().length,
+    mimeType: "image/jpeg",
+    fileName: "beautiful-young-couple-hugging-great-wall-china.jpg",
+    byteSize: 9057200,
     createdAt: "2026-06-20T17:00:00.000Z",
   },
 };

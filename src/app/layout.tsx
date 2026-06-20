@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
 import "./globals.css";
 
@@ -17,6 +17,19 @@ const body = Manrope({
 export const metadata: Metadata = {
   title: "Say Yes Digital Memories",
   description: "Luxury QR wedding memory studio for Etsy couples.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Say Yes Digital Memories",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#f1e6d8",
+  colorScheme: "light",
 };
 
 export default function RootLayout({

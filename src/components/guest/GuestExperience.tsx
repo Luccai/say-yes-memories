@@ -3,13 +3,31 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { Check, Loader2, Mic, Pause, UploadCloud } from "lucide-react";
 import { motion } from "motion/react";
-import type { PublicWedding } from "@/lib/types";
+import type { MediaKind, PublicWedding } from "@/lib/types";
 import { MediaOrb } from "@/components/shared/MediaOrb";
 import { useCopy } from "@/lib/i18n";
+import { getSupabaseBrowser } from "@/lib/supabase/browser";
 
 type GuestExperienceProps = {
   wedding: PublicWedding;
   demoMode?: boolean;
+};
+
+type SignedUploadResponse = {
+  upload: {
+    bucket: string;
+    path: string;
+    token: string;
+    object: {
+      id: string;
+      storagePath: string;
+      kind: MediaKind;
+      mimeType: string;
+      fileName: string;
+      byteSize: number;
+      createdAt: string;
+    };
+  };
 };
 
 const demoGuestNote =
@@ -122,19 +140,56 @@ export function GuestExperience({ wedding, demoMode = false }: GuestExperiencePr
         return;
       }
 
-      const formData = new FormData();
-      formData.append("guestName", guestName);
-      formData.append("note", note);
-      formData.append("file", uploadFile);
-
-      const response = await fetch(`/api/uploads/${wedding.slug}`, {
+      const prepareResponse = await fetch(`/api/uploads/${wedding.slug}/prepare`, {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          guestName,
+          fileName: uploadFile.name,
+          mimeType: uploadFile.type || "application/octet-stream",
+          byteSize: uploadFile.size,
+        }),
       });
-      const payload = (await response.json()) as { message?: string };
+      const preparePayload = (await prepareResponse.json()) as SignedUploadResponse & {
+        message?: string;
+      };
 
-      if (!response.ok) {
-        setError(payload.message ?? text.guest.uploadFailed);
+      if (!prepareResponse.ok) {
+        setError(preparePayload.message ?? text.guest.uploadFailed);
+        return;
+      }
+
+      const supabase = getSupabaseBrowser();
+      const { error: uploadError } = await supabase.storage
+        .from(preparePayload.upload.bucket)
+        .uploadToSignedUrl(
+          preparePayload.upload.path,
+          preparePayload.upload.token,
+          uploadFile,
+          {
+            cacheControl: "31536000",
+            contentType: preparePayload.upload.object.mimeType,
+          },
+        );
+
+      if (uploadError) {
+        setError(uploadError.message);
+        return;
+      }
+
+      const completeResponse = await fetch(`/api/uploads/${wedding.slug}/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          guestName,
+          note,
+          object: preparePayload.upload.object,
+        }),
+      });
+      const completePayload = (await completeResponse.json()) as { message?: string };
+
+      if (!completeResponse.ok) {
+        setError(completePayload.message ?? text.guest.uploadFailed);
         return;
       }
 
@@ -149,7 +204,7 @@ export function GuestExperience({ wedding, demoMode = false }: GuestExperiencePr
   }
 
   return (
-    <main className="min-h-screen px-4 py-5 text-[var(--ink)]">
+    <main className="min-h-[100dvh] px-4 py-5 text-[var(--ink)]">
       <div className="mx-auto max-w-[34rem]">
         <motion.section
           initial={{ opacity: 0, y: 16 }}

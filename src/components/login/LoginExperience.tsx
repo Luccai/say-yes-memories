@@ -77,8 +77,8 @@ export function LoginExperience() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-5 text-[var(--ink)] sm:px-6 lg:px-10">
-      <div className="mx-auto flex min-h-[calc(100vh-2.5rem)] max-w-[44rem] items-center justify-center overflow-hidden rounded-[34px] border border-white/65 bg-[rgba(255,250,243,0.72)] shadow-[var(--shadow-soft)] backdrop-blur-xl">
+    <main className="min-h-[100dvh] px-4 py-5 text-[var(--ink)] sm:px-6 lg:px-10">
+      <div className="mx-auto flex min-h-[calc(100dvh-2.5rem)] max-w-[44rem] items-center justify-center overflow-hidden rounded-[34px] border border-white/65 bg-[rgba(255,250,243,0.72)] backdrop-blur-xl">
         <section className="flex items-center justify-center p-5 sm:p-8 lg:p-12">
           <div className="w-full max-w-[32rem]">
             <div className="mb-8">
@@ -117,10 +117,6 @@ export function LoginExperience() {
                   <h2 className="mt-2 font-[var(--font-display)] text-5xl font-semibold">
                     {returningWedding.coupleName}
                   </h2>
-                  <p className="mt-3 text-sm text-[var(--ink-soft)]">
-                    {text.login.privateGuestLink}{" "}
-                    <span className="font-semibold text-[var(--ink)]">/{returningWedding.slug}</span>
-                  </p>
                   <Link
                     href="/admin"
                     className="focus-ring mt-7 inline-flex w-full items-center justify-center gap-3 rounded-full bg-[var(--ink)] px-6 py-4 text-sm font-bold text-[var(--paper-soft)] shadow-[0_16px_40px_rgba(31,23,18,0.22)] transition hover:translate-y-[-1px] hover:bg-black"

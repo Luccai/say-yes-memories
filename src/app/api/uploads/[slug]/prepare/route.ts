@@ -1,0 +1,51 @@
+import { NextResponse } from "next/server";
+import { getWeddingBySlug } from "@/lib/supabase-store";
+import { createSignedUploadTarget } from "@/lib/storage/storage-service";
+
+type PrepareUploadBody = {
+  guestName?: string;
+  fileName?: string;
+  mimeType?: string;
+  byteSize?: number;
+};
+
+export async function POST(
+  request: Request,
+  context: { params: Promise<{ slug: string }> },
+) {
+  const { slug } = await context.params;
+  const wedding = await getWeddingBySlug(slug);
+
+  if (!wedding) {
+    return NextResponse.json({ message: "Wedding page not found." }, { status: 404 });
+  }
+
+  if (wedding.uploadLocked) {
+    return NextResponse.json({ message: "Guest uploads are currently closed." }, { status: 403 });
+  }
+
+  const body = (await request.json()) as PrepareUploadBody;
+  const guestName = String(body.guestName ?? "").trim();
+
+  if (!guestName) {
+    return NextResponse.json({ message: "Your name is required." }, { status: 400 });
+  }
+
+  try {
+    const upload = await createSignedUploadTarget(
+      {
+        name: String(body.fileName ?? "upload"),
+        type: String(body.mimeType ?? "application/octet-stream"),
+        size: Number(body.byteSize ?? 0),
+      },
+      { weddingId: wedding.id, folder: "guest" },
+    );
+
+    return NextResponse.json({ upload });
+  } catch (error) {
+    return NextResponse.json(
+      { message: error instanceof Error ? error.message : "Could not prepare upload." },
+      { status: 400 },
+    );
+  }
+}
