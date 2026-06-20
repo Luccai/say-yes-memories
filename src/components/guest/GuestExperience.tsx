@@ -1,0 +1,261 @@
+"use client";
+
+import { ChangeEvent, FormEvent, useRef, useState } from "react";
+import { Check, Loader2, Mic, Pause, UploadCloud } from "lucide-react";
+import { motion } from "motion/react";
+import type { PublicWedding } from "@/lib/types";
+import { BrandMark } from "@/components/shared/BrandMark";
+import { MediaOrb } from "@/components/shared/MediaOrb";
+
+type GuestExperienceProps = {
+  wedding: PublicWedding;
+};
+
+export function GuestExperience({ wedding }: GuestExperienceProps) {
+  const [guestName, setGuestName] = useState("");
+  const [note, setNote] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState("");
+  const [recording, setRecording] = useState(false);
+  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
+  const [recordedUrl, setRecordedUrl] = useState("");
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const selectedFile = event.target.files?.[0] ?? null;
+    setFile(selectedFile);
+    setRecordedBlob(null);
+
+    if (recordedUrl) {
+      URL.revokeObjectURL(recordedUrl);
+      setRecordedUrl("");
+    }
+  }
+
+  async function startRecording() {
+    setError("");
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      chunksRef.current = [];
+      recorderRef.current = recorder;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, {
+          type: recorder.mimeType || "audio/webm",
+        });
+        const url = URL.createObjectURL(blob);
+        setRecordedBlob(blob);
+        setRecordedUrl(url);
+        stream.getTracks().forEach((track) => track.stop());
+      };
+
+      recorder.start();
+      setFile(null);
+      setRecording(true);
+    } catch {
+      setError("Mikrofon izni alınamadı. İstersen ses dosyası seçerek devam edebilirsin.");
+    }
+  }
+
+  function stopRecording() {
+    recorderRef.current?.stop();
+    recorderRef.current = null;
+    setRecording(false);
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSubmitting(true);
+    setError("");
+
+    try {
+      const uploadFile =
+        file ??
+        (recordedBlob
+          ? new File([recordedBlob], "voice-note.webm", { type: recordedBlob.type || "audio/webm" })
+          : null);
+
+      if (!uploadFile) {
+        setError("Fotoğraf, video veya ses kaydı eklemelisin.");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("guestName", guestName);
+      formData.append("note", note);
+      formData.append("file", uploadFile);
+
+      const response = await fetch(`/api/uploads/${wedding.slug}`, {
+        method: "POST",
+        body: formData,
+      });
+      const payload = (await response.json()) as { message?: string };
+
+      if (!response.ok) {
+        setError(payload.message ?? "Yükleme tamamlanamadı.");
+        return;
+      }
+
+      setSubmitted(true);
+      setGuestName("");
+      setNote("");
+      setFile(null);
+      setRecordedBlob(null);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <main className="min-h-screen px-4 py-5 text-[var(--ink)]">
+      <div className="mx-auto max-w-[34rem]">
+        <div className="mb-5 flex justify-center">
+          <BrandMark />
+        </div>
+
+        <motion.section
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="paper-grain overflow-hidden rounded-[36px] border border-white/75 bg-[var(--paper-soft)] p-6 text-center shadow-[var(--shadow-soft)]"
+        >
+          <div className="relative z-10">
+            <MediaOrb media={wedding.profileMedia} label={wedding.coupleName} className="mx-auto h-40 w-32" />
+            <p className="mt-6 text-xs font-bold uppercase text-[var(--champagne-deep)]">
+              You are invited to share a memory for
+            </p>
+            <h1 className="mt-2 font-[var(--font-display)] text-6xl font-semibold leading-none">
+              {wedding.coupleName}
+            </h1>
+            {wedding.eventDate ? (
+              <p className="mt-3 text-sm font-semibold text-[var(--ink-soft)]">{wedding.eventDate}</p>
+            ) : null}
+            <p className="mx-auto mt-5 max-w-sm text-sm leading-7 text-[var(--ink-soft)]">
+              {wedding.welcomeNote}
+            </p>
+          </div>
+        </motion.section>
+
+        <section className="mt-5 rounded-[34px] border border-white/75 bg-[rgba(255,250,243,0.82)] p-5 shadow-[0_18px_48px_rgba(58,40,25,0.1)] backdrop-blur">
+          {wedding.uploadLocked ? (
+            <div className="grid min-h-[18rem] place-items-center text-center">
+              <div>
+                <p className="font-[var(--font-display)] text-4xl font-semibold">
+                  Uploads are paused
+                </p>
+                <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
+                  The couple has temporarily closed new uploads.
+                </p>
+              </div>
+            </div>
+          ) : submitted ? (
+            <div className="grid min-h-[18rem] place-items-center text-center">
+              <div>
+                <div className="mx-auto grid size-16 place-items-center rounded-full bg-[var(--ink)] text-[var(--paper-soft)]">
+                  <Check className="size-7" />
+                </div>
+                <p className="mt-5 font-[var(--font-display)] text-4xl font-semibold">
+                  Thank you
+                </p>
+                <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
+                  Your memory has been sent privately to the couple.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setSubmitted(false)}
+                  className="focus-ring mt-6 rounded-full border border-[var(--line)] bg-white/65 px-5 py-3 text-sm font-bold transition hover:bg-white"
+                >
+                  Send another
+                </button>
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="grid gap-4">
+              <label className="grid gap-2 text-sm font-semibold">
+                Your name
+                <input
+                  value={guestName}
+                  onChange={(event) => setGuestName(event.target.value)}
+                  required
+                  className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-4 outline-none"
+                  placeholder="Name"
+                />
+              </label>
+
+              <label className="grid gap-2 text-sm font-semibold">
+                Memory note
+                <textarea
+                  value={note}
+                  onChange={(event) => setNote(event.target.value)}
+                  rows={4}
+                  className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-4 leading-7 outline-none"
+                  placeholder="A tiny note for the couple..."
+                />
+              </label>
+
+              <div className="grid gap-3">
+                <label className="focus-ring grid cursor-pointer place-items-center rounded-[26px] border border-dashed border-[var(--line)] bg-white/58 p-5 text-center transition hover:bg-white">
+                  <UploadCloud className="mb-2 size-7 text-[var(--champagne-deep)]" />
+                  <span className="text-sm font-bold">
+                    {file ? file.name : "Choose photo, video, or audio"}
+                  </span>
+                  <span className="mt-1 text-xs text-[var(--ink-soft)]">
+                    No app needed. Your upload stays private.
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*,video/*,audio/*"
+                    className="sr-only"
+                    onChange={handleFileChange}
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  onClick={recording ? stopRecording : startRecording}
+                  className="focus-ring rounded-full border border-[var(--line)] bg-white/65 px-5 py-3 text-sm font-bold transition hover:bg-white"
+                >
+                  <span className="inline-flex items-center justify-center gap-2">
+                    {recording ? <Pause className="size-4" /> : <Mic className="size-4" />}
+                    {recording ? "Stop voice note" : "Record voice note"}
+                  </span>
+                </button>
+
+                {recordedUrl ? (
+                  <audio src={recordedUrl} controls className="w-full" />
+                ) : null}
+              </div>
+
+              {error ? (
+                <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                  {error}
+                </p>
+              ) : null}
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="focus-ring rounded-full bg-[var(--ink)] px-6 py-4 text-sm font-bold text-[var(--paper-soft)] shadow-[0_16px_40px_rgba(31,23,18,0.22)] transition hover:bg-black disabled:opacity-60"
+              >
+                <span className="inline-flex items-center justify-center gap-2">
+                  {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
+                  Send memory
+                </span>
+              </button>
+            </form>
+          )}
+        </section>
+      </div>
+    </main>
+  );
+}

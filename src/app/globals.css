@@ -1,0 +1,96 @@
+@import "tailwindcss";
+
+:root {
+  --paper: #f7f1e8;
+  --paper-soft: #fffaf3;
+  --pearl: #eee5d8;
+  --champagne: #c7a66f;
+  --champagne-deep: #8b6b3f;
+  --ink: #1f1712;
+  --ink-soft: #5f5146;
+  --sage: #7e8f78;
+  --rosewood: #8c5144;
+  --line: rgba(55, 38, 25, 0.14);
+  --shadow-soft: 0 24px 70px rgba(58, 40, 25, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--paper);
+  color: var(--ink);
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(199, 166, 111, 0.22), transparent 32rem),
+    linear-gradient(135deg, #fffaf3 0%, #f4eadf 45%, #eee1d3 100%);
+  color: var(--ink);
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+.paper-grain {
+  position: relative;
+  overflow: hidden;
+}
+
+.paper-grain::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  opacity: 0.48;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.42) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(128, 101, 72, 0.06) 1px, transparent 1px);
+  background-size: 21px 21px, 31px 31px;
+  mix-blend-mode: soft-light;
+}
+
+.embossed {
+  color: #d8ccbb;
+  text-shadow:
+    1px 1px 1px rgba(255, 255, 255, 0.92),
+    -1px -1px 1px rgba(77, 56, 36, 0.2);
+}
+
+.focus-ring:focus-visible {
+  outline: 2px solid rgba(139, 107, 63, 0.58);
+  outline-offset: 3px;
+}
+
+.luxury-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 107, 63, 0.45) rgba(255, 250, 243, 0.7);
+}
+
+.luxury-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.luxury-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 250, 243, 0.7);
+}
+
+.luxury-scroll::-webkit-scrollbar-thumb {
+  background: rgba(139, 107, 63, 0.45);
+  border-radius: 999px;
+}

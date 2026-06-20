@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+project_root="$(cd -- "$script_dir/.." && pwd)"
+repo_root="$(git -C "$project_root" rev-parse --show-toplevel)"
+
+if [ "$project_root" = "$repo_root" ]; then
+  project_prefix=""
+else
+  project_prefix="${project_root#$repo_root/}/"
+fi
+
+echo "pre-commit: staged dosyalar icin ESLint duzeltmesi calisiyor..."
+
+staged_files=()
+
+while IFS= read -r -d '' file; do
+  if [ -n "$project_prefix" ]; then
+    file="${file#$project_prefix}"
+  fi
+
+  case "$file" in
+    *.js|*.jsx|*.ts|*.tsx|*.mjs|*.cjs)
+      staged_files+=("$file")
+      ;;
+  esac
+done < <(git -C "$repo_root" diff --cached --name-only --diff-filter=ACMR -z -- "${project_prefix:-.}")
+
+if [ ${#staged_files[@]} -eq 0 ]; then
+  echo "pre-commit: kontrol edilecek staged kaynak dosya yok."
+  exit 0
+fi
+
+cd "$project_root"
+
+bunx eslint --fix --max-warnings=0 "${staged_files[@]}"
+
+git add -- "${staged_files[@]}"
+
+echo "pre-commit: tamam."
