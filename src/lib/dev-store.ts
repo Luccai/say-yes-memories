@@ -107,14 +107,14 @@ export async function activateWedding(input: {
   const token = store.tokens.find((item) => item.tokenHash === tokenHash);
 
   if (!token || token.status !== "unused") {
-    return { ok: false as const, message: "Token geçersiz veya daha önce kullanılmış." };
+    return { ok: false as const, message: "Invalid or already used token." };
   }
 
   const brideName = input.brideName.trim();
   const groomName = input.groomName.trim();
 
   if (!brideName || !groomName) {
-    return { ok: false as const, message: "Gelin ve damat adı zorunlu." };
+    return { ok: false as const, message: "Bride and groom names are required." };
   }
 
   const now = new Date().toISOString();

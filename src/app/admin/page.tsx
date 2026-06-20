@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { AdminExperience } from "@/components/admin/AdminExperience";
 import { getCurrentWeddingFromCookie } from "@/lib/auth";
-import { listWeddingMedia } from "@/lib/dev-store";
+import { listWeddingMedia } from "@/lib/supabase-store";
 
 export default async function AdminPage() {
   const current = await getCurrentWeddingFromCookie();

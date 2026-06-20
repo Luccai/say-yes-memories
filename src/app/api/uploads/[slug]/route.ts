@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { addWeddingMedia, getWeddingBySlug } from "@/lib/dev-store";
+import { addWeddingMedia, getWeddingBySlug } from "@/lib/supabase-store";
 import { storeUploadedFile } from "@/lib/storage/storage-service";
 
 export async function POST(
@@ -10,11 +10,11 @@ export async function POST(
   const wedding = await getWeddingBySlug(slug);
 
   if (!wedding) {
-    return NextResponse.json({ message: "Düğün alanı bulunamadı." }, { status: 404 });
+    return NextResponse.json({ message: "Wedding page not found." }, { status: 404 });
   }
 
   if (wedding.uploadLocked) {
-    return NextResponse.json({ message: "Misafir yüklemeleri şu anda kapalı." }, { status: 403 });
+    return NextResponse.json({ message: "Guest uploads are currently closed." }, { status: 403 });
   }
 
   const formData = await request.formData();
@@ -23,11 +23,11 @@ export async function POST(
   const file = formData.get("file");
 
   if (!guestName) {
-    return NextResponse.json({ message: "İsim alanı zorunlu." }, { status: 400 });
+    return NextResponse.json({ message: "Your name is required." }, { status: 400 });
   }
 
   if (!(file instanceof File)) {
-    return NextResponse.json({ message: "Fotoğraf, video veya ses dosyası seçin." }, { status: 400 });
+    return NextResponse.json({ message: "Choose a photo, video, or audio file." }, { status: 400 });
   }
 
   if (
@@ -36,12 +36,15 @@ export async function POST(
     !file.type.startsWith("audio/")
   ) {
     return NextResponse.json(
-      { message: "Sadece fotoğraf, video veya ses kabul edilir." },
+      { message: "Only photo, video, or audio files are accepted." },
       { status: 400 },
     );
   }
 
-  const object = await storeUploadedFile(file);
+  const object = await storeUploadedFile(file, {
+    weddingId: wedding.id,
+    folder: "guest",
+  });
   const media = await addWeddingMedia({
     weddingId: wedding.id,
     guestName,

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { sessionCookieOptions } from "@/lib/auth";
-import { activateWedding, createSession } from "@/lib/dev-store";
+import { activateWedding, createSession } from "@/lib/supabase-store";
 import { SESSION_COOKIE_NAME } from "@/lib/security";
 
 export async function POST(request: Request) {

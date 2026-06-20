@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { deleteSession } from "@/lib/dev-store";
+import { deleteSession } from "@/lib/supabase-store";
 import { SESSION_COOKIE_NAME } from "@/lib/security";
 
 export async function POST() {

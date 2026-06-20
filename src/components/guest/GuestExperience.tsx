@@ -1,19 +1,25 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { Check, Loader2, Mic, Pause, UploadCloud } from "lucide-react";
 import { motion } from "motion/react";
 import type { PublicWedding } from "@/lib/types";
-import { BrandMark } from "@/components/shared/BrandMark";
 import { MediaOrb } from "@/components/shared/MediaOrb";
+import { useCopy } from "@/lib/i18n";
 
 type GuestExperienceProps = {
   wedding: PublicWedding;
+  demoMode?: boolean;
 };
 
-export function GuestExperience({ wedding }: GuestExperienceProps) {
-  const [guestName, setGuestName] = useState("");
-  const [note, setNote] = useState("");
+const demoGuestNote =
+  "We caught your first dance from our table, and the whole room went quiet for a second. It was beautiful.";
+
+export function GuestExperience({ wedding, demoMode = false }: GuestExperienceProps) {
+  const text = useCopy();
+  const [displayWedding, setDisplayWedding] = useState(wedding);
+  const [guestName, setGuestName] = useState(demoMode ? "Emma" : "");
+  const [note, setNote] = useState(demoMode ? demoGuestNote : "");
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -23,6 +29,20 @@ export function GuestExperience({ wedding }: GuestExperienceProps) {
   const [recordedUrl, setRecordedUrl] = useState("");
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+
+  useEffect(() => {
+    if (!demoMode) {
+      return;
+    }
+
+    queueMicrotask(() => {
+      const saved = window.localStorage.getItem("sayyes.demo.wedding");
+
+      if (saved) {
+        setDisplayWedding(JSON.parse(saved) as PublicWedding);
+      }
+    });
+  }, [demoMode, wedding]);
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const selectedFile = event.target.files?.[0] ?? null;
@@ -64,7 +84,7 @@ export function GuestExperience({ wedding }: GuestExperienceProps) {
       setFile(null);
       setRecording(true);
     } catch {
-      setError("Mikrofon izni alınamadı. İstersen ses dosyası seçerek devam edebilirsin.");
+      setError(text.guest.micDenied);
     }
   }
 
@@ -86,8 +106,19 @@ export function GuestExperience({ wedding }: GuestExperienceProps) {
           ? new File([recordedBlob], "voice-note.webm", { type: recordedBlob.type || "audio/webm" })
           : null);
 
+      if (!uploadFile && !demoMode) {
+        setError(text.guest.missingMedia);
+        return;
+      }
+
+      if (demoMode) {
+        await new Promise((resolve) => window.setTimeout(resolve, 520));
+        setSubmitted(true);
+        return;
+      }
+
       if (!uploadFile) {
-        setError("Fotoğraf, video veya ses kaydı eklemelisin.");
+        setError(text.guest.missingMedia);
         return;
       }
 
@@ -103,7 +134,7 @@ export function GuestExperience({ wedding }: GuestExperienceProps) {
       const payload = (await response.json()) as { message?: string };
 
       if (!response.ok) {
-        setError(payload.message ?? "Yükleme tamamlanamadı.");
+        setError(payload.message ?? text.guest.uploadFailed);
         return;
       }
 
@@ -120,41 +151,41 @@ export function GuestExperience({ wedding }: GuestExperienceProps) {
   return (
     <main className="min-h-screen px-4 py-5 text-[var(--ink)]">
       <div className="mx-auto max-w-[34rem]">
-        <div className="mb-5 flex justify-center">
-          <BrandMark />
-        </div>
-
         <motion.section
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           className="paper-grain overflow-hidden rounded-[36px] border border-white/75 bg-[var(--paper-soft)] p-6 text-center shadow-[var(--shadow-soft)]"
         >
           <div className="relative z-10">
-            <MediaOrb media={wedding.profileMedia} label={wedding.coupleName} className="mx-auto h-40 w-32" />
+            <MediaOrb
+              media={displayWedding.profileMedia}
+              label={displayWedding.coupleName}
+              className="mx-auto h-40 w-32"
+            />
             <p className="mt-6 text-xs font-bold uppercase text-[var(--champagne-deep)]">
-              You are invited to share a memory for
+              {text.guest.invited}
             </p>
             <h1 className="mt-2 font-[var(--font-display)] text-6xl font-semibold leading-none">
-              {wedding.coupleName}
+              {displayWedding.coupleName}
             </h1>
-            {wedding.eventDate ? (
-              <p className="mt-3 text-sm font-semibold text-[var(--ink-soft)]">{wedding.eventDate}</p>
+            {displayWedding.eventDate ? (
+              <p className="mt-3 text-sm font-semibold text-[var(--ink-soft)]">{displayWedding.eventDate}</p>
             ) : null}
             <p className="mx-auto mt-5 max-w-sm text-sm leading-7 text-[var(--ink-soft)]">
-              {wedding.welcomeNote}
+              {displayWedding.welcomeNote}
             </p>
           </div>
         </motion.section>
 
         <section className="mt-5 rounded-[34px] border border-white/75 bg-[rgba(255,250,243,0.82)] p-5 shadow-[0_18px_48px_rgba(58,40,25,0.1)] backdrop-blur">
-          {wedding.uploadLocked ? (
+          {displayWedding.uploadLocked ? (
             <div className="grid min-h-[18rem] place-items-center text-center">
               <div>
                 <p className="font-[var(--font-display)] text-4xl font-semibold">
-                  Uploads are paused
+                  {text.guest.uploadsPaused}
                 </p>
                 <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
-                  The couple has temporarily closed new uploads.
+                  {text.guest.uploadsPausedBody}
                 </p>
               </div>
             </div>
@@ -165,41 +196,41 @@ export function GuestExperience({ wedding }: GuestExperienceProps) {
                   <Check className="size-7" />
                 </div>
                 <p className="mt-5 font-[var(--font-display)] text-4xl font-semibold">
-                  Thank you
+                  {text.guest.thankYou}
                 </p>
                 <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
-                  Your memory has been sent privately to the couple.
+                  {text.guest.thankYouBody}
                 </p>
                 <button
                   type="button"
                   onClick={() => setSubmitted(false)}
                   className="focus-ring mt-6 rounded-full border border-[var(--line)] bg-white/65 px-5 py-3 text-sm font-bold transition hover:bg-white"
                 >
-                  Send another
+                  {text.guest.sendAnother}
                 </button>
               </div>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="grid gap-4">
               <label className="grid gap-2 text-sm font-semibold">
-                Your name
+                {text.guest.name}
                 <input
                   value={guestName}
                   onChange={(event) => setGuestName(event.target.value)}
                   required
                   className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-4 outline-none"
-                  placeholder="Name"
+                  placeholder={text.guest.name}
                 />
               </label>
 
               <label className="grid gap-2 text-sm font-semibold">
-                Memory note
+                {text.guest.note}
                 <textarea
                   value={note}
                   onChange={(event) => setNote(event.target.value)}
                   rows={4}
                   className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-4 leading-7 outline-none"
-                  placeholder="A tiny note for the couple..."
+                  placeholder={text.guest.notePlaceholder}
                 />
               </label>
 
@@ -207,10 +238,10 @@ export function GuestExperience({ wedding }: GuestExperienceProps) {
                 <label className="focus-ring grid cursor-pointer place-items-center rounded-[26px] border border-dashed border-[var(--line)] bg-white/58 p-5 text-center transition hover:bg-white">
                   <UploadCloud className="mb-2 size-7 text-[var(--champagne-deep)]" />
                   <span className="text-sm font-bold">
-                    {file ? file.name : "Choose photo, video, or audio"}
+                    {file ? file.name : text.guest.choose}
                   </span>
                   <span className="mt-1 text-xs text-[var(--ink-soft)]">
-                    No app needed. Your upload stays private.
+                    {text.guest.private}
                   </span>
                   <input
                     type="file"
@@ -227,7 +258,7 @@ export function GuestExperience({ wedding }: GuestExperienceProps) {
                 >
                   <span className="inline-flex items-center justify-center gap-2">
                     {recording ? <Pause className="size-4" /> : <Mic className="size-4" />}
-                    {recording ? "Stop voice note" : "Record voice note"}
+                    {recording ? text.guest.stop : text.guest.record}
                   </span>
                 </button>
 
@@ -249,7 +280,7 @@ export function GuestExperience({ wedding }: GuestExperienceProps) {
               >
                 <span className="inline-flex items-center justify-center gap-2">
                   {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
-                  Send memory
+                  {text.guest.send}
                 </span>
               </button>
             </form>

@@ -4,7 +4,7 @@ import {
   deleteSession,
   getSession,
   getWeddingById,
-} from "@/lib/dev-store";
+} from "@/lib/supabase-store";
 import { SESSION_COOKIE_NAME, SESSION_MAX_AGE_SECONDS } from "@/lib/security";
 
 export function sessionCookieOptions(request?: Request) {

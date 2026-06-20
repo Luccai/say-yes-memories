@@ -77,14 +77,14 @@ Bu bölüm yeni proje başlarken doldurulacak. Agent, proje hakkındaki temel ge
 
 ### Teknik Notlar
 
-- Entegrasyonlar: V1'de dış entegrasyon yok; storage provider sonraki kararda seçilecek.
+- Entegrasyonlar: Supabase Postgres, private Supabase Storage ve Supabase Realtime Broadcast.
 - Formlar: Token aktivasyon formu, wedding identity formu, profil medya upload, misafir medya/not upload, ses kaydı.
 - Analytics / tracking: V1'de yok; Etsy satış hunisi ve ürün içi temel event tracking sonra konuşulacak.
 - Auth ihtiyacı: Token aktivasyonu + HTTP-only session cookie. Token frontend'de saklanmaz.
-- Database / backend ihtiyacı: Şu an local file-backed `.local-data` dev store; production için DB/storage provider şart.
+- Database / backend ihtiyacı: Supabase-backed store aktif; `.local-data` sadece eski/dev seed kalıntısı olarak görülmeli, production akışında kullanılmamalı.
 - Deployment hedefi: Muhtemel Vercel; production storage olarak Supabase Storage, Vercel Blob veya Cloudflare R2 kıyaslanacak.
-- Bilinen riskler: Local store production için uygun değil; medya dosyaları base64 JSON'da tutulduğu için sadece geliştirme/prototip amaçlı. Storage maliyeti ürün marjını belirleyecek.
-- Bilinmeyenler: Nihai domain, production DB/storage seçimi, medya kota limiti, Etsy teslim mail metni, token yenileme/iade politikası.
+- Bilinen riskler: Supabase Storage kota/maliyet ve dosya saklama politikası net ürün marjını belirleyecek; Vercel deploy env secret'ları eksiksiz girilmeden canlıya alınmamalı.
+- Bilinmeyenler: Nihai domain, medya kota limiti, Etsy teslim mail metni, token yenileme/iade politikası.
 
 ---
 
@@ -201,6 +201,9 @@ Format:
 
 - 2026-05-18 21:58 - Son görev: AGENTS.md yeni proje başlangıç standardı olarak yeniden yazıldı. Etkilenen dosyalar: AGENTS.md.
 - 2026-06-20 19:13 - Son görev: Say Yes Digital Memories V1 planına göre Next.js/Bun uygulama iskeleti, token aktivasyonu, admin QR stüdyosu, profil medya, misafir upload ve local dev store akışı uygulandı. Etkilenen dosyalar: package.json, src/app, src/components, src/lib, scripts/generate-tokens.ts, README.md, AGENTS.md, CLAUDE.md. Sonraki agent için not: `.local-data` sadece geliştirme store'udur; production için storage/DB kararı verilmeden canlıya alınmamalı.
+- 2026-06-20 19:38 - Son görev: Login aktivasyon formundaki guest link preview kaldırıldı, Create private studio altında `/demo` bağlantılı Demoyu deneyimle CTA'sı eklendi ve Mary & John için server/storage kullanmayan dolu demo misafir deneyimi oluşturuldu. Etkilenen dosyalar: src/components/login/LoginExperience.tsx, src/components/guest/GuestExperience.tsx, src/app/demo/page.tsx, src/lib/demo-wedding.ts, AGENTS.md, CLAUDE.md. Sonraki agent için not: demo upload gerçek API'ye gitmez; sadece guest teşekkür ekranını simüle eder.
+- 2026-06-20 19:56 - Son görev: Login sayfasında kullanıcı browser yorumuyla seçilen koyu sol hero/marketing paneli kaldırıldı ve aktivasyon formu tek kolon ortalı kapsayıcıya alındı. Etkilenen dosyalar: src/components/login/LoginExperience.tsx, AGENTS.md, CLAUDE.md. Sonraki agent için not: login artık landing/hero anlatımı göstermiyor; ilk görünen ana deneyim form ve demo CTA'sı.
+- 2026-06-20 20:35 - Son görev: Supabase Postgres/Storage/Realtime üretim veri katmanı bağlandı, `/admin/mary-john` dolu Mary & John demo paneli eklendi, login demo CTA'sı admin demoya yönlendirildi, login/guest/admin arayüzleri browser diline göre EN/ES/FR/DE/PT/ZH metinlere bağlandı ve eski koyu login hero bloğunun kaldırıldığı doğrulandı. Etkilenen dosyalar: src/app, src/components, src/lib, supabase/migrations, package.json, bun.lock, AGENTS.md, CLAUDE.md. Sonraki agent için not: `.env.local` repo dışında kalmalı; Supabase service role sadece server tarafında kullanılıyor, demo upload localStorage simülasyonudur.
 
 
 
@@ -221,5 +224,3 @@ bu mağazamda 50 dolar'a satmak üzere böyle bi şey yapmak istiyorum. bu mağa
 3 ana merkez olacak . login ekranı admin paneli ve misafirllerin qr'ı okuttuktan sonra ya da link'e bastıktan sonra yönlenecekleri yer. o yer de çok profesyonel olmalı. ultra profesyonel ve lüks. full mobil optimize tüm ios ve android cihazlarla tam uyumlu mobile responsive öncelikli olmalı. işin medya öğelerinin yüklendiği zaman nereye depolanacağı kısmını sonra konuşup tartışacağız. en uygun, ucuz fiyatlandırma konusunda konuşacağız. 
 
 görevi bitirdikten sonra projeyle ilgili yukarıdaki boş kısımları doldur. 
-
-

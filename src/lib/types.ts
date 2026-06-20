@@ -4,6 +4,7 @@ export type MediaKind = "image" | "video" | "audio";
 export type StoredMediaObject = {
   id: string;
   url: string;
+  storagePath?: string;
   kind: MediaKind;
   mimeType: string;
   fileName: string;
@@ -26,6 +27,8 @@ export type Wedding = {
   brideName: string;
   groomName: string;
   coupleName: string;
+  realtimeTopic?: string;
+  demo?: boolean;
   eventDate?: string;
   welcomeNote: string;
   profileMedia?: StoredMediaObject;
