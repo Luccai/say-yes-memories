@@ -124,6 +124,13 @@ export function LoginExperience() {
                     {text.login.enterStudio}
                     <ArrowRight className="size-4" />
                   </Link>
+                  <Link
+                    href="/admin/mary-john"
+                    className="focus-ring mt-3 inline-flex w-full items-center justify-center gap-3 rounded-full border border-[var(--line)] bg-white/62 px-6 py-4 text-sm font-bold text-[var(--ink)] transition hover:translate-y-[-1px] hover:bg-white"
+                  >
+                    <Sparkles className="size-4 text-[var(--champagne-deep)]" />
+                    {text.login.demo}
+                  </Link>
                 </div>
               </motion.div>
             ) : (

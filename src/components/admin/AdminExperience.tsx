@@ -1214,10 +1214,12 @@ function MemoryInbox({
             role="dialog"
             aria-modal="true"
           >
-            <div className="flex min-w-0 items-center justify-between gap-3 overflow-hidden">
-              <div className="min-w-0 flex-1 overflow-hidden">
-                <p className="block max-w-full truncate text-sm font-bold text-[var(--ink)]">{selectedMedia.guestName}</p>
-                <p className="block max-w-full truncate text-xs text-[var(--ink-soft)]">
+            <div className="flex min-w-0 items-start justify-between gap-3">
+              <div className="min-w-0 flex-1 pr-1">
+                <p className="block max-w-full whitespace-pre-wrap text-sm font-bold leading-snug text-[var(--ink)] [overflow-wrap:anywhere]">
+                  {selectedMedia.guestName}
+                </p>
+                <p className="mt-1 block max-w-full whitespace-pre-wrap text-xs leading-relaxed text-[var(--ink-soft)] [overflow-wrap:anywhere]">
                   {selectedMedia.note || text.noNote}
                 </p>
               </div>
