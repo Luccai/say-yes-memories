@@ -44,6 +44,13 @@ bun run check
 
 `bun.lock` aktif lockfile'dır. `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml` üretilmemelidir.
 
+Kalite komutları:
+
+- Küçük frontend/backend düzenlemelerinde her değişiklikten sonra manuel `bun run lint`, `bun run typecheck`, `bun run build` veya `bun run check` çalıştırma.
+- Commit sırasında `.githooks/pre-commit` staged JS/TS dosyalarında ESLint düzeltmesini yapar; ekstra manuel build/check koşma.
+- Ağır kalite kapısı `bun run check` sadece GitHub'a push ederken `.githooks/pre-push` üzerinden çalışmalıdır.
+- Kullanıcı açıkça test/check isterse veya değişiklik yüksek riskliyse önce sebebini söyle, sonra hedefli kontrol çalıştır.
+
 ## Route Haritası
 
 - `/`: `/login` sayfasına redirect eder.
@@ -164,7 +171,7 @@ Vercel tarafında Production, Preview ve Development ortamları için bu değerl
 
 Deploy hedefi Vercel'dir.
 
-Deploy öncesi minimum kalite kapısı:
+Deploy öncesi minimum kalite kapısı normalde GitHub push sırasında `pre-push` hook ile çalışır. Manuel çalıştırma sadece kullanıcı açıkça isterse veya riskli büyük değişiklik varsa yapılır:
 
 ```bash
 bun run lint
