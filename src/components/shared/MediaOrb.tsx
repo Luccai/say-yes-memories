@@ -1,3 +1,6 @@
+"use client";
+
+import { CachedMediaImage } from "@/components/shared/CachedMediaImage";
 import type { StoredMediaObject } from "@/lib/types";
 
 type MediaOrbProps = {
@@ -18,18 +21,14 @@ export function MediaOrb({ media, label, className = "" }: MediaOrbProps) {
     <div
       className={`relative isolate overflow-hidden rounded-[999px] border border-white/70 bg-[var(--paper-soft)] shadow-[0_18px_45px_rgba(58,40,25,0.18)] [container-type:inline-size] ${className}`}
     >
-      {media?.kind === "video" ? (
-        <video
+      {media?.kind === "image" ? (
+        <CachedMediaImage
           src={media.url}
+          cacheKey={media.storagePath ?? media.id}
+          alt={label}
           className="h-full w-full object-cover"
-          autoPlay
-          loop
-          muted
-          playsInline
+          instantCache
         />
-      ) : media?.kind === "image" ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={media.url} alt={label} className="h-full w-full object-cover" />
       ) : (
         <div className="grid h-full w-full place-items-center bg-[radial-gradient(circle_at_35%_25%,#fffaf3,#e7d8c6)]">
           <span className="font-display text-[clamp(1.75rem,7cqi,2.75rem)] font-semibold tracking-tight text-[var(--champagne-deep)]">

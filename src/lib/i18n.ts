@@ -49,7 +49,7 @@ export const copy = {
       helpTitle: "Need a hand opening your studio?",
       helpBody:
         "After your Etsy purchase, this is where you set up your private QR page. Add your names, paste your token, and we will make a simple guest link for your wedding. Guests can send the little things you would normally miss: table photos, quick videos, voice notes, and sweet messages. No app, no public gallery, no mess.",
-      steps: ["Add your names and paste the token from Etsy.", "Make the page feel like you with a photo, video, date, and welcome note.", "Put the QR on your tables or share the link with your guests.", "Open your studio later and find everything waiting privately for you."],
+      steps: ["Add your names and paste the token from Etsy.", "Make the page feel like you with a photo, date, and welcome note.", "Put the QR on your tables or share the link with your guests.", "Open your studio later and find everything waiting privately for you."],
     },
     guest: {
       invited: "You are invited to share a memory for",
@@ -81,7 +81,7 @@ export const copy = {
       hidden: "Hidden",
       identity: "Wedding page",
       identityTitle: "Your public guest page.",
-      upload: "Add photo or video",
+      upload: "Add photo",
       brideName: "Bride name",
       groomName: "Groom name",
       eventDate: "Wedding date",
@@ -107,6 +107,7 @@ export const copy = {
       videos: "Videos",
       voice: "Voice",
       noMemories: "No memories yet",
+      mediaPreparing: "Getting your memories ready...",
       noMemoriesBody:
         "Once guests scan your QR or open your link, their photos, videos, voice notes, and messages will land here just for you.",
       noNote: "No note added.",
@@ -135,7 +136,7 @@ export const copy = {
       helpTitle: "Un rincón tranquilo para los recuerdos de su boda.",
       helpBody:
         "Después de comprar en Etsy, aquí preparan su página QR privada. Escriben sus nombres, pegan el token y creamos un enlace sencillo para la boda. Sus invitados pueden enviar fotos de la mesa, videos cortos, notas de voz y mensajes bonitos. Sin app, sin galería pública y sin desorden.",
-      steps: ["Agreguen sus nombres y peguen el token de Etsy.", "Denle su estilo con una foto, video, fecha y mensaje de bienvenida.", "Pongan el QR en las mesas o compartan el enlace.", "Vuelvan al estudio y encuentren todo guardado en privado."],
+      steps: ["Agreguen sus nombres y peguen el token de Etsy.", "Denle su estilo con una foto, fecha y mensaje de bienvenida.", "Pongan el QR en las mesas o compartan el enlace.", "Vuelvan al estudio y encuentren todo guardado en privado."],
     },
     guest: {
       invited: "Estás invitado a compartir un recuerdo para",
@@ -167,7 +168,7 @@ export const copy = {
       hidden: "Ocultos",
       identity: "Identidad de la boda",
       identityTitle: "La página que abren los invitados desde el QR o enlace.",
-      upload: "Subir",
+      upload: "Subir foto",
       brideName: "Nombre de la novia",
       groomName: "Nombre del novio",
       eventDate: "Fecha del evento",
@@ -193,6 +194,7 @@ export const copy = {
       videos: "Videos",
       voice: "Voz",
       noMemories: "Aún no hay recuerdos",
+      mediaPreparing: "Preparando sus recuerdos...",
       noMemoriesBody: "Comparte el QR con los invitados. Sus cargas llegarán aquí solo para la pareja.",
       noNote: "Sin mensaje.",
       deleteTitle: "¿Eliminar este recuerdo?",
@@ -220,7 +222,7 @@ export const copy = {
       helpTitle: "Un petit espace calme pour vos souvenirs de mariage.",
       helpBody:
         "Après votre achat Etsy, c'est ici que vous préparez votre page QR privée. Ajoutez vos prénoms, collez le token et nous créons un lien simple pour vos invités. Ils peuvent envoyer les petits moments qu'on rate souvent : photos de table, courtes vidéos, messages vocaux et mots doux. Pas d'app, pas de galerie publique, pas de bazar.",
-      steps: ["Ajoutez vos prénoms et collez le token Etsy.", "Personnalisez la page avec une photo, une vidéo, la date et un message.", "Placez le QR sur vos tables ou partagez le lien.", "Revenez dans le studio et retrouvez tout en privé."],
+      steps: ["Ajoutez vos prénoms et collez le token Etsy.", "Personnalisez la page avec une photo, la date et un message.", "Placez le QR sur vos tables ou partagez le lien.", "Revenez dans le studio et retrouvez tout en privé."],
     },
     guest: {
       invited: "Vous êtes invité à partager un souvenir pour",
@@ -252,7 +254,7 @@ export const copy = {
       hidden: "Masqués",
       identity: "Identité du mariage",
       identityTitle: "La page ouverte par vos invités depuis le QR ou le lien.",
-      upload: "Importer",
+      upload: "Importer une photo",
       brideName: "Prénom de la mariée",
       groomName: "Prénom du marié",
       eventDate: "Date de l'événement",
@@ -278,6 +280,7 @@ export const copy = {
       videos: "Vidéos",
       voice: "Voix",
       noMemories: "Aucun souvenir pour l'instant",
+      mediaPreparing: "Préparation de vos souvenirs...",
       noMemoriesBody: "Partagez le QR avec les invités. Leurs envois arriveront ici pour le couple seulement.",
       noNote: "Aucun message.",
       deleteTitle: "Supprimer ce souvenir ?",
@@ -305,7 +308,7 @@ export const copy = {
       helpTitle: "Ein ruhiger Ort für eure Hochzeitsmomente.",
       helpBody:
         "Nach eurem Etsy-Kauf richtet ihr hier eure private QR-Seite ein. Namen eintragen, Token einfügen, und wir machen daraus einen einfachen Gästelink. Eure Gäste können Tischfotos, kurze Videos, Sprachnachrichten und liebe Nachrichten senden. Keine App, keine öffentliche Galerie, kein Chaos.",
-      steps: ["Namen eintragen und den Etsy-Token einfügen.", "Die Seite mit Foto, Video, Datum und Begrüßung persönlich machen.", "QR auf die Tische legen oder den Link teilen.", "Später ins Studio zurückkommen und alles privat wiederfinden."],
+      steps: ["Namen eintragen und den Etsy-Token einfügen.", "Die Seite mit Foto, Datum und Begrüßung persönlich machen.", "QR auf die Tische legen oder den Link teilen.", "Später ins Studio zurückkommen und alles privat wiederfinden."],
     },
     guest: {
       invited: "Teile eine Erinnerung für",
@@ -337,7 +340,7 @@ export const copy = {
       hidden: "Ausgeblendet",
       identity: "Hochzeitsidentität",
       identityTitle: "Die Seite, die Gäste über QR oder Link öffnen.",
-      upload: "Hochladen",
+      upload: "Foto hochladen",
       brideName: "Name der Braut",
       groomName: "Name des Bräutigams",
       eventDate: "Datum",
@@ -363,6 +366,7 @@ export const copy = {
       videos: "Videos",
       voice: "Audio",
       noMemories: "Noch keine Erinnerungen",
+      mediaPreparing: "Eure Erinnerungen werden vorbereitet...",
       noMemoriesBody: "Teilt den QR-Code mit Gästen. Ihre Uploads kommen nur hier beim Paar an.",
       noNote: "Keine Nachricht.",
       deleteTitle: "Diese Erinnerung löschen?",
@@ -390,7 +394,7 @@ export const copy = {
       helpTitle: "Um cantinho tranquilo para as memórias do casamento.",
       helpBody:
         "Depois da compra na Etsy, é aqui que vocês montam a página QR privada. Coloquem os nomes, colem o token e a gente cria um link simples para os convidados. Eles podem enviar fotos da mesa, vídeos rápidos, áudios e mensagens carinhosas. Sem app, sem galeria pública e sem bagunça.",
-      steps: ["Adicionem os nomes e colem o token da Etsy.", "Deixem a página com a cara de vocês usando foto, vídeo, data e mensagem.", "Coloquem o QR nas mesas ou compartilhem o link.", "Voltem ao estúdio e encontrem tudo guardado em privado."],
+      steps: ["Adicionem os nomes e colem o token da Etsy.", "Deixem a página com a cara de vocês usando foto, data e mensagem.", "Coloquem o QR nas mesas ou compartilhem o link.", "Voltem ao estúdio e encontrem tudo guardado em privado."],
     },
     guest: {
       invited: "Você foi convidado a enviar uma memória para",
@@ -422,7 +426,7 @@ export const copy = {
       hidden: "Ocultas",
       identity: "Identidade do casamento",
       identityTitle: "A página que os convidados abrem pelo QR ou link.",
-      upload: "Enviar",
+      upload: "Enviar foto",
       brideName: "Nome da noiva",
       groomName: "Nome do noivo",
       eventDate: "Data do evento",
@@ -448,6 +452,7 @@ export const copy = {
       videos: "Vídeos",
       voice: "Voz",
       noMemories: "Ainda não há memórias",
+      mediaPreparing: "Preparando as memórias...",
       noMemoriesBody: "Compartilhe o QR com os convidados. Os envios chegarão aqui apenas para o casal.",
       noNote: "Sem mensagem.",
       deleteTitle: "Excluir esta memória?",
@@ -475,7 +480,7 @@ export const copy = {
       helpTitle: "一个安静保存婚礼回忆的小空间。",
       helpBody:
         "在 Etsy 购买后，你们可以在这里设置私人二维码页面。填写名字，粘贴令牌，我们会生成一个简单的宾客链接。宾客可以发送餐桌照片、短视频、语音和祝福留言。不用安装应用，不公开展示，也不会乱成一团。",
-      steps: ["填写你们的名字，并粘贴 Etsy 令牌。", "用照片、视频、日期和欢迎语让页面更像你们。", "把二维码放在桌上，或直接分享链接。", "之后回到工作室，私密查看所有回忆。"],
+      steps: ["填写你们的名字，并粘贴 Etsy 令牌。", "用照片、日期和欢迎语让页面更像你们。", "把二维码放在桌上，或直接分享链接。", "之后回到工作室，私密查看所有回忆。"],
     },
     guest: {
       invited: "邀请你为他们分享一段回忆",
@@ -507,7 +512,7 @@ export const copy = {
       hidden: "隐藏",
       identity: "婚礼身份",
       identityTitle: "宾客通过二维码或链接打开的页面。",
-      upload: "上传",
+      upload: "上传照片",
       brideName: "新娘姓名",
       groomName: "新郎姓名",
       eventDate: "婚礼日期",
@@ -533,6 +538,7 @@ export const copy = {
       videos: "视频",
       voice: "语音",
       noMemories: "还没有回忆",
+      mediaPreparing: "正在准备你们的回忆...",
       noMemoriesBody: "把二维码分享给宾客。他们上传的内容只会出现在这里。",
       noNote: "没有留言。",
       deleteTitle: "删除这段回忆？",

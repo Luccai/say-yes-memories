@@ -16,7 +16,7 @@ Say Yes Digital Memories, Etsy üzerinden token alan düğün çiftlerinin kendi
 
 Arayüz sakin, sıcak ve premium hissettirmeli. Ürün ucuz SaaS dashboard gibi değil, ivory kağıt, champagne, siyah mürekkep ve düğün stüdyosu hissi taşımalı.
 
-- Ana görsel imza: oval profil fotoğrafı veya kısa video rozeti.
+- Ana görsel imza: oval profil fotoğrafı rozeti. Admin profil videosu kullanılmaz.
 - Renk dünyası: ivory, pearl, champagne, warm paper, black ink, soft rosewood.
 - Kaçınılacaklar: ağır pembe/teal gradient, emoji kalabalığı, marketing popup, sert dashboard gridleri, gereksiz landing anlatımı.
 - Mobil öncelik: misafir upload ekranı tek elle kullanılabilir olmalı; form, dosya seçimi, ses kaydı ve gönder butonu taşmamalı.
@@ -69,8 +69,8 @@ API route'ları:
 - `/api/uploads/[slug]/complete`: signed upload sonrası DB media kaydını oluşturur.
 - `/api/weddings/current`: admin wedding identity ayarlarını günceller.
 - `/api/weddings/current/media`: admin memory inbox listesini döner.
-- `/api/weddings/current/profile-media/prepare`: admin profil foto/video için signed upload hedefi üretir.
-- `/api/weddings/current/profile-media/complete`: profil medyasını doğrular ve wedding kaydına bağlar.
+- `/api/weddings/current/profile-media/prepare`: admin profil fotoğrafı için signed upload hedefi üretir.
+- `/api/weddings/current/profile-media/complete`: profil fotoğrafını doğrular ve wedding kaydına bağlar.
 - `/api/media/[id]`: admin media update/delete işlemleri.
 - `/api/media/[id]/download`: admin indirme için kısa süreli signed download URL'ye redirect eder.
 
@@ -114,6 +114,8 @@ Admin ana ekranı mobilde sade kalmalıdır:
 Guest Memories:
 
 - Misafir uploadları admin ekranında görünür Check Again butonu olmadan yenilenmelidir.
+- Guest Memories, küçük kare albüm grid'i olarak görünmelidir. Dikey/yatay görsel ve videolar grid'de `object-cover` kare thumbnail olur; tıklanınca lightbox'ta kendi doğal oranına yakın `object-contain` şekilde açılır.
+- Görsel/video thumbnail'ları hazır olana kadar Guest Memories section'ı tek bir yükleniyor katmanı göstermeli; kartların kendi içinde ayrı scrollbar, siyah video karesi veya yarım yüklenmiş boş medya kutuları görünmemelidir.
 - Supabase Realtime Broadcast upload/delete sonrası admin ekranını tetikler; görünmeyen uzun fallback sadece bağlantı uyursa toparlamak için kalır.
 - Favori ve gizle butonları V1'de kaldırılmıştır; public galeri olmadığı için çifte anlamlı değer üretmiyordu.
 - İndirme `/api/media/[id]/download` üzerinden signed download ile yapılır.
@@ -121,7 +123,9 @@ Guest Memories:
 
 Wedding Page:
 
-- Profil foto/video upload eder.
+- Profil fotoğrafı upload eder. Video PP kullanılmaz.
+- Profil fotoğrafı client-side sıkıştırılır ve API tarafında 500 KB üstü profil fotoğrafı kabul edilmez.
+- Profil fotoğrafı küçük olduğu için cihazda instant cache'e alınır; geri dönüş/login/admin/guest header'da mümkünse ilk render'da fotoğraf gösterilir, cache yoksa boş beyaz oval değil yükleniyor yüzeyi görünür.
 - Bride/groom isimleri, event date, welcome note ve upload lock ayarlarını yönetir.
 - İsim değişince misafir tarafındaki görünen çift adı da güncellenir; slug aynı kalır çünkü basılmış QR/link kırılmamalıdır.
 - Profil medya da signed upload ile Supabase Storage'a gider.
@@ -138,7 +142,7 @@ Demo:
 
 Misafir sayfası `/{coupleSlug}` ile açılır.
 
-- Üstte çiftin profil foto/video rozeti, çift adı, tarih ve welcome note görünür.
+- Üstte çiftin profil fotoğrafı rozeti, çift adı, tarih ve welcome note görünür.
 - Misafir adını, opsiyonel notu ve foto/video/ses dosyasını gönderir.
 - Ses kaydı tarayıcı MediaRecorder ile alınır; destek yoksa kullanıcı dosya seçebilir.
 - Upload kapalıysa form yerine kapalı mesajı gösterilir.

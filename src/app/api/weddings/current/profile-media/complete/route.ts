@@ -12,6 +12,8 @@ type CompleteProfileUploadBody = {
   object?: PendingStoredMediaObject;
 };
 
+const PROFILE_PHOTO_MAX_BYTES = 500 * 1024;
+
 export async function POST(request: Request) {
   const current = await getCurrentWeddingFromCookie();
 
@@ -29,8 +31,16 @@ export async function POST(request: Request) {
     assertUploadBelongsToWedding(body.object, {
       weddingId: current.wedding.id,
       folder: "profile",
-      allowedKinds: ["image", "video"],
+      allowedKinds: ["image"],
     });
+
+    if (body.object.byteSize > PROFILE_PHOTO_MAX_BYTES) {
+      return NextResponse.json(
+        { message: "Profile photos must be 500 KB or smaller." },
+        { status: 400 },
+      );
+    }
+
     const profileMedia = await finalizeSignedUpload(body.object);
     const previousPath = current.wedding.profileMedia?.storagePath;
     const wedding = await updateWedding(current.wedding.id, { profileMedia });

@@ -1,25 +1,43 @@
 "use client";
 
-import { ChangeEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  ChangeEvent,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import QRCode from "qrcode";
 import {
   ArrowUpRight,
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
   Copy,
   Download,
+  Film,
+  Image as ImageIcon,
   ImagePlus,
   Loader2,
   Lock,
   LogOut,
   Menu,
+  Mic,
   Play,
   QrCode,
   Settings2,
   Trash2,
   Unlock,
+  X,
 } from "lucide-react";
 import { motion } from "motion/react";
 import type { MediaKind, Wedding, WeddingMedia } from "@/lib/types";
+import {
+  CachedMediaImage,
+  storeInstantMediaCache,
+} from "@/components/shared/CachedMediaImage";
 import { MediaOrb } from "@/components/shared/MediaOrb";
 import { getSupabaseBrowser } from "@/lib/supabase/browser";
 import { useCopy } from "@/lib/i18n";
@@ -34,6 +52,11 @@ type AdminExperienceProps = {
 type FilterKey = "all" | MediaKind;
 type AdminPanel = "memories" | "identity" | "qr";
 type AdminCopy = ReturnType<typeof useCopy>["admin"];
+const PROFILE_PHOTO_MAX_BYTES = 500 * 1024;
+const PROFILE_PHOTO_MAX_DIMENSION = 1280;
+const PROFILE_PHOTO_START_QUALITY = 0.82;
+const PROFILE_PHOTO_MIN_QUALITY = 0.46;
+
 type SignedUploadResponse = {
   upload: {
     bucket: string;
@@ -50,6 +73,107 @@ type SignedUploadResponse = {
     };
   };
 };
+
+async function loadProfileImageSource(file: File): Promise<CanvasImageSource & { width: number; height: number }> {
+  if ("createImageBitmap" in window) {
+    return createImageBitmap(file);
+  }
+
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Selected photo could not be read."));
+    };
+    image.src = url;
+  });
+}
+
+function canvasToBlob(canvas: HTMLCanvasElement, quality: number) {
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error("Selected photo could not be compressed."));
+          return;
+        }
+
+        resolve(blob);
+      },
+      "image/jpeg",
+      quality,
+    );
+  });
+}
+
+async function renderProfilePhoto(
+  source: CanvasImageSource,
+  width: number,
+  height: number,
+  quality: number,
+) {
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    throw new Error("Photo compression is not supported in this browser.");
+  }
+
+  canvas.width = width;
+  canvas.height = height;
+  context.fillStyle = "#fffaf3";
+  context.fillRect(0, 0, width, height);
+  context.drawImage(source, 0, 0, width, height);
+
+  return canvasToBlob(canvas, quality);
+}
+
+async function compressProfilePhoto(file: File) {
+  if (!file.type.startsWith("image/")) {
+    throw new Error("Only profile photos are supported.");
+  }
+
+  const source = await loadProfileImageSource(file);
+  const largestSide = Math.max(source.width, source.height);
+  const scale = Math.min(1, PROFILE_PHOTO_MAX_DIMENSION / largestSide);
+  let width = Math.max(1, Math.round(source.width * scale));
+  let height = Math.max(1, Math.round(source.height * scale));
+  let quality = PROFILE_PHOTO_START_QUALITY;
+  let blob = await renderProfilePhoto(source, width, height, quality);
+
+  for (let attempt = 0; blob.size > PROFILE_PHOTO_MAX_BYTES && attempt < 14; attempt += 1) {
+    if (quality > PROFILE_PHOTO_MIN_QUALITY) {
+      quality = Math.max(PROFILE_PHOTO_MIN_QUALITY, quality - 0.08);
+    } else {
+      width = Math.max(1, Math.round(width * 0.84));
+      height = Math.max(1, Math.round(height * 0.84));
+      quality = 0.72;
+    }
+
+    blob = await renderProfilePhoto(source, width, height, quality);
+  }
+
+  if (typeof ImageBitmap !== "undefined" && source instanceof ImageBitmap) {
+    source.close();
+  }
+
+  if (blob.size > PROFILE_PHOTO_MAX_BYTES) {
+    throw new Error("Photo could not be compressed below 500 KB.");
+  }
+
+  const baseName = file.name.replace(/\.[^.]+$/, "") || "profile-photo";
+
+  return new File([blob], `${baseName}.jpg`, {
+    type: "image/jpeg",
+    lastModified: Date.now(),
+  });
+}
 
 export function AdminExperience({
   initialWedding,
@@ -253,25 +377,29 @@ export function AdminExperience({
   }
 
   async function uploadProfileMedia(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
+    const selectedFile = event.target.files?.[0];
 
-    if (!file) {
+    if (!selectedFile) {
       return;
     }
 
     setProfileUploading(true);
 
     try {
+      const file = await compressProfilePhoto(selectedFile);
+
       if (demoMode) {
+        const profileId = `demo-profile-${Date.now()}`;
         const url = URL.createObjectURL(file);
+        await storeInstantMediaCache(profileId, file);
         setWedding((current) => ({
           ...current,
           profileMedia: {
-            id: `demo-profile-${Date.now()}`,
+            id: profileId,
             url,
-            kind: file.type.startsWith("video/") ? "video" : "image",
+            kind: "image",
             mimeType: file.type || "application/octet-stream",
-            fileName: file.name || "profile-media",
+            fileName: file.name || "profile-photo.jpg",
             byteSize: file.size,
             createdAt: new Date().toISOString(),
           },
@@ -326,8 +454,11 @@ export function AdminExperience({
       }
 
       if (payload.wedding) {
+        await storeInstantMediaCache(preparePayload.upload.object.storagePath, file);
         setWedding(payload.wedding);
       }
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Profile photo could not be uploaded.");
     } finally {
       setProfileUploading(false);
       event.target.value = "";
@@ -551,7 +682,7 @@ function IdentityCard({
             {text.upload}
             <input
               type="file"
-              accept="image/*,video/*"
+              accept="image/*"
               className="sr-only"
               onChange={onUploadProfileMedia}
             />
@@ -780,6 +911,90 @@ function MemoryInbox({
     { key: "video", label: text.videos },
     { key: "audio", label: text.voice },
   ];
+  const loadableMediaIds = useMemo(
+    () => media.filter((item) => item.kind === "image" || item.kind === "video").map((item) => item.id),
+    [media],
+  );
+  const [readyMediaIds, setReadyMediaIds] = useState<Set<string>>(() => new Set());
+  const [showMediaLoading, setShowMediaLoading] = useState(() => loadableMediaIds.length > 0);
+  const [selectedMedia, setSelectedMedia] = useState<WeddingMedia | null>(null);
+  const mediaReadyKey = loadableMediaIds.join("|");
+  const waitingForMedia =
+    showMediaLoading && loadableMediaIds.some((mediaId) => !readyMediaIds.has(mediaId));
+  const selectedMediaIndex = selectedMedia
+    ? media.findIndex((item) => item.id === selectedMedia.id)
+    : -1;
+
+  useLayoutEffect(() => {
+    setReadyMediaIds(new Set());
+    setShowMediaLoading(loadableMediaIds.length > 0);
+  }, [loadableMediaIds.length, mediaReadyKey]);
+
+  useEffect(() => {
+    if (loadableMediaIds.length > 0 && loadableMediaIds.every((mediaId) => readyMediaIds.has(mediaId))) {
+      setShowMediaLoading(false);
+    }
+  }, [loadableMediaIds, readyMediaIds]);
+
+  const markMediaReady = useCallback((mediaId: string) => {
+    setReadyMediaIds((current) => {
+      if (current.has(mediaId)) {
+        return current;
+      }
+
+      const next = new Set(current);
+      next.add(mediaId);
+      return next;
+    });
+  }, []);
+
+  const showPreviousMedia = useCallback(() => {
+    setSelectedMedia((current) => {
+      if (!current || media.length === 0) {
+        return current;
+      }
+
+      const currentIndex = media.findIndex((item) => item.id === current.id);
+      const nextIndex = currentIndex <= 0 ? media.length - 1 : currentIndex - 1;
+      return media[nextIndex] ?? current;
+    });
+  }, [media]);
+
+  const showNextMedia = useCallback(() => {
+    setSelectedMedia((current) => {
+      if (!current || media.length === 0) {
+        return current;
+      }
+
+      const currentIndex = media.findIndex((item) => item.id === current.id);
+      const nextIndex = currentIndex >= media.length - 1 ? 0 : currentIndex + 1;
+      return media[nextIndex] ?? current;
+    });
+  }, [media]);
+
+  useEffect(() => {
+    if (!selectedMedia) {
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setSelectedMedia(null);
+      }
+
+      if (event.key === "ArrowLeft") {
+        showPreviousMedia();
+      }
+
+      if (event.key === "ArrowRight") {
+        showNextMedia();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selectedMedia, showNextMedia, showPreviousMedia]);
 
   async function confirmDelete() {
     if (!deleteTarget) {
@@ -841,64 +1056,210 @@ function MemoryInbox({
             </div>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {media.map((item) => (
-              <div key={item.id} className="rounded-[28px] border border-[var(--line)] bg-white/55 p-3">
-                <div className="relative overflow-hidden rounded-[22px] bg-[#ede1d3]">
-                  {item.kind === "image" ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={item.url} alt={item.note ?? item.fileName} className="h-52 w-full object-cover" />
-                  ) : item.kind === "video" && item.url.startsWith("data:image/") ? (
-                    <div className="relative">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={item.url} alt={item.note ?? item.fileName} className="h-52 w-full object-cover" />
-                      <div className="absolute inset-0 grid place-items-center bg-black/18">
-                        <div className="grid size-14 place-items-center rounded-full bg-[var(--paper-soft)] text-[var(--ink)] shadow-[0_16px_36px_rgba(0,0,0,0.2)]">
-                          <Play className="ml-1 size-6 fill-current" />
+          <div className="relative">
+            <div
+              className={`grid grid-cols-2 gap-2.5 transition-opacity duration-300 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 ${
+                waitingForMedia ? "opacity-0" : "opacity-100"
+              }`}
+            >
+              {media.map((item) => (
+                <button
+                  type="button"
+                  key={item.id}
+                  onClick={() => setSelectedMedia(item)}
+                  className="focus-ring group overflow-hidden rounded-[22px] border border-[var(--line)] bg-white/60 p-1.5 text-left shadow-[0_14px_34px_rgba(58,40,25,0.08)] transition hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_18px_42px_rgba(58,40,25,0.12)]"
+                >
+                  <div className="relative aspect-square w-full overflow-hidden rounded-[17px] bg-[#ede1d3]">
+                    {item.kind === "image" ? (
+                      <CachedMediaImage
+                        src={item.url}
+                        cacheKey={item.storagePath ?? item.id}
+                        alt={item.note ?? item.fileName}
+                        className="h-full w-full object-cover"
+                        loading="eager"
+                        onReady={() => markMediaReady(item.id)}
+                      />
+                    ) : item.kind === "video" && item.url.startsWith("data:image/") ? (
+                      <div className="relative h-full w-full">
+                        <CachedMediaImage
+                          src={item.url}
+                          cacheKey={item.storagePath ?? item.id}
+                          alt={item.note ?? item.fileName}
+                          className="h-full w-full object-cover"
+                          loading="eager"
+                          onReady={() => markMediaReady(item.id)}
+                        />
+                        <div className="absolute inset-0 grid place-items-center bg-black/18">
+                          <div className="grid size-10 place-items-center rounded-full bg-[var(--paper-soft)] text-[var(--ink)] shadow-[0_16px_36px_rgba(0,0,0,0.2)]">
+                            <Play className="ml-0.5 size-4 fill-current" />
+                          </div>
                         </div>
                       </div>
+                    ) : item.kind === "video" ? (
+                      <>
+                        <video
+                          src={item.url}
+                          className="h-full w-full object-cover"
+                          muted
+                          playsInline
+                          preload="auto"
+                          onLoadedData={() => markMediaReady(item.id)}
+                          onCanPlay={() => markMediaReady(item.id)}
+                          onError={() => markMediaReady(item.id)}
+                        />
+                        <div className="absolute inset-0 grid place-items-center bg-black/18">
+                          <div className="grid size-10 place-items-center rounded-full bg-[var(--paper-soft)] text-[var(--ink)] shadow-[0_16px_36px_rgba(0,0,0,0.2)]">
+                            <Play className="ml-0.5 size-4 fill-current" />
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="grid h-full place-items-center bg-[#eadcca] p-4 text-[var(--champagne-deep)]">
+                        <Mic className="size-8" />
+                      </div>
+                    )}
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-[rgba(31,23,18,0.7)] to-transparent p-2 text-white">
+                      <p className="truncate text-xs font-bold">{item.guestName}</p>
                     </div>
-                  ) : item.kind === "video" ? (
-                    <video src={item.url} className="h-52 w-full object-cover" controls />
-                  ) : (
-                    <div className="grid h-52 place-items-center p-5">
-                      <Play className="mb-3 size-8 text-[var(--champagne-deep)]" />
-                      <audio src={item.url} controls className="w-full" />
+                    <div className="absolute left-2 top-2 grid size-7 place-items-center rounded-full bg-[rgba(255,250,243,0.86)] text-[var(--ink)] shadow-[0_10px_24px_rgba(31,23,18,0.14)] backdrop-blur">
+                      {item.kind === "image" ? (
+                        <ImageIcon className="size-3.5" />
+                      ) : item.kind === "video" ? (
+                        <Film className="size-3.5" />
+                      ) : (
+                        <Mic className="size-3.5" />
+                      )}
                     </div>
-                  )}
-                </div>
-                <div className="p-2">
-                  <p className="mt-2 text-sm font-bold">{item.guestName}</p>
-                  <p className="mt-1 line-clamp-2 min-h-10 text-sm leading-5 text-[var(--ink-soft)]">
+                  </div>
+                  <p className="mt-2 truncate px-1 text-xs font-bold text-[var(--ink)]">{item.guestName}</p>
+                  <p className="truncate px-1 pb-1 text-xs text-[var(--ink-soft)]">
                     {item.note || text.noNote}
                   </p>
-                  <div className="mt-4 grid grid-cols-2 gap-2">
-                    <a
-                      href={demoMode ? item.url : `/api/media/${item.id}/download`}
-                      download={item.fileName}
-                      className="focus-ring rounded-full border border-[var(--line)] bg-white/65 p-2 text-center transition hover:bg-white"
-                      aria-label="Download media"
-                    >
-                      <Download className="mx-auto size-4" />
-                    </a>
-              <button
-                type="button"
-                onClick={() => {
-                  setDeleteTarget(item);
-                  setDeleteError("");
-                }}
-                      className="focus-ring rounded-full border border-[var(--line)] bg-white/65 p-2 text-[var(--rosewood)] transition hover:bg-white"
-                      aria-label="Delete media"
-                    >
-                      <Trash2 className="mx-auto size-4" />
-                    </button>
-                  </div>
+                </button>
+              ))}
+            </div>
+
+            {waitingForMedia ? (
+              <div className="absolute inset-0 grid min-h-[18rem] place-items-center rounded-[30px] border border-dashed border-[var(--line)] bg-[rgba(255,250,243,0.84)] p-8 text-center backdrop-blur-sm">
+                <div>
+                  <Loader2 className="mx-auto size-7 animate-spin text-[var(--champagne-deep)]" />
+                  <p className="mt-4 text-sm font-bold text-[var(--ink)]">{text.mediaPreparing}</p>
                 </div>
               </div>
-            ))}
+            ) : null}
           </div>
         )}
       </article>
+
+      {selectedMedia ? (
+        <div className="fixed inset-0 z-[60] grid place-items-center bg-[rgba(31,23,18,0.62)] px-4 py-6 backdrop-blur-md">
+          <button
+            type="button"
+            className="absolute inset-0 cursor-default"
+            aria-label="Close"
+            onClick={() => setSelectedMedia(null)}
+          />
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            className="relative z-10 grid max-h-[calc(100dvh-2rem)] w-full max-w-5xl gap-4 overflow-y-auto rounded-[32px] border border-white/70 bg-[var(--paper-soft)] p-4 shadow-[0_30px_90px_rgba(0,0,0,0.32)] sm:p-5"
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold text-[var(--ink)]">{selectedMedia.guestName}</p>
+                <p className="truncate text-xs text-[var(--ink-soft)]">
+                  {selectedMedia.note || text.noNote}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedMedia(null)}
+                className="focus-ring grid size-10 shrink-0 place-items-center rounded-full border border-[var(--line)] bg-white/70 text-[var(--ink)] transition hover:bg-white"
+                aria-label="Close"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="relative grid min-h-[18rem] place-items-center overflow-hidden rounded-[26px] bg-[#eadcca]">
+              {selectedMedia.kind === "image" ? (
+                <CachedMediaImage
+                  src={selectedMedia.url}
+                  cacheKey={selectedMedia.storagePath ?? selectedMedia.id}
+                  alt={selectedMedia.note ?? selectedMedia.fileName}
+                  className="max-h-[72dvh] max-w-full object-contain"
+                  loading="eager"
+                />
+              ) : selectedMedia.kind === "video" ? (
+                <video
+                  src={selectedMedia.url}
+                  className="max-h-[72dvh] max-w-full rounded-[24px] object-contain"
+                  controls
+                  autoPlay
+                  playsInline
+                  preload="auto"
+                />
+              ) : (
+                <div className="grid w-full max-w-xl gap-5 p-8 text-center">
+                  <Mic className="mx-auto size-10 text-[var(--champagne-deep)]" />
+                  <audio src={selectedMedia.url} controls className="w-full" autoPlay />
+                </div>
+              )}
+
+              {media.length > 1 ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={showPreviousMedia}
+                    className="focus-ring absolute left-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full border border-white/70 bg-[rgba(255,250,243,0.86)] text-[var(--ink)] shadow-[0_14px_32px_rgba(31,23,18,0.18)] backdrop-blur transition hover:bg-white"
+                    aria-label="Previous media"
+                  >
+                    <ChevronLeft className="size-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={showNextMedia}
+                    className="focus-ring absolute right-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full border border-white/70 bg-[rgba(255,250,243,0.86)] text-[var(--ink)] shadow-[0_14px_32px_rgba(31,23,18,0.18)] backdrop-blur transition hover:bg-white"
+                    aria-label="Next media"
+                  >
+                    <ChevronRight className="size-5" />
+                  </button>
+                </>
+              ) : null}
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--champagne-deep)]">
+                {selectedMediaIndex + 1} / {media.length}
+              </p>
+              <div className="flex flex-1 justify-end gap-2">
+                <a
+                  href={demoMode ? selectedMedia.url : `/api/media/${selectedMedia.id}/download`}
+                  download={selectedMedia.fileName}
+                  className="focus-ring inline-flex items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white/68 px-4 py-2 text-sm font-bold transition hover:bg-white"
+                >
+                  <Download className="size-4" />
+                  Download
+                </a>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDeleteTarget(selectedMedia);
+                    setSelectedMedia(null);
+                    setDeleteError("");
+                  }}
+                  className="focus-ring inline-flex items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white/68 px-4 py-2 text-sm font-bold text-[var(--rosewood)] transition hover:bg-white"
+                >
+                  <Trash2 className="size-4" />
+                  {text.deleteTitle.replace("?", "")}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      ) : null}
 
       {deleteTarget ? (
         <div className="fixed inset-0 z-[60] grid place-items-center bg-[rgba(31,23,18,0.38)] px-4 backdrop-blur-sm">
