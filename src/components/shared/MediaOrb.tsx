@@ -16,7 +16,7 @@ export function MediaOrb({ media, label, className = "" }: MediaOrbProps) {
 
   return (
     <div
-      className={`relative isolate overflow-hidden rounded-[999px] border border-white/70 bg-[var(--paper-soft)] shadow-[0_18px_45px_rgba(58,40,25,0.18)] ${className}`}
+      className={`relative isolate overflow-hidden rounded-[999px] border border-white/70 bg-[var(--paper-soft)] shadow-[0_18px_45px_rgba(58,40,25,0.18)] [container-type:inline-size] ${className}`}
     >
       {media?.kind === "video" ? (
         <video
@@ -32,7 +32,7 @@ export function MediaOrb({ media, label, className = "" }: MediaOrbProps) {
         <img src={media.url} alt={label} className="h-full w-full object-cover" />
       ) : (
         <div className="grid h-full w-full place-items-center bg-[radial-gradient(circle_at_35%_25%,#fffaf3,#e7d8c6)]">
-          <span className="font-[var(--font-display)] text-4xl font-semibold text-[var(--champagne-deep)]">
+          <span className="font-display text-[clamp(1.75rem,7cqi,2.75rem)] font-semibold tracking-tight text-[var(--champagne-deep)]">
             {initials || "SY"}
           </span>
         </div>

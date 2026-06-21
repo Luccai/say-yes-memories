@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+@theme inline {
+  --font-sans: var(--font-body);
+  --font-serif: var(--font-display);
+}
+
 :root {
   --paper: #f1e6d8;
   --paper-soft: #fffaf3;
@@ -73,10 +78,58 @@ body {
   }
 }
 
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-family: var(--font-body), system-ui, sans-serif;
+  letter-spacing: -0.005em;
+}
+
 button,
 input,
 textarea {
   font: inherit;
+}
+
+/* Luxury typographic scale ----------------------------------------------- */
+
+.font-display {
+  font-family: var(--font-display), Georgia, "Times New Roman", serif;
+}
+
+.eyebrow {
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+/* Fluid display headings — perfect from small phones to desktop. */
+.text-fluid-display {
+  font-size: clamp(2.85rem, 9vw, 4.5rem);
+  line-height: 0.96;
+  letter-spacing: -0.022em;
+}
+
+.text-fluid-title {
+  font-size: clamp(2rem, 6.2vw, 3rem);
+  line-height: 1.02;
+  letter-spacing: -0.016em;
+}
+
+.text-fluid-heading {
+  font-size: clamp(1.55rem, 4.6vw, 2.1rem);
+  line-height: 1.08;
+  letter-spacing: -0.011em;
+}
+
+.text-fluid-subheading {
+  font-size: clamp(1.25rem, 3.4vw, 1.6rem);
+  line-height: 1.15;
+  letter-spacing: -0.008em;
 }
 
 button {

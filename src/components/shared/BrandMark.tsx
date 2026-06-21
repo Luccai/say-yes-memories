@@ -15,10 +15,10 @@ export function BrandMark({ compact = false }: { compact?: boolean }) {
       </div>
       {!compact ? (
         <div>
-          <p className="font-[var(--font-display)] text-2xl font-semibold leading-none text-[var(--ink)]">
+          <p className="font-display text-2xl font-semibold leading-none text-[var(--ink)]">
             Say Yes
           </p>
-          <p className="mt-1 text-[10px] font-semibold uppercase text-[var(--champagne-deep)]">
+          <p className="eyebrow mt-1.5 text-[var(--champagne-deep)]">
             Digital memories
           </p>
         </div>

@@ -65,9 +65,6 @@ export function AdminExperience({
   const [saving, setSaving] = useState(false);
   const [profileUploading, setProfileUploading] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const nameplateRef = useRef<HTMLDivElement>(null);
-  const nameRef = useRef<HTMLHeadingElement>(null);
-  const [nameplateFontSize, setNameplateFontSize] = useState(34);
   const [menuPosition, setMenuPosition] = useState({ top: 20, right: 16 });
   const text = useCopy();
   const adminText = text.admin;
@@ -209,75 +206,6 @@ export function AdminExperience({
 
     return media.filter((item) => item.kind === filter);
   }, [filter, media]);
-
-  useLayoutEffect(() => {
-    const nameplate = nameplateRef.current;
-    const name = nameRef.current;
-
-    if (!nameplate || !name) {
-      return;
-    }
-
-    const maxFontSize = 58;
-    const minFontSize = 8;
-    let frame = 0;
-
-    const fitName = () => {
-      window.cancelAnimationFrame(frame);
-      frame = window.requestAnimationFrame(() => {
-        const nameplateStyle = window.getComputedStyle(nameplate);
-        const horizontalPadding =
-          Number.parseFloat(nameplateStyle.paddingLeft) +
-          Number.parseFloat(nameplateStyle.paddingRight);
-        const availableWidth = Math.max(1, nameplate.clientWidth - horizontalPadding - 2);
-
-        if (availableWidth <= 0) {
-          return;
-        }
-
-        const nameStyle = window.getComputedStyle(name);
-        const probe = document.createElement("span");
-        probe.textContent = wedding.coupleName;
-        probe.style.position = "fixed";
-        probe.style.left = "-9999px";
-        probe.style.top = "-9999px";
-        probe.style.visibility = "hidden";
-        probe.style.whiteSpace = "nowrap";
-        probe.style.fontFamily = nameStyle.fontFamily;
-        probe.style.fontStyle = nameStyle.fontStyle;
-        probe.style.fontStretch = nameStyle.fontStretch;
-        probe.style.fontWeight = nameStyle.fontWeight;
-        probe.style.letterSpacing = nameStyle.letterSpacing;
-        probe.style.fontSize = `${maxFontSize}px`;
-        document.body.appendChild(probe);
-
-        const naturalWidth = Math.ceil(probe.getBoundingClientRect().width) + 10;
-        probe.remove();
-        const nextFontSize =
-          naturalWidth > availableWidth
-            ? Math.max(
-                minFontSize,
-                Math.floor((maxFontSize * availableWidth * 0.92) / naturalWidth),
-              )
-            : maxFontSize;
-
-        setNameplateFontSize((current) => (current === nextFontSize ? current : nextFontSize));
-      });
-    };
-
-    fitName();
-    const resizeObserver = new ResizeObserver(fitName);
-    resizeObserver.observe(nameplate);
-
-    void document.fonts?.ready.then(fitName);
-    window.addEventListener("resize", fitName);
-
-    return () => {
-      window.cancelAnimationFrame(frame);
-      resizeObserver.disconnect();
-      window.removeEventListener("resize", fitName);
-    };
-  }, [wedding.coupleName]);
 
   async function saveIdentity(patch: Partial<Wedding>) {
     if (demoMode) {
@@ -430,39 +358,29 @@ export function AdminExperience({
   return (
     <main className="min-h-[100dvh] text-[var(--ink)]">
       <div className="mx-auto flex max-w-[96rem] flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
-        <header className="paper-grain overflow-hidden rounded-[34px] border border-white/75 bg-[rgba(255,250,243,0.78)] p-4 shadow-[var(--shadow-soft)] backdrop-blur-xl sm:p-7">
-          <div className="relative z-20 grid gap-4">
-            <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 sm:gap-4">
-              <MediaOrb
-                media={wedding.profileMedia}
-                label={wedding.coupleName}
-                className="h-20 w-16 shrink-0 sm:h-24 sm:w-20"
-              />
-              <div className="min-w-0">
-                <div
-                  ref={nameplateRef}
-                  className="w-full max-w-full overflow-hidden rounded-[28px] border border-white/65 bg-white/36 px-2.5 py-3 shadow-[0_18px_44px_rgba(58,40,25,0.08)] backdrop-blur sm:px-4"
-                >
-                  <h1
-                    ref={nameRef}
-                    className="block max-w-full overflow-hidden whitespace-nowrap font-[var(--font-display)] font-semibold leading-[0.92] text-[var(--ink)]"
-                    style={{ fontSize: `${nameplateFontSize}px` }}
-                  >
-                    {wedding.coupleName}
-                  </h1>
-                </div>
-              </div>
-              <button
-                ref={menuButtonRef}
-                type="button"
-                onClick={() => setMenuOpen((current) => !current)}
-                className="focus-ring grid size-12 shrink-0 place-items-center rounded-full border border-[var(--line)] bg-white/62 text-[var(--ink)] shadow-[0_12px_28px_rgba(58,40,25,0.1)] transition hover:bg-white"
-                aria-expanded={menuOpen}
-                aria-label={adminText.menu}
-              >
-                <Menu className="size-5" />
-              </button>
+        <header className="paper-grain overflow-hidden rounded-[34px] border border-white/75 bg-[rgba(255,250,243,0.78)] p-5 shadow-[var(--shadow-soft)] backdrop-blur-xl sm:p-7">
+          <div className="relative z-20 flex items-center gap-4 sm:gap-5">
+            <MediaOrb
+              media={wedding.profileMedia}
+              label={wedding.coupleName}
+              className="h-[4.5rem] w-[3.5rem] shrink-0 sm:h-24 sm:w-20"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="eyebrow text-[var(--champagne-deep)]">{adminText.weddingPage}</p>
+              <h1 className="mt-1.5 font-display text-fluid-title font-semibold text-balance text-[var(--ink)]">
+                {wedding.coupleName}
+              </h1>
             </div>
+            <button
+              ref={menuButtonRef}
+              type="button"
+              onClick={() => setMenuOpen((current) => !current)}
+              className="focus-ring grid size-12 shrink-0 place-items-center rounded-full border border-[var(--line)] bg-white/62 text-[var(--ink)] shadow-[0_12px_28px_rgba(58,40,25,0.1)] transition hover:bg-white"
+              aria-expanded={menuOpen}
+              aria-label={adminText.menu}
+            >
+              <Menu className="size-5" />
+            </button>
           </div>
         </header>
 
@@ -610,14 +528,19 @@ function IdentityCard({
       animate={{ opacity: 1, y: 0 }}
       className="rounded-[34px] border border-white/75 bg-[var(--paper-soft)] p-6 shadow-[0_20px_58px_rgba(58,40,25,0.1)]"
     >
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <div>
-          <p className="flex items-center gap-2 text-xs font-bold uppercase text-[var(--champagne-deep)]">
+      <div className="mb-7 flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="eyebrow flex items-center gap-2 text-[var(--champagne-deep)]">
             <Settings2 className="size-4" />
             {text.identity}
           </p>
+          <h2 className="mt-2 font-display text-fluid-heading font-semibold text-balance text-[var(--ink)]">
+            {text.identityTitle}
+          </h2>
         </div>
-        {saving ? <Loader2 className="size-5 animate-spin text-[var(--champagne-deep)]" /> : null}
+        {saving ? (
+          <Loader2 className="mt-1 size-5 shrink-0 animate-spin text-[var(--champagne-deep)]" />
+        ) : null}
       </div>
 
       <div className="grid gap-5 sm:grid-cols-[9rem_1fr]">
@@ -768,18 +691,19 @@ function QrStudio({
       transition={{ delay: 0.05 }}
       className="rounded-[34px] border border-white/75 bg-[var(--paper-soft)] p-6 shadow-[0_20px_58px_rgba(58,40,25,0.1)]"
     >
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="flex items-center gap-2 text-xs font-bold uppercase text-[var(--champagne-deep)]">
-            <QrCode className="size-4" />
-            {text.qrStudio}
-          </p>
-        </div>
+      <div className="mb-7">
+        <p className="eyebrow flex items-center gap-2 text-[var(--champagne-deep)]">
+          <QrCode className="size-4" />
+          {text.qrStudio}
+        </p>
+        <h2 className="mt-2 font-display text-fluid-heading font-semibold text-balance text-[var(--ink)]">
+          {text.qrTitle}
+        </h2>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[17rem_1fr]">
         <div className="paper-grain relative overflow-hidden rounded-[30px] border border-[var(--line)] bg-[#f3eadf] p-5 text-center">
-          <p className="relative z-10 text-xs font-bold uppercase text-[var(--champagne-deep)]">
+          <p className="eyebrow relative z-10 text-[var(--champagne-deep)]">
             {text.scan}
           </p>
           <div className="relative z-10 mx-auto mt-4 grid size-56 place-items-center rounded-[26px] border border-white/80 bg-[var(--paper-soft)] shadow-[0_18px_38px_rgba(58,40,25,0.12)]">
@@ -789,8 +713,10 @@ function QrStudio({
 
         <div className="flex flex-col justify-between gap-4">
           <div className="rounded-3xl border border-[var(--line)] bg-white/52 p-4">
-            <p className="text-xs font-bold uppercase text-[var(--ink-soft)]">{text.guestLink}</p>
-            <p className="mt-2 break-all text-lg font-semibold text-[var(--ink)]">{eventUrl}</p>
+            <p className="eyebrow text-[var(--ink-soft)]">{text.guestLink}</p>
+            <p className="mt-2 break-all text-base font-semibold tracking-tight text-[var(--ink)]">
+              {eventUrl}
+            </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <button
@@ -876,13 +802,14 @@ function MemoryInbox({
   return (
     <>
       <article className="rounded-[34px] border border-white/75 bg-[var(--paper-soft)] p-6 shadow-[0_20px_58px_rgba(58,40,25,0.1)]">
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="flex items-center gap-2 text-xs font-bold uppercase text-[var(--champagne-deep)]">
-              <CalendarDays className="size-4" />
-              {text.inbox}
-            </p>
-          </div>
+        <div className="mb-7">
+          <p className="eyebrow flex items-center gap-2 text-[var(--champagne-deep)]">
+            <CalendarDays className="size-4" />
+            {text.inbox}
+          </p>
+          <h2 className="mt-2 font-display text-fluid-heading font-semibold text-balance text-[var(--ink)]">
+            {text.uploads}
+          </h2>
         </div>
 
         <div className="mb-5 flex flex-wrap gap-2">
@@ -905,8 +832,10 @@ function MemoryInbox({
         {media.length === 0 ? (
           <div className="grid min-h-[18rem] place-items-center rounded-[30px] border border-dashed border-[var(--line)] bg-white/45 p-8 text-center">
             <div>
-              <p className="font-[var(--font-display)] text-4xl font-semibold">{text.noMemories}</p>
-              <p className="mt-2 max-w-sm text-sm leading-6 text-[var(--ink-soft)]">
+              <p className="font-display text-fluid-heading font-semibold text-[var(--ink)]">
+                {text.noMemories}
+              </p>
+              <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-[var(--ink-soft)]">
                 {text.noMemoriesBody}
               </p>
             </div>
@@ -980,8 +909,10 @@ function MemoryInbox({
             role="dialog"
             aria-modal="true"
           >
-            <p className="font-[var(--font-display)] text-3xl font-semibold">{text.deleteTitle}</p>
-            <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">{text.deleteBody}</p>
+            <p className="font-display text-fluid-subheading font-semibold text-[var(--ink)]">
+              {text.deleteTitle}
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--ink-soft)]">{text.deleteBody}</p>
             {deleteError ? (
               <p className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
                 {deleteError}
