@@ -115,9 +115,9 @@ textarea {
 
 .text-tech-heading {
   font-family: var(--font-tech), system-ui, sans-serif;
-  font-size: clamp(1.45rem, 4.2vw, 1.95rem);
-  line-height: 1.18;
-  letter-spacing: -0.025em;
+  font-size: clamp(0.875rem, 1.8vw, 1rem);
+  line-height: 1.4;
+  letter-spacing: -0.01em;
   font-weight: 600;
 }
 
@@ -126,9 +126,8 @@ textarea {
   font-family: var(--font-display), Georgia, serif;
   font-weight: 600;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: clip;
-  line-height: 1;
+  overflow: visible;
+  line-height: 1.25;
   letter-spacing: -0.018em;
   /* fluid: 1.65 rem on tiny phones → 2.4 rem on wide containers */
   font-size: clamp(1.65rem, 5.8cqi, 2.4rem);
