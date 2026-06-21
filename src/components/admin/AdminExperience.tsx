@@ -912,7 +912,7 @@ function MemoryInbox({
             </div>
           </div>
         ) : (
-          <div className="luxury-scroll grid max-h-[42rem] gap-4 overflow-auto pr-1 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {media.map((item) => (
               <div key={item.id} className="rounded-[28px] border border-[var(--line)] bg-white/55 p-3">
                 <div className="relative overflow-hidden rounded-[22px] bg-[#ede1d3]">
