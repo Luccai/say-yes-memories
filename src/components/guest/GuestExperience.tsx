@@ -6,6 +6,12 @@ import { motion } from "motion/react";
 import type { MediaKind, PublicWedding } from "@/lib/types";
 import { MediaOrb } from "@/components/shared/MediaOrb";
 import { useCopy } from "@/lib/i18n";
+import {
+  createCompatibleAudioContext,
+  createMp3BlobFromChunks,
+  normalizeAudioFileToMp3,
+  shouldNormalizeAudioFile,
+} from "@/lib/audio-encoding";
 import { createMediaThumbnail } from "@/lib/media-thumbnails";
 import { getSupabaseBrowser } from "@/lib/supabase/browser";
 
@@ -38,22 +44,16 @@ type SignedUploadResponse = {
 const demoGuestNote =
   "We caught your first dance from our table, and the whole room went quiet for a second. It was beautiful.";
 
-const audioRecordingTypes = [
-  { mimeType: "audio/mp4", extension: "m4a" },
-  { mimeType: "audio/webm;codecs=opus", extension: "webm" },
-  { mimeType: "audio/webm", extension: "webm" },
-] as const;
+type VoiceRecorder = {
+  context: AudioContext;
+  chunks: Float32Array[];
+  processor: ScriptProcessorNode;
+  source: MediaStreamAudioSourceNode;
+  stream: MediaStream;
+};
 
 function cleanMimeType(mimeType: string) {
   return mimeType.split(";")[0]?.trim() || mimeType || "application/octet-stream";
-}
-
-function preferredAudioRecordingType() {
-  if (typeof MediaRecorder === "undefined" || !("isTypeSupported" in MediaRecorder)) {
-    return null;
-  }
-
-  return audioRecordingTypes.find((type) => MediaRecorder.isTypeSupported(type.mimeType)) ?? null;
 }
 
 function audioExtensionFor(mimeType: string) {
@@ -90,8 +90,7 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
   const [recording, setRecording] = useState(false);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [recordedUrl, setRecordedUrl] = useState("");
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  const recorderRef = useRef<VoiceRecorder | null>(null);
 
   useEffect(() => {
     if (!demoMode) {
@@ -106,6 +105,21 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
       }
     });
   }, [demoMode, wedding]);
+
+  useEffect(() => {
+    return () => {
+      const recorder = recorderRef.current;
+
+      if (!recorder) {
+        return;
+      }
+
+      recorder.processor.disconnect();
+      recorder.source.disconnect();
+      recorder.stream.getTracks().forEach((track) => track.stop());
+      void recorder.context.close();
+    };
+  }, []);
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const selectedFile = event.target.files?.[0] ?? null;
@@ -123,31 +137,26 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const preferredType = preferredAudioRecordingType();
-      const recorder = preferredType
-        ? new MediaRecorder(stream, { mimeType: preferredType.mimeType })
-        : new MediaRecorder(stream);
-      chunksRef.current = [];
-      recorderRef.current = recorder;
+      const context = createCompatibleAudioContext();
+      await context.resume();
 
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          chunksRef.current.push(event.data);
+      const source = context.createMediaStreamSource(stream);
+      const processor = context.createScriptProcessor(4096, 1, 1);
+      const chunks: Float32Array[] = [];
+
+      processor.onaudioprocess = (event) => {
+        const input = event.inputBuffer.getChannelData(0);
+        chunks.push(new Float32Array(input));
+
+        for (let channel = 0; channel < event.outputBuffer.numberOfChannels; channel += 1) {
+          event.outputBuffer.getChannelData(channel).fill(0);
         }
       };
 
-      recorder.onstop = () => {
-        const mimeType = cleanMimeType(recorder.mimeType || preferredType?.mimeType || "audio/webm");
-        const blob = new Blob(chunksRef.current, {
-          type: mimeType,
-        });
-        const url = URL.createObjectURL(blob);
-        setRecordedBlob(blob);
-        setRecordedUrl(url);
-        stream.getTracks().forEach((track) => track.stop());
-      };
+      source.connect(processor);
+      processor.connect(context.destination);
+      recorderRef.current = { context, chunks, processor, source, stream };
 
-      recorder.start();
       setFile(null);
       setRecording(true);
     } catch {
@@ -156,9 +165,29 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
   }
 
   function stopRecording() {
-    recorderRef.current?.stop();
+    const recorder = recorderRef.current;
+
+    if (!recorder) {
+      return;
+    }
+
     recorderRef.current = null;
     setRecording(false);
+    recorder.processor.disconnect();
+    recorder.source.disconnect();
+    recorder.stream.getTracks().forEach((track) => track.stop());
+
+    if (recorder.chunks.length === 0) {
+      void recorder.context.close();
+      setError(text.guest.uploadFailed);
+      return;
+    }
+
+    const blob = createMp3BlobFromChunks(recorder.chunks, recorder.context.sampleRate);
+    const url = URL.createObjectURL(blob);
+    setRecordedBlob(blob);
+    setRecordedUrl(url);
+    void recorder.context.close();
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -167,7 +196,7 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
     setError("");
 
     try {
-      const uploadFile =
+      let uploadFile =
         file ??
         (recordedBlob
           ? new File([recordedBlob], `voice-note.${audioExtensionFor(recordedBlob.type)}`, {
@@ -189,6 +218,10 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
       if (!uploadFile) {
         setError(text.guest.missingMedia);
         return;
+      }
+
+      if (shouldNormalizeAudioFile(uploadFile)) {
+        uploadFile = await normalizeAudioFileToMp3(uploadFile);
       }
 
       const thumbnailFile = await createMediaThumbnail(uploadFile);
