@@ -915,38 +915,31 @@ function MemoryInbox({
     () => media.filter((item) => item.kind === "image" || item.kind === "video").map((item) => item.id),
     [media],
   );
-  const [readyMediaIds, setReadyMediaIds] = useState<Set<string>>(() => new Set());
-  const [showMediaLoading, setShowMediaLoading] = useState(() => loadableMediaIds.length > 0);
+  const [readyMediaState, setReadyMediaState] = useState<{ key: string; ids: Set<string> }>(() => ({
+    key: "",
+    ids: new Set(),
+  }));
   const [selectedMedia, setSelectedMedia] = useState<WeddingMedia | null>(null);
   const mediaReadyKey = loadableMediaIds.join("|");
-  const waitingForMedia =
-    showMediaLoading && loadableMediaIds.some((mediaId) => !readyMediaIds.has(mediaId));
+  const readyMediaIds = readyMediaState.key === mediaReadyKey ? readyMediaState.ids : new Set<string>();
+  const waitingForMedia = loadableMediaIds.some((mediaId) => !readyMediaIds.has(mediaId));
   const selectedMediaIndex = selectedMedia
     ? media.findIndex((item) => item.id === selectedMedia.id)
     : -1;
 
-  useLayoutEffect(() => {
-    setReadyMediaIds(new Set());
-    setShowMediaLoading(loadableMediaIds.length > 0);
-  }, [loadableMediaIds.length, mediaReadyKey]);
-
-  useEffect(() => {
-    if (loadableMediaIds.length > 0 && loadableMediaIds.every((mediaId) => readyMediaIds.has(mediaId))) {
-      setShowMediaLoading(false);
-    }
-  }, [loadableMediaIds, readyMediaIds]);
-
   const markMediaReady = useCallback((mediaId: string) => {
-    setReadyMediaIds((current) => {
-      if (current.has(mediaId)) {
+    setReadyMediaState((current) => {
+      const currentIds = current.key === mediaReadyKey ? current.ids : new Set<string>();
+
+      if (current.key === mediaReadyKey && currentIds.has(mediaId)) {
         return current;
       }
 
-      const next = new Set(current);
+      const next = new Set(currentIds);
       next.add(mediaId);
-      return next;
+      return { key: mediaReadyKey, ids: next };
     });
-  }, []);
+  }, [mediaReadyKey]);
 
   const showPreviousMedia = useCallback(() => {
     setSelectedMedia((current) => {
