@@ -147,7 +147,7 @@ export function LoginExperience() {
                   <label className="grid gap-2 text-sm font-semibold">
                     {text.login.bride}
                     <input
-                      className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-4 text-base outline-none transition placeholder:text-[var(--ink-soft)]/50"
+                      className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-4 !text-[16px] outline-none transition placeholder:text-[var(--ink-soft)]/50"
                       value={form.brideName}
                       onChange={(event) =>
                         setForm((current) => ({ ...current, brideName: event.target.value }))
@@ -160,7 +160,7 @@ export function LoginExperience() {
                   <label className="grid gap-2 text-sm font-semibold">
                     {text.login.groom}
                     <input
-                      className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-4 text-base outline-none transition placeholder:text-[var(--ink-soft)]/50"
+                      className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-4 !text-[16px] outline-none transition placeholder:text-[var(--ink-soft)]/50"
                       value={form.groomName}
                       onChange={(event) =>
                         setForm((current) => ({ ...current, groomName: event.target.value }))
@@ -173,7 +173,7 @@ export function LoginExperience() {
                   <label className="grid gap-2 text-sm font-semibold">
                     {text.login.token}
                     <input
-                      className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-4 text-base uppercase outline-none transition placeholder:normal-case placeholder:text-[var(--ink-soft)]/50"
+                      className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-4 !text-[16px] uppercase outline-none transition placeholder:normal-case placeholder:text-[var(--ink-soft)]/50"
                       value={form.token}
                       onChange={(event) =>
                         setForm((current) => ({ ...current, token: event.target.value }))

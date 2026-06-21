@@ -115,6 +115,14 @@ textarea {
   font: inherit;
 }
 
+@media (max-width: 640px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 /* Luxury typographic scale ----------------------------------------------- */
 
 .font-display {

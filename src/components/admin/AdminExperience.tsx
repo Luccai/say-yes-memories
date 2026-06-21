@@ -11,7 +11,6 @@ import {
 } from "react";
 import QRCode from "qrcode";
 import {
-  ArrowUpRight,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
@@ -33,6 +32,7 @@ import {
   X,
 } from "lucide-react";
 import { motion } from "motion/react";
+import { GuestExperience } from "@/components/guest/GuestExperience";
 import type { MediaKind, Wedding, WeddingMedia } from "@/lib/types";
 import {
   CachedMediaImage,
@@ -50,8 +50,9 @@ type AdminExperienceProps = {
 };
 
 type FilterKey = "all" | MediaKind;
-type AdminPanel = "memories" | "identity" | "qr";
+type AdminPanel = "memories" | "identity" | "qr" | "guest";
 type AdminCopy = ReturnType<typeof useCopy>["admin"];
+const DEMO_GUEST_SLUG = "mary-john-demo";
 const PROFILE_PHOTO_MAX_BYTES = 500 * 1024;
 const PROFILE_PHOTO_MAX_DIMENSION = 1280;
 const PROFILE_PHOTO_START_QUALITY = 0.82;
@@ -193,9 +194,8 @@ export function AdminExperience({
   const text = useCopy();
   const adminText = text.admin;
 
-  const eventUrl = `${origin || "https://your-domain.com"}/${wedding.slug}${
-    demoMode ? "?demo=1" : ""
-  }`;
+  const eventSlug = demoMode ? DEMO_GUEST_SLUG : wedding.slug;
+  const eventUrl = `${origin || "https://your-domain.com"}/${eventSlug}`;
 
   useEffect(() => {
     queueMicrotask(() => setOrigin(window.location.origin));
@@ -481,8 +481,7 @@ export function AdminExperience({
     setMedia((current) => current.filter((item) => item.id !== mediaId));
   }
 
-  async function logout() {
-    await fetch("/api/auth/logout", { method: "POST" });
+  function logout() {
     window.location.href = "/login";
   }
 
@@ -497,8 +496,7 @@ export function AdminExperience({
               className="h-[4.5rem] w-[3.5rem] shrink-0 sm:h-24 sm:w-20"
             />
             <div className="min-w-0 flex-1 [container-type:inline-size]">
-              <p className="eyebrow text-[var(--champagne-deep)]">{adminText.weddingPage}</p>
-              <h1 className="couple-name mt-2 text-[var(--ink)]">
+              <h1 className="couple-name text-[var(--ink)]">
                 {wedding.coupleName}
               </h1>
             </div>
@@ -554,14 +552,14 @@ export function AdminExperience({
                   setMenuOpen(false);
                 }}
               />
-              <a
-                href={eventUrl}
-                target="_blank"
-                className="focus-ring flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white/50 px-4 py-3 text-sm font-bold text-[var(--ink)] transition hover:bg-white"
-              >
-                {adminText.openPage}
-                <ArrowUpRight className="size-4" />
-              </a>
+              <AdminMenuButton
+                active={activePanel === "guest"}
+                label={adminText.openPage}
+                onClick={() => {
+                  setActivePanel("guest");
+                  setMenuOpen(false);
+                }}
+              />
               <div className="mt-1 flex justify-end border-t border-[var(--line)] pt-2">
                 <button
                   type="button"
@@ -591,6 +589,15 @@ export function AdminExperience({
 
           {activePanel === "qr" ? (
             <QrStudio wedding={wedding} eventUrl={eventUrl} text={adminText} />
+          ) : null}
+
+          {activePanel === "guest" ? (
+            <GuestPagePanel
+              wedding={wedding}
+              demoMode={demoMode}
+              onBack={() => setActivePanel("memories")}
+              text={adminText}
+            />
           ) : null}
 
           {activePanel === "memories" ? (
@@ -696,7 +703,7 @@ function IdentityCard({
               <input
                 value={brideName}
                 onChange={(event) => setBrideName(event.target.value)}
-                className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-3 outline-none"
+                className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-3 !text-[16px] outline-none"
               />
             </label>
             <label className="grid gap-2 text-sm font-semibold">
@@ -704,7 +711,7 @@ function IdentityCard({
               <input
                 value={groomName}
                 onChange={(event) => setGroomName(event.target.value)}
-                className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-3 outline-none"
+                className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-3 !text-[16px] outline-none"
               />
             </label>
           </div>
@@ -714,7 +721,7 @@ function IdentityCard({
               type="date"
               value={eventDate}
               onChange={(event) => setEventDate(event.target.value)}
-              className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-3 outline-none"
+              className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-3 !text-[16px] outline-none"
             />
           </label>
           <label className="grid gap-2 text-sm font-semibold">
@@ -723,7 +730,7 @@ function IdentityCard({
               value={welcomeNote}
               onChange={(event) => setWelcomeNote(event.target.value)}
               rows={4}
-              className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-3 leading-7 outline-none"
+              className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-3 !text-[16px] leading-7 outline-none"
             />
           </label>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -887,17 +894,48 @@ function QrStudio({
   );
 }
 
+function GuestPagePanel({
+  wedding,
+  demoMode,
+  onBack,
+  text,
+}: {
+  wedding: Wedding;
+  demoMode: boolean;
+  onBack: () => void;
+  text: AdminCopy;
+}) {
+  return (
+    <motion.article
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.05 }}
+      className="overflow-hidden rounded-[34px] border border-white/75 bg-[rgba(255,250,243,0.76)] p-4 shadow-[0_20px_58px_rgba(58,40,25,0.1)] backdrop-blur sm:p-5"
+    >
+      <button
+        type="button"
+        onClick={onBack}
+        className="focus-ring mb-3 inline-flex items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white/62 px-4 py-2 text-xs font-bold text-[var(--ink)] transition hover:bg-white"
+      >
+        <ChevronLeft className="size-4" />
+        {text.backToDashboard}
+      </button>
+      <GuestExperience wedding={wedding} demoMode={demoMode} embedded />
+    </motion.article>
+  );
+}
+
 function galleryThumbnailFor(item: WeddingMedia) {
   if (item.thumbnail) {
     return item.thumbnail;
   }
 
-  if ((item.kind === "image" || item.kind === "video") && item.url.startsWith("data:image/")) {
+  if (item.kind === "image" || item.url.startsWith("data:image/")) {
     return {
       id: `${item.id}-inline-thumbnail`,
       url: item.url,
       kind: "image" as const,
-      mimeType: "image/jpeg",
+      mimeType: item.mimeType,
       fileName: item.fileName,
       byteSize: item.byteSize,
       createdAt: item.createdAt,
@@ -905,6 +943,47 @@ function galleryThumbnailFor(item: WeddingMedia) {
   }
 
   return undefined;
+}
+
+function AdminAudioPlayer({
+  media,
+  demoMode,
+  text,
+}: {
+  media: WeddingMedia;
+  demoMode: boolean;
+  text: AdminCopy;
+}) {
+  const [failedMediaId, setFailedMediaId] = useState<string | null>(null);
+  const playbackFailed = failedMediaId === media.id;
+  const downloadHref = demoMode ? media.url : `/api/media/${media.id}/download`;
+
+  return (
+    <div className="grid w-full max-w-xl min-w-0 gap-4 p-5 text-center sm:p-8">
+      <Mic className="mx-auto size-10 text-[var(--champagne-deep)]" />
+      {playbackFailed ? (
+        <div className="rounded-[22px] border border-[var(--line)] bg-white/58 px-4 py-3 text-sm leading-relaxed text-[var(--ink-soft)]">
+          {text.audioPlaybackFailed}
+        </div>
+      ) : (
+        <audio
+          src={media.url}
+          controls
+          preload="metadata"
+          className="w-full min-w-0"
+          onError={() => setFailedMediaId(media.id)}
+        />
+      )}
+      <a
+        href={downloadHref}
+        download={media.fileName}
+        className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white/68 px-4 py-3 text-sm font-bold transition hover:bg-white"
+      >
+        <Download className="size-4" />
+        {text.downloadVoice}
+      </a>
+    </div>
+  );
 }
 
 function MemoryInbox({
@@ -1045,7 +1124,7 @@ function MemoryInbox({
           </div>
         ) : (
           <div className="relative">
-            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+            <div className="grid min-w-0 grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
               {media.map((item) => {
                 const thumbnail = galleryThumbnailFor(item);
 
@@ -1054,9 +1133,9 @@ function MemoryInbox({
                     type="button"
                     key={item.id}
                     onClick={() => setSelectedMedia(item)}
-                    className="focus-ring group overflow-hidden rounded-[22px] border border-[var(--line)] bg-white/60 p-1.5 text-left shadow-[0_14px_34px_rgba(58,40,25,0.08)] transition hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_18px_42px_rgba(58,40,25,0.12)]"
+                    className="focus-ring group min-w-0 max-w-full overflow-hidden rounded-[22px] border border-[var(--line)] bg-white/60 p-1.5 text-left shadow-[0_14px_34px_rgba(58,40,25,0.08)] transition hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_18px_42px_rgba(58,40,25,0.12)]"
                   >
-                  <div className="relative aspect-square w-full overflow-hidden rounded-[17px] bg-[#ede1d3]">
+                  <div className="relative aspect-square w-full min-w-0 max-w-full overflow-hidden rounded-[17px] bg-[#ede1d3]">
                     {item.kind === "image" || item.kind === "video" ? (
                       thumbnail ? (
                         <CachedMediaImage
@@ -1065,6 +1144,14 @@ function MemoryInbox({
                           alt={item.note ?? item.fileName}
                           className="h-full w-full object-cover"
                           loading="lazy"
+                        />
+                      ) : item.kind === "video" ? (
+                        <video
+                          src={item.url}
+                          className="h-full w-full object-cover"
+                          muted
+                          playsInline
+                          preload="metadata"
                         />
                       ) : (
                         <div className="grid h-full place-items-center bg-[radial-gradient(circle_at_30%_18%,#fffaf3,#eadcca)] p-4 text-[var(--champagne-deep)]">
@@ -1087,8 +1174,8 @@ function MemoryInbox({
                         </div>
                       </div>
                     ) : null}
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-[rgba(31,23,18,0.7)] to-transparent p-2 text-white">
-                      <p className="truncate text-xs font-bold">{item.guestName}</p>
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 min-w-0 overflow-hidden bg-gradient-to-t from-[rgba(31,23,18,0.7)] to-transparent p-2 text-white">
+                      <p className="block max-w-full truncate text-xs font-bold">{item.guestName}</p>
                     </div>
                     <div className="absolute left-2 top-2 grid size-7 place-items-center rounded-full bg-[rgba(255,250,243,0.86)] text-[var(--ink)] shadow-[0_10px_24px_rgba(31,23,18,0.14)] backdrop-blur">
                       {item.kind === "image" ? (
@@ -1100,8 +1187,8 @@ function MemoryInbox({
                       )}
                     </div>
                   </div>
-                  <p className="mt-2 truncate px-1 text-xs font-bold text-[var(--ink)]">{item.guestName}</p>
-                  <p className="truncate px-1 pb-1 text-xs text-[var(--ink-soft)]">
+                  <p className="mt-2 block max-w-full truncate px-1 text-xs font-bold text-[var(--ink)]">{item.guestName}</p>
+                  <p className="block max-w-full truncate px-1 pb-1 text-xs text-[var(--ink-soft)]">
                     {item.note || text.noNote}
                   </p>
                   </button>
@@ -1123,14 +1210,14 @@ function MemoryInbox({
           <motion.div
             initial={{ opacity: 0, y: 10, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            className="relative z-10 grid max-h-[calc(100dvh-2rem)] w-full max-w-5xl gap-4 overflow-y-auto overflow-x-hidden rounded-[32px] border border-white/70 bg-[var(--paper-soft)] p-4 shadow-[0_30px_90px_rgba(0,0,0,0.32)] sm:p-5"
+            className="relative z-10 grid max-h-[calc(100dvh-2rem)] w-full min-w-0 max-w-[calc(100vw-1.5rem)] gap-4 overflow-y-auto overflow-x-hidden rounded-[32px] border border-white/70 bg-[var(--paper-soft)] p-4 shadow-[0_30px_90px_rgba(0,0,0,0.32)] sm:max-w-5xl sm:p-5"
             role="dialog"
             aria-modal="true"
           >
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-bold text-[var(--ink)]">{selectedMedia.guestName}</p>
-                <p className="truncate text-xs text-[var(--ink-soft)]">
+            <div className="flex min-w-0 items-center justify-between gap-3 overflow-hidden">
+              <div className="min-w-0 flex-1 overflow-hidden">
+                <p className="block max-w-full truncate text-sm font-bold text-[var(--ink)]">{selectedMedia.guestName}</p>
+                <p className="block max-w-full truncate text-xs text-[var(--ink-soft)]">
                   {selectedMedia.note || text.noNote}
                 </p>
               </div>
@@ -1144,7 +1231,7 @@ function MemoryInbox({
               </button>
             </div>
 
-            <div className="relative grid min-h-[18rem] place-items-center overflow-hidden rounded-[26px] bg-[#eadcca]">
+            <div className="relative grid min-h-[18rem] w-full min-w-0 max-w-full place-items-center overflow-hidden rounded-[26px] bg-[#eadcca]">
               {selectedMedia.kind === "image" ? (
                 <CachedMediaImage
                   src={selectedMedia.url}
@@ -1162,10 +1249,7 @@ function MemoryInbox({
                   preload="metadata"
                 />
               ) : (
-                <div className="grid w-full max-w-xl gap-5 p-8 text-center">
-                  <Mic className="mx-auto size-10 text-[var(--champagne-deep)]" />
-                  <audio src={selectedMedia.url} controls className="w-full" />
-                </div>
+                <AdminAudioPlayer media={selectedMedia} demoMode={demoMode} text={text} />
               )}
 
               {media.length > 1 ? (

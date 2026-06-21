@@ -192,11 +192,4 @@ Vercel kontrol listesi:
 - Gerçek admin için session yoksa `/admin` -> `/login` redirect çalışmalı.
 - Supabase bucket ve migration production projesinde hazır olmalı.
 
-## Kod Disiplini
 
-- İlgisiz refactor yapma.
-- Var olan kullanıcı değişikliklerini geri alma.
-- Büyük medya dosyasını Next API body üzerinden geçirme; signed upload akışını koru.
-- Mobilde taşma/overlap kontrolünü önemse.
-- UI metinlerinde Etsy sonrası sıcak ve samimi ton korunmalı.
-- Yeni özellik eklenmeden önce admin panelini şişirmeme prensibi korunmalı.

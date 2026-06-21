@@ -30,6 +30,10 @@ export function inferMediaKind(mimeType: string): MediaKind {
   return "image";
 }
 
+function normalizeMimeType(mimeType: string) {
+  return mimeType.split(";")[0]?.trim().toLowerCase() || "application/octet-stream";
+}
+
 function sanitizeFileName(fileName: string) {
   const name = fileName.trim() || "upload";
   const parts = name.split(".");
@@ -50,7 +54,7 @@ export function validateMediaUpload(input: {
   allowedKinds?: MediaKind[];
   maxBytes?: number;
 }) {
-  const mimeType = input.mimeType || "application/octet-stream";
+  const mimeType = normalizeMimeType(input.mimeType || "application/octet-stream");
   const kind = inferMediaKind(mimeType);
   const maxBytes = input.maxBytes ?? MAX_MEDIA_UPLOAD_BYTES;
 

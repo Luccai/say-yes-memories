@@ -12,6 +12,7 @@ import { getSupabaseBrowser } from "@/lib/supabase/browser";
 type GuestExperienceProps = {
   wedding: PublicWedding;
   demoMode?: boolean;
+  embedded?: boolean;
 };
 
 type SignedUploadTargetResponse = {
@@ -37,7 +38,47 @@ type SignedUploadResponse = {
 const demoGuestNote =
   "We caught your first dance from our table, and the whole room went quiet for a second. It was beautiful.";
 
-export function GuestExperience({ wedding, demoMode = false }: GuestExperienceProps) {
+const audioRecordingTypes = [
+  { mimeType: "audio/mp4", extension: "m4a" },
+  { mimeType: "audio/webm;codecs=opus", extension: "webm" },
+  { mimeType: "audio/webm", extension: "webm" },
+] as const;
+
+function cleanMimeType(mimeType: string) {
+  return mimeType.split(";")[0]?.trim() || mimeType || "application/octet-stream";
+}
+
+function preferredAudioRecordingType() {
+  if (typeof MediaRecorder === "undefined" || !("isTypeSupported" in MediaRecorder)) {
+    return null;
+  }
+
+  return audioRecordingTypes.find((type) => MediaRecorder.isTypeSupported(type.mimeType)) ?? null;
+}
+
+function audioExtensionFor(mimeType: string) {
+  const cleanType = cleanMimeType(mimeType);
+
+  if (cleanType === "audio/mp4" || cleanType === "audio/x-m4a") {
+    return "m4a";
+  }
+
+  if (cleanType === "audio/wav" || cleanType === "audio/x-wav") {
+    return "wav";
+  }
+
+  if (cleanType === "audio/mpeg") {
+    return "mp3";
+  }
+
+  if (cleanType === "audio/ogg") {
+    return "ogg";
+  }
+
+  return "webm";
+}
+
+export function GuestExperience({ wedding, demoMode = false, embedded = false }: GuestExperienceProps) {
   const text = useCopy();
   const [displayWedding, setDisplayWedding] = useState(wedding);
   const [guestName, setGuestName] = useState(demoMode ? "Emma" : "");
@@ -82,7 +123,10 @@ export function GuestExperience({ wedding, demoMode = false }: GuestExperiencePr
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      const preferredType = preferredAudioRecordingType();
+      const recorder = preferredType
+        ? new MediaRecorder(stream, { mimeType: preferredType.mimeType })
+        : new MediaRecorder(stream);
       chunksRef.current = [];
       recorderRef.current = recorder;
 
@@ -93,8 +137,9 @@ export function GuestExperience({ wedding, demoMode = false }: GuestExperiencePr
       };
 
       recorder.onstop = () => {
+        const mimeType = cleanMimeType(recorder.mimeType || preferredType?.mimeType || "audio/webm");
         const blob = new Blob(chunksRef.current, {
-          type: recorder.mimeType || "audio/webm",
+          type: mimeType,
         });
         const url = URL.createObjectURL(blob);
         setRecordedBlob(blob);
@@ -125,7 +170,9 @@ export function GuestExperience({ wedding, demoMode = false }: GuestExperiencePr
       const uploadFile =
         file ??
         (recordedBlob
-          ? new File([recordedBlob], "voice-note.webm", { type: recordedBlob.type || "audio/webm" })
+          ? new File([recordedBlob], `voice-note.${audioExtensionFor(recordedBlob.type)}`, {
+              type: cleanMimeType(recordedBlob.type || "audio/webm"),
+            })
           : null);
 
       if (!uploadFile && !demoMode) {
@@ -236,8 +283,16 @@ export function GuestExperience({ wedding, demoMode = false }: GuestExperiencePr
     }
   }
 
+  const Shell: "div" | "main" = embedded ? "div" : "main";
+
   return (
-    <main className="min-h-[100dvh] overflow-x-clip px-4 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-5 text-[var(--ink)]">
+    <Shell
+      className={
+        embedded
+          ? "overflow-x-clip text-[var(--ink)]"
+          : "min-h-[100dvh] overflow-x-clip px-4 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-5 text-[var(--ink)]"
+      }
+    >
       <div className="mx-auto max-w-[34rem] min-w-0 overflow-x-clip">
         <motion.section
           initial={{ opacity: 0, y: 16 }}
@@ -308,7 +363,7 @@ export function GuestExperience({ wedding, demoMode = false }: GuestExperiencePr
                   value={guestName}
                   onChange={(event) => setGuestName(event.target.value)}
                   required
-                  className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-4 outline-none"
+                  className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-4 !text-[16px] outline-none"
                   placeholder={text.guest.name}
                 />
               </label>
@@ -319,7 +374,7 @@ export function GuestExperience({ wedding, demoMode = false }: GuestExperiencePr
                   value={note}
                   onChange={(event) => setNote(event.target.value)}
                   rows={4}
-                  className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-4 leading-7 outline-none"
+                  className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-4 !text-[16px] leading-7 outline-none"
                   placeholder={text.guest.notePlaceholder}
                 />
               </label>
@@ -377,6 +432,6 @@ export function GuestExperience({ wedding, demoMode = false }: GuestExperiencePr
           )}
         </section>
       </div>
-    </main>
+    </Shell>
   );
 }

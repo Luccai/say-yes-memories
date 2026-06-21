@@ -1,5 +1,7 @@
 import type { Wedding, WeddingMedia } from "@/lib/types";
 
+export const DEMO_GUEST_SLUG = "mary-john-demo";
+
 function svgDataUrl(svg: string) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
@@ -124,20 +126,5 @@ export const demoMedia: WeddingMedia[] = [
     approved: true,
     hidden: false,
     favorite: true,
-  },
-  {
-    id: "demo-audio-1",
-    weddingId: demoWedding.id,
-    url: "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=",
-    kind: "audio",
-    mimeType: "audio/wav",
-    fileName: "voice-note-from-mia.wav",
-    byteSize: 44,
-    createdAt: "2027-06-14T22:18:00.000Z",
-    guestName: "Mia Carter",
-    note: "A private voice note for the morning after the wedding.",
-    approved: true,
-    hidden: false,
-    favorite: false,
   },
 ];
