@@ -365,9 +365,9 @@ export function AdminExperience({
               label={wedding.coupleName}
               className="h-[4.5rem] w-[3.5rem] shrink-0 sm:h-24 sm:w-20"
             />
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 [container-type:inline-size]">
               <p className="eyebrow text-[var(--champagne-deep)]">{adminText.weddingPage}</p>
-              <h1 className="mt-1.5 font-display text-fluid-title font-semibold text-balance text-[var(--ink)]">
+              <h1 className="couple-name mt-2 text-[var(--ink)]">
                 {wedding.coupleName}
               </h1>
             </div>
@@ -534,7 +534,7 @@ function IdentityCard({
             <Settings2 className="size-4" />
             {text.identity}
           </p>
-          <h2 className="mt-2 font-display text-fluid-heading font-semibold text-balance text-[var(--ink)]">
+          <h2 className="text-tech-heading mt-2 text-balance text-[var(--ink)]">
             {text.identityTitle}
           </h2>
         </div>
@@ -696,7 +696,7 @@ function QrStudio({
           <QrCode className="size-4" />
           {text.qrStudio}
         </p>
-        <h2 className="mt-2 font-display text-fluid-heading font-semibold text-balance text-[var(--ink)]">
+        <h2 className="text-tech-heading mt-2 text-balance text-[var(--ink)]">
           {text.qrTitle}
         </h2>
       </div>
@@ -807,7 +807,7 @@ function MemoryInbox({
             <CalendarDays className="size-4" />
             {text.inbox}
           </p>
-          <h2 className="mt-2 font-display text-fluid-heading font-semibold text-balance text-[var(--ink)]">
+          <h2 className="text-tech-heading mt-2 text-balance text-[var(--ink)]">
             {text.uploads}
           </h2>
         </div>

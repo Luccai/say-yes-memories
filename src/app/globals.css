@@ -3,6 +3,7 @@
 @theme inline {
   --font-sans: var(--font-body);
   --font-serif: var(--font-display);
+  --font-mono: var(--font-tech);
 }
 
 :root {
@@ -105,6 +106,32 @@ textarea {
   line-height: 1;
   letter-spacing: 0.18em;
   text-transform: uppercase;
+}
+
+/* Tech heading — Space Grotesk, used for section descriptor titles */
+.font-tech {
+  font-family: var(--font-tech), system-ui, sans-serif;
+}
+
+.text-tech-heading {
+  font-family: var(--font-tech), system-ui, sans-serif;
+  font-size: clamp(1.45rem, 4.2vw, 1.95rem);
+  line-height: 1.18;
+  letter-spacing: -0.025em;
+  font-weight: 600;
+}
+
+/* Admin nameplate — single line, font shrinks via container query */
+.couple-name {
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+  line-height: 1;
+  letter-spacing: -0.018em;
+  /* fluid: 1.65 rem on tiny phones → 2.4 rem on wide containers */
+  font-size: clamp(1.65rem, 5.8cqi, 2.4rem);
 }
 
 /* Fluid display headings — perfect from small phones to desktop. */
