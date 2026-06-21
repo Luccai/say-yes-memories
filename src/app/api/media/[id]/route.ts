@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentWeddingFromCookie } from "@/lib/auth";
 import { deleteMedia, updateMediaForWedding } from "@/lib/supabase-store";
+import { broadcastWeddingMediaChange } from "@/lib/supabase/realtime";
 
 export async function PATCH(
   request: Request,
@@ -44,6 +45,8 @@ export async function DELETE(
   if (!deleted) {
     return NextResponse.json({ message: "Media not found." }, { status: 404 });
   }
+
+  await broadcastWeddingMediaChange(current.wedding.realtimeTopic);
 
   return NextResponse.json({ ok: true });
 }

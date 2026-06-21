@@ -20,16 +20,27 @@ export async function PATCH(request: Request) {
   }
 
   const body = (await request.json()) as {
+    brideName?: string;
+    groomName?: string;
     eventDate?: string;
     welcomeNote?: string;
     uploadLocked?: boolean;
   };
 
-  const wedding = await updateWedding(current.wedding.id, {
-    eventDate: body.eventDate,
-    welcomeNote: body.welcomeNote,
-    uploadLocked: body.uploadLocked,
-  });
+  try {
+    const wedding = await updateWedding(current.wedding.id, {
+      brideName: body.brideName,
+      groomName: body.groomName,
+      eventDate: body.eventDate,
+      welcomeNote: body.welcomeNote,
+      uploadLocked: body.uploadLocked,
+    });
 
-  return NextResponse.json({ wedding });
+    return NextResponse.json({ wedding });
+  } catch (error) {
+    return NextResponse.json(
+      { message: error instanceof Error ? error.message : "Wedding page could not be saved." },
+      { status: 400 },
+    );
+  }
 }

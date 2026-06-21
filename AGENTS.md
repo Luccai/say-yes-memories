@@ -100,14 +100,14 @@ Admin ana ekranı mobilde sade kalmalıdır:
 
 - Üstte profil rozeti, taşmayan çift adı kapsülü ve hamburger menü.
 - Varsayılan panel: Guest Memories.
-- Hamburger menü: Guest Memories, Wedding Page, QR + Guest Link, küçük Logout aksiyonu.
+- Hamburger menü: Guest Memories, Wedding Page, QR + Guest Link, View Guest Page ve küçük Logout aksiyonu.
 - Logout menüde mini aksiyon gibi görünür ve `/login` sayfasına döndürür.
-- Misafir sayfasını açma aksiyonu Wedding Page içindeki mevcut bağlantıdan yürür.
+- View Guest Page yeni sekmede misafir sayfasını açar; QR panelinde ayrıca ikinci bir misafir sayfası butonu tutulmaz.
 
 Guest Memories:
 
-- Misafir uploadları admin ekranında Check Again'e gerek kalmadan otomatik yenilenmelidir.
-- Şu an client tarafı `/api/weddings/current/media` endpointini açılışta, focus/visibility değişiminde ve kısa aralıklarla yeniler.
+- Misafir uploadları admin ekranında görünür Check Again butonu olmadan yenilenmelidir.
+- Supabase Realtime Broadcast upload/delete sonrası admin ekranını tetikler; görünmeyen uzun fallback sadece bağlantı uyursa toparlamak için kalır.
 - Favori ve gizle butonları V1'de kaldırılmıştır; public galeri olmadığı için çifte anlamlı değer üretmiyordu.
 - İndirme `/api/media/[id]/download` üzerinden signed download ile yapılır.
 - Silme doğrudan çalışmaz; önce onay modalı açılır. Evet derse Storage ve DB tarafında silinir, Hayır derse işlem yapılmaz.
@@ -115,7 +115,8 @@ Guest Memories:
 Wedding Page:
 
 - Profil foto/video upload eder.
-- Event date, welcome note ve upload lock ayarlarını yönetir.
+- Bride/groom isimleri, event date, welcome note ve upload lock ayarlarını yönetir.
+- İsim değişince misafir tarafındaki görünen çift adı da güncellenir; slug aynı kalır çünkü basılmış QR/link kırılmamalıdır.
 - Profil medya da signed upload ile Supabase Storage'a gider.
 
 Demo:

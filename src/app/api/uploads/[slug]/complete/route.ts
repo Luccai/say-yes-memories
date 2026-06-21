@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { addWeddingMedia, getWeddingBySlug } from "@/lib/supabase-store";
+import { addWeddingMedia, getWeddingRecordBySlug } from "@/lib/supabase-store";
 import {
   assertUploadBelongsToWedding,
   finalizeSignedUpload,
   type PendingStoredMediaObject,
 } from "@/lib/storage/storage-service";
+import { broadcastWeddingMediaChange } from "@/lib/supabase/realtime";
 
 type CompleteUploadBody = {
   guestName?: string;
@@ -17,7 +18,7 @@ export async function POST(
   context: { params: Promise<{ slug: string }> },
 ) {
   const { slug } = await context.params;
-  const wedding = await getWeddingBySlug(slug);
+  const wedding = await getWeddingRecordBySlug(slug);
 
   if (!wedding) {
     return NextResponse.json({ message: "Wedding page not found." }, { status: 404 });
@@ -48,6 +49,7 @@ export async function POST(
       note: note || undefined,
       object,
     });
+    await broadcastWeddingMediaChange(wedding.realtimeTopic);
 
     return NextResponse.json({ media });
   } catch (error) {

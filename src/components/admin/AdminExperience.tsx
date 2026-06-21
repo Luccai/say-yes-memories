@@ -3,6 +3,7 @@
 import { ChangeEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import {
+  ArrowUpRight,
   CalendarDays,
   Copy,
   Download,
@@ -13,7 +14,6 @@ import {
   Menu,
   Play,
   QrCode,
-  RefreshCw,
   Settings2,
   Trash2,
   Unlock,
@@ -23,6 +23,7 @@ import type { MediaKind, Wedding, WeddingMedia } from "@/lib/types";
 import { MediaOrb } from "@/components/shared/MediaOrb";
 import { getSupabaseBrowser } from "@/lib/supabase/browser";
 import { useCopy } from "@/lib/i18n";
+import { makeCoupleName } from "@/lib/text";
 
 type AdminExperienceProps = {
   initialWedding: Wedding;
@@ -173,9 +174,20 @@ export function AdminExperience({
         void syncMedia();
       }
     };
+    const supabase = getSupabaseBrowser();
+    const realtimeChannel = wedding.realtimeTopic
+      ? supabase
+          .channel(`wedding:${wedding.realtimeTopic}`)
+          .on("broadcast", { event: "media_changed" }, syncIfVisible)
+          .subscribe((status) => {
+            if (status === "SUBSCRIBED") {
+              void syncMedia();
+            }
+          })
+      : null;
 
     void syncMedia();
-    const interval = window.setInterval(syncMedia, 2500);
+    const interval = window.setInterval(syncIfVisible, 30000);
     window.addEventListener("focus", syncIfVisible);
     document.addEventListener("visibilitychange", syncIfVisible);
 
@@ -184,8 +196,11 @@ export function AdminExperience({
       window.clearInterval(interval);
       window.removeEventListener("focus", syncIfVisible);
       document.removeEventListener("visibilitychange", syncIfVisible);
+      if (realtimeChannel) {
+        void supabase.removeChannel(realtimeChannel);
+      }
     };
-  }, [demoMode]);
+  }, [demoMode, wedding.realtimeTopic]);
 
   const filteredMedia = useMemo(() => {
     if (filter === "all") {
@@ -268,6 +283,15 @@ export function AdminExperience({
     if (demoMode) {
       setWedding((current) => ({
         ...current,
+        brideName: patch.brideName ?? current.brideName,
+        groomName: patch.groomName ?? current.groomName,
+        coupleName:
+          patch.brideName !== undefined || patch.groomName !== undefined
+            ? makeCoupleName(
+                patch.brideName ?? current.brideName,
+                patch.groomName ?? current.groomName,
+              )
+            : current.coupleName,
         eventDate: patch.eventDate ?? current.eventDate,
         welcomeNote: patch.welcomeNote ?? current.welcomeNote,
         uploadLocked: patch.uploadLocked ?? current.uploadLocked,
@@ -283,6 +307,8 @@ export function AdminExperience({
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          brideName: patch.brideName ?? wedding.brideName,
+          groomName: patch.groomName ?? wedding.groomName,
           eventDate: patch.eventDate ?? wedding.eventDate ?? "",
           welcomeNote: patch.welcomeNote ?? wedding.welcomeNote,
           uploadLocked: patch.uploadLocked ?? wedding.uploadLocked,
@@ -378,16 +404,6 @@ export function AdminExperience({
       setProfileUploading(false);
       event.target.value = "";
     }
-  }
-
-  async function refreshMedia() {
-    if (demoMode) {
-      return;
-    }
-
-    const response = await fetch("/api/weddings/current/media", { cache: "no-store" });
-    const payload = (await response.json()) as { media: WeddingMedia[] };
-    setMedia(payload.media ?? []);
   }
 
   async function removeMedia(mediaId: string) {
@@ -489,6 +505,14 @@ export function AdminExperience({
                   setMenuOpen(false);
                 }}
               />
+              <a
+                href={eventUrl}
+                target="_blank"
+                className="focus-ring flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white/50 px-4 py-3 text-sm font-bold text-[var(--ink)] transition hover:bg-white"
+              >
+                {adminText.openPage}
+                <ArrowUpRight className="size-4" />
+              </a>
               <div className="mt-1 flex justify-end border-t border-[var(--line)] pt-2">
                 <button
                   type="button"
@@ -506,6 +530,7 @@ export function AdminExperience({
         <section className="grid gap-5">
           {activePanel === "identity" ? (
             <IdentityCard
+              key={`${wedding.brideName}|${wedding.groomName}|${wedding.eventDate ?? ""}|${wedding.welcomeNote}`}
               wedding={wedding}
               saving={saving}
               profileUploading={profileUploading}
@@ -525,7 +550,6 @@ export function AdminExperience({
               media={filteredMedia}
               demoMode={demoMode}
               onFilterChange={setFilter}
-              onRefresh={refreshMedia}
               onRemoveMedia={removeMedia}
               text={adminText}
             />
@@ -577,6 +601,8 @@ function IdentityCard({
 }) {
   const [eventDate, setEventDate] = useState(wedding.eventDate ?? "");
   const [welcomeNote, setWelcomeNote] = useState(wedding.welcomeNote);
+  const [brideName, setBrideName] = useState(wedding.brideName);
+  const [groomName, setGroomName] = useState(wedding.groomName);
 
   return (
     <motion.article
@@ -610,6 +636,24 @@ function IdentityCard({
         </div>
 
         <div className="grid gap-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="grid gap-2 text-sm font-semibold">
+              {text.brideName}
+              <input
+                value={brideName}
+                onChange={(event) => setBrideName(event.target.value)}
+                className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-3 outline-none"
+              />
+            </label>
+            <label className="grid gap-2 text-sm font-semibold">
+              {text.groomName}
+              <input
+                value={groomName}
+                onChange={(event) => setGroomName(event.target.value)}
+                className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-3 outline-none"
+              />
+            </label>
+          </div>
           <label className="grid gap-2 text-sm font-semibold">
             {text.eventDate}
             <input
@@ -631,7 +675,7 @@ function IdentityCard({
           <div className="grid gap-3 sm:grid-cols-2">
             <button
               type="button"
-              onClick={() => onSave({ eventDate, welcomeNote })}
+              onClick={() => onSave({ brideName, groomName, eventDate, welcomeNote })}
               className="focus-ring rounded-full bg-[var(--ink)] px-5 py-3 text-sm font-bold text-[var(--paper-soft)] transition hover:bg-black"
             >
               {text.saveIdentity}
@@ -791,7 +835,6 @@ function MemoryInbox({
   media,
   demoMode,
   onFilterChange,
-  onRefresh,
   onRemoveMedia,
   text,
 }: {
@@ -799,7 +842,6 @@ function MemoryInbox({
   media: WeddingMedia[];
   demoMode: boolean;
   onFilterChange: (filter: FilterKey) => void;
-  onRefresh: () => void;
   onRemoveMedia: (mediaId: string) => Promise<void>;
   text: AdminCopy;
 }) {
@@ -841,16 +883,6 @@ function MemoryInbox({
               {text.inbox}
             </p>
           </div>
-          {demoMode ? null : (
-            <button
-              type="button"
-              onClick={onRefresh}
-              className="focus-ring inline-flex items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white/65 px-4 py-3 text-sm font-bold transition hover:bg-white"
-            >
-              <RefreshCw className="size-4" />
-              {text.refresh}
-            </button>
-          )}
         </div>
 
         <div className="mb-5 flex flex-wrap gap-2">

@@ -352,6 +352,11 @@ export async function getWeddingById(weddingId: string) {
 }
 
 export async function getWeddingBySlug(slug: string): Promise<PublicWedding | null> {
+  const wedding = await getWeddingRecordBySlug(slug);
+  return wedding ? publicWedding(wedding) : null;
+}
+
+export async function getWeddingRecordBySlug(slug: string) {
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from("weddings")
@@ -363,7 +368,7 @@ export async function getWeddingBySlug(slug: string): Promise<PublicWedding | nu
     throw new Error(error.message);
   }
 
-  return data ? publicWedding(await weddingFromRow(data)) : null;
+  return data ? weddingFromRow(data) : null;
 }
 
 export async function getDemoWeddingBySlug(slug: string) {
@@ -384,12 +389,25 @@ export async function getDemoWeddingBySlug(slug: string) {
 
 export async function updateWedding(
   weddingId: string,
-  patch: Partial<Pick<Wedding, "eventDate" | "welcomeNote" | "uploadLocked">> & {
+  patch: Partial<Pick<Wedding, "brideName" | "groomName" | "eventDate" | "welcomeNote" | "uploadLocked">> & {
     profileMedia?: StoredMediaObject;
   },
 ) {
   const supabase = getSupabaseAdmin();
   const update: Record<string, unknown> = {};
+
+  if (patch.brideName !== undefined || patch.groomName !== undefined) {
+    const brideName = patch.brideName?.trim();
+    const groomName = patch.groomName?.trim();
+
+    if (!brideName || !groomName) {
+      throw new Error("Both names are required.");
+    }
+
+    update.bride_name = brideName;
+    update.groom_name = groomName;
+    update.couple_name = makeCoupleName(brideName, groomName);
+  }
 
   if ("eventDate" in patch) {
     update.event_date = patch.eventDate || null;
