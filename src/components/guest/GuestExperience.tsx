@@ -204,12 +204,12 @@ export function GuestExperience({ wedding, demoMode = false }: GuestExperiencePr
   }
 
   return (
-    <main className="min-h-[100dvh] px-4 py-5 text-[var(--ink)]">
+    <main className="min-h-[100dvh] px-4 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-5 text-[var(--ink)]">
       <div className="mx-auto max-w-[34rem]">
         <motion.section
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="paper-grain overflow-hidden rounded-[36px] border border-white/75 bg-[var(--paper-soft)] p-6 text-center shadow-[var(--shadow-soft)]"
+          className="paper-grain overflow-hidden rounded-[36px] border border-white/75 bg-[var(--paper-soft)] p-6 text-center shadow-none sm:shadow-[var(--shadow-soft)]"
         >
           <div className="relative z-10">
             <MediaOrb
@@ -232,7 +232,7 @@ export function GuestExperience({ wedding, demoMode = false }: GuestExperiencePr
           </div>
         </motion.section>
 
-        <section className="mt-5 rounded-[34px] border border-white/75 bg-[rgba(255,250,243,0.82)] p-5 shadow-[0_18px_48px_rgba(58,40,25,0.1)] backdrop-blur">
+        <section className="mt-5 rounded-[34px] border border-white/75 bg-[rgba(255,250,243,0.82)] p-5 shadow-none backdrop-blur sm:shadow-[0_18px_48px_rgba(58,40,25,0.1)]">
           {displayWedding.uploadLocked ? (
             <div className="grid min-h-[18rem] place-items-center text-center">
               <div>
