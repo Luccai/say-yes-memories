@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import type { StoredMediaObject } from "@/lib/types";
 import { addWeddingMedia, getWeddingRecordBySlug } from "@/lib/supabase-store";
 import {
   assertUploadBelongsToWedding,
   finalizeSignedUpload,
+  MAX_THUMBNAIL_UPLOAD_BYTES,
   type PendingStoredMediaObject,
 } from "@/lib/storage/storage-service";
 import { broadcastWeddingMediaChange } from "@/lib/supabase/realtime";
@@ -11,6 +13,7 @@ type CompleteUploadBody = {
   guestName?: string;
   note?: string;
   object?: PendingStoredMediaObject;
+  thumbnail?: PendingStoredMediaObject;
 };
 
 export async function POST(
@@ -43,11 +46,24 @@ export async function POST(
   try {
     assertUploadBelongsToWedding(body.object, { weddingId: wedding.id, folder: "guest" });
     const object = await finalizeSignedUpload(body.object);
+    let thumbnail: StoredMediaObject | undefined;
+
+    if (body.thumbnail && object.kind !== "audio") {
+      assertUploadBelongsToWedding(body.thumbnail, {
+        weddingId: wedding.id,
+        folder: "guest-thumbnail",
+        allowedKinds: ["image"],
+        maxBytes: MAX_THUMBNAIL_UPLOAD_BYTES,
+      });
+      thumbnail = await finalizeSignedUpload(body.thumbnail);
+    }
+
     const media = await addWeddingMedia({
       weddingId: wedding.id,
       guestName,
       note: note || undefined,
       object,
+      thumbnail,
     });
     await broadcastWeddingMediaChange(wedding.realtimeTopic);
 

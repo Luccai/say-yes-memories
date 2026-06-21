@@ -41,6 +41,7 @@ export type WeddingMedia = StoredMediaObject & {
   weddingId: string;
   guestName: string;
   note?: string;
+  thumbnail?: StoredMediaObject;
   approved: boolean;
   hidden: boolean;
   favorite: boolean;

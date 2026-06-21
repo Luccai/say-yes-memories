@@ -3,7 +3,9 @@ import { createId } from "@/lib/security";
 import { getSupabaseAdmin, SUPABASE_STORAGE_BUCKET } from "@/lib/supabase/admin";
 
 export const MAX_MEDIA_UPLOAD_BYTES = 100 * 1024 * 1024;
+export const MAX_THUMBNAIL_UPLOAD_BYTES = 1024 * 1024;
 const ALLOWED_MEDIA_PREFIXES = ["image/", "video/", "audio/"];
+type StorageFolder = "profile" | "guest" | "guest-thumbnail";
 
 export type PendingStoredMediaObject = Omit<StoredMediaObject, "url"> & {
   storagePath: string;
@@ -46,9 +48,11 @@ export function validateMediaUpload(input: {
   mimeType: string;
   byteSize: number;
   allowedKinds?: MediaKind[];
+  maxBytes?: number;
 }) {
   const mimeType = input.mimeType || "application/octet-stream";
   const kind = inferMediaKind(mimeType);
+  const maxBytes = input.maxBytes ?? MAX_MEDIA_UPLOAD_BYTES;
 
   if (!ALLOWED_MEDIA_PREFIXES.some((prefix) => mimeType.startsWith(prefix))) {
     throw new Error("Only photo, video, or audio files are accepted.");
@@ -62,8 +66,12 @@ export function validateMediaUpload(input: {
     throw new Error("The selected file is empty.");
   }
 
-  if (input.byteSize > MAX_MEDIA_UPLOAD_BYTES) {
-    throw new Error("This file is too large. Please upload a file under 100 MB.");
+  if (input.byteSize > maxBytes) {
+    throw new Error(
+      maxBytes === MAX_MEDIA_UPLOAD_BYTES
+        ? "This file is too large. Please upload a file under 100 MB."
+        : "This thumbnail is too large. Please try a smaller preview.",
+    );
   }
 
   return { kind, mimeType };
@@ -101,12 +109,18 @@ export async function deleteStoredFile(storagePath?: string | null) {
 
 export async function createSignedUploadTarget(
   file: { name: string; type: string; size: number },
-  options: { weddingId: string; folder: "profile" | "guest"; allowedKinds?: MediaKind[] },
+  options: {
+    weddingId: string;
+    folder: StorageFolder;
+    allowedKinds?: MediaKind[];
+    maxBytes?: number;
+  },
 ): Promise<SignedUploadTarget> {
   const { kind, mimeType } = validateMediaUpload({
     mimeType: file.type,
     byteSize: file.size,
     allowedKinds: options.allowedKinds,
+    maxBytes: options.maxBytes,
   });
   const id = createId("asset");
   const storagePath = `${options.weddingId}/${options.folder}/${id}-${sanitizeFileName(file.name)}`;
@@ -138,12 +152,18 @@ export async function createSignedUploadTarget(
 
 export function assertUploadBelongsToWedding(
   object: PendingStoredMediaObject,
-  options: { weddingId: string; folder: "profile" | "guest"; allowedKinds?: MediaKind[] },
+  options: {
+    weddingId: string;
+    folder: StorageFolder;
+    allowedKinds?: MediaKind[];
+    maxBytes?: number;
+  },
 ) {
   validateMediaUpload({
     mimeType: object.mimeType,
     byteSize: object.byteSize,
     allowedKinds: options.allowedKinds,
+    maxBytes: options.maxBytes,
   });
 
   const expectedPrefix = `${options.weddingId}/${options.folder}/${object.id}-`;

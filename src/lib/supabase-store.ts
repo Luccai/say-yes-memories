@@ -41,6 +41,12 @@ type MediaRow = {
   mime_type: string;
   file_name: string;
   byte_size: number;
+  thumbnail_id: string | null;
+  thumbnail_path: string | null;
+  thumbnail_mime_type: string | null;
+  thumbnail_file_name: string | null;
+  thumbnail_byte_size: number | null;
+  thumbnail_created_at: string | null;
   guest_name: string;
   note: string | null;
   approved: boolean;
@@ -133,6 +139,25 @@ function publicWedding(wedding: Wedding): PublicWedding {
 }
 
 async function mediaFromRow(row: MediaRow): Promise<WeddingMedia> {
+  const thumbnail =
+    row.thumbnail_id &&
+    row.thumbnail_path &&
+    row.thumbnail_mime_type &&
+    row.thumbnail_file_name &&
+    row.thumbnail_byte_size !== null &&
+    row.thumbnail_created_at
+      ? {
+          id: row.thumbnail_id,
+          storagePath: row.thumbnail_path,
+          url: await createSignedStorageUrl(row.thumbnail_path),
+          kind: "image" as const,
+          mimeType: row.thumbnail_mime_type,
+          fileName: row.thumbnail_file_name,
+          byteSize: row.thumbnail_byte_size,
+          createdAt: row.thumbnail_created_at,
+        }
+      : undefined;
+
   return {
     id: row.id,
     weddingId: row.wedding_id,
@@ -145,6 +170,7 @@ async function mediaFromRow(row: MediaRow): Promise<WeddingMedia> {
     createdAt: row.created_at,
     guestName: row.guest_name,
     note: row.note ?? undefined,
+    thumbnail,
     approved: row.approved,
     hidden: row.hidden,
     favorite: row.favorite,
@@ -481,6 +507,7 @@ export async function addWeddingMedia(input: {
   guestName: string;
   note?: string;
   object: StoredMediaObject;
+  thumbnail?: StoredMediaObject;
 }) {
   if (!input.object.storagePath) {
     throw new Error("Stored media is missing its storage path.");
@@ -497,6 +524,12 @@ export async function addWeddingMedia(input: {
       mime_type: input.object.mimeType,
       file_name: input.object.fileName,
       byte_size: input.object.byteSize,
+      thumbnail_id: input.thumbnail?.id,
+      thumbnail_path: input.thumbnail?.storagePath,
+      thumbnail_mime_type: input.thumbnail?.mimeType,
+      thumbnail_file_name: input.thumbnail?.fileName,
+      thumbnail_byte_size: input.thumbnail?.byteSize,
+      thumbnail_created_at: input.thumbnail?.createdAt,
       guest_name: input.guestName,
       note: input.note,
       approved: true,
@@ -544,7 +577,7 @@ export async function deleteMedia(mediaId: string, weddingId: string) {
   const supabase = getSupabaseAdmin();
   const { data: existing, error: existingError } = await supabase
     .from("wedding_media")
-    .select("storage_path")
+    .select("*")
     .eq("id", mediaId)
     .eq("wedding_id", weddingId)
     .maybeSingle();
@@ -558,6 +591,7 @@ export async function deleteMedia(mediaId: string, weddingId: string) {
   }
 
   await deleteStoredFile(existing.storage_path);
+  await deleteStoredFile(existing.thumbnail_path);
 
   const { error } = await supabase
     .from("wedding_media")

@@ -1,12 +1,20 @@
 import { NextResponse } from "next/server";
 import { getWeddingBySlug } from "@/lib/supabase-store";
-import { createSignedUploadTarget } from "@/lib/storage/storage-service";
+import {
+  createSignedUploadTarget,
+  MAX_THUMBNAIL_UPLOAD_BYTES,
+} from "@/lib/storage/storage-service";
 
 type PrepareUploadBody = {
   guestName?: string;
   fileName?: string;
   mimeType?: string;
   byteSize?: number;
+  thumbnail?: {
+    fileName?: string;
+    mimeType?: string;
+    byteSize?: number;
+  };
 };
 
 export async function POST(
@@ -40,8 +48,23 @@ export async function POST(
       },
       { weddingId: wedding.id, folder: "guest" },
     );
+    const thumbnailUpload = body.thumbnail
+      ? await createSignedUploadTarget(
+          {
+            name: String(body.thumbnail.fileName ?? "memory-thumbnail.jpg"),
+            type: String(body.thumbnail.mimeType ?? "image/jpeg"),
+            size: Number(body.thumbnail.byteSize ?? 0),
+          },
+          {
+            weddingId: wedding.id,
+            folder: "guest-thumbnail",
+            allowedKinds: ["image"],
+            maxBytes: MAX_THUMBNAIL_UPLOAD_BYTES,
+          },
+        )
+      : undefined;
 
-    return NextResponse.json({ upload });
+    return NextResponse.json({ upload, thumbnailUpload });
   } catch (error) {
     return NextResponse.json(
       { message: error instanceof Error ? error.message : "Could not prepare upload." },

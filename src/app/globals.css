@@ -31,7 +31,9 @@
 }
 
 html {
+  width: 100%;
   min-height: 100%;
+  max-width: 100%;
   background-color: var(--app-canvas-color);
   background-image: var(--app-canvas);
   background-attachment: fixed;
@@ -40,12 +42,15 @@ html {
   background-size: auto, 23px 23px, 31px 31px, auto;
   color: var(--ink);
   color-scheme: light;
+  overflow-x: hidden;
   scroll-behavior: smooth;
 }
 
 body {
+  width: 100%;
   min-height: 100vh;
   min-height: 100dvh;
+  max-width: 100%;
   margin: 0;
   background-color: var(--app-canvas-color);
   background-image: var(--app-canvas);
@@ -56,6 +61,23 @@ body {
   color: var(--ink);
   overflow-x: hidden;
   overscroll-behavior-y: none;
+  touch-action: pan-y;
+}
+
+@supports (overflow: clip) {
+  html,
+  body {
+    overflow-x: clip;
+  }
+}
+
+body > * {
+  max-width: 100%;
+}
+
+main {
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 @supports (-webkit-touch-callout: none) {

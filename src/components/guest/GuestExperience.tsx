@@ -6,6 +6,7 @@ import { motion } from "motion/react";
 import type { MediaKind, PublicWedding } from "@/lib/types";
 import { MediaOrb } from "@/components/shared/MediaOrb";
 import { useCopy } from "@/lib/i18n";
+import { createMediaThumbnail } from "@/lib/media-thumbnails";
 import { getSupabaseBrowser } from "@/lib/supabase/browser";
 
 type GuestExperienceProps = {
@@ -13,21 +14,24 @@ type GuestExperienceProps = {
   demoMode?: boolean;
 };
 
-type SignedUploadResponse = {
-  upload: {
-    bucket: string;
-    path: string;
-    token: string;
-    object: {
-      id: string;
-      storagePath: string;
-      kind: MediaKind;
-      mimeType: string;
-      fileName: string;
-      byteSize: number;
-      createdAt: string;
-    };
+type SignedUploadTargetResponse = {
+  bucket: string;
+  path: string;
+  token: string;
+  object: {
+    id: string;
+    storagePath: string;
+    kind: MediaKind;
+    mimeType: string;
+    fileName: string;
+    byteSize: number;
+    createdAt: string;
   };
+};
+
+type SignedUploadResponse = {
+  upload: SignedUploadTargetResponse;
+  thumbnailUpload?: SignedUploadTargetResponse;
 };
 
 const demoGuestNote =
@@ -140,6 +144,7 @@ export function GuestExperience({ wedding, demoMode = false }: GuestExperiencePr
         return;
       }
 
+      const thumbnailFile = await createMediaThumbnail(uploadFile);
       const prepareResponse = await fetch(`/api/uploads/${wedding.slug}/prepare`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -148,6 +153,13 @@ export function GuestExperience({ wedding, demoMode = false }: GuestExperiencePr
           fileName: uploadFile.name,
           mimeType: uploadFile.type || "application/octet-stream",
           byteSize: uploadFile.size,
+          thumbnail: thumbnailFile
+            ? {
+                fileName: thumbnailFile.name,
+                mimeType: thumbnailFile.type,
+                byteSize: thumbnailFile.size,
+              }
+            : undefined,
         }),
       });
       const preparePayload = (await prepareResponse.json()) as SignedUploadResponse & {
@@ -177,6 +189,26 @@ export function GuestExperience({ wedding, demoMode = false }: GuestExperiencePr
         return;
       }
 
+      let thumbnailObject: SignedUploadTargetResponse["object"] | undefined;
+
+      if (thumbnailFile && preparePayload.thumbnailUpload) {
+        const { error: thumbnailUploadError } = await supabase.storage
+          .from(preparePayload.thumbnailUpload.bucket)
+          .uploadToSignedUrl(
+            preparePayload.thumbnailUpload.path,
+            preparePayload.thumbnailUpload.token,
+            thumbnailFile,
+            {
+              cacheControl: "31536000",
+              contentType: preparePayload.thumbnailUpload.object.mimeType,
+            },
+          );
+
+        if (!thumbnailUploadError) {
+          thumbnailObject = preparePayload.thumbnailUpload.object;
+        }
+      }
+
       const completeResponse = await fetch(`/api/uploads/${wedding.slug}/complete`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -184,6 +216,7 @@ export function GuestExperience({ wedding, demoMode = false }: GuestExperiencePr
           guestName,
           note,
           object: preparePayload.upload.object,
+          thumbnail: thumbnailObject,
         }),
       });
       const completePayload = (await completeResponse.json()) as { message?: string };
@@ -204,8 +237,8 @@ export function GuestExperience({ wedding, demoMode = false }: GuestExperiencePr
   }
 
   return (
-    <main className="min-h-[100dvh] px-4 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-5 text-[var(--ink)]">
-      <div className="mx-auto max-w-[34rem]">
+    <main className="min-h-[100dvh] overflow-x-clip px-4 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-5 text-[var(--ink)]">
+      <div className="mx-auto max-w-[34rem] min-w-0 overflow-x-clip">
         <motion.section
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}

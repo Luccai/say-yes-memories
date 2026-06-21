@@ -238,6 +238,7 @@ export async function addWeddingMedia(input: {
   guestName: string;
   note?: string;
   object: StoredMediaObject;
+  thumbnail?: StoredMediaObject;
 }) {
   const store = await readStore();
   const media: WeddingMedia = {
@@ -245,6 +246,7 @@ export async function addWeddingMedia(input: {
     weddingId: input.weddingId,
     guestName: input.guestName,
     note: input.note,
+    thumbnail: input.thumbnail,
     approved: true,
     hidden: false,
     favorite: false,

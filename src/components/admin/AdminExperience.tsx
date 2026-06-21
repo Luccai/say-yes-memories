@@ -487,8 +487,8 @@ export function AdminExperience({
   }
 
   return (
-    <main className="min-h-[100dvh] text-[var(--ink)]">
-      <div className="mx-auto flex max-w-[96rem] flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
+    <main className="min-h-[100dvh] overflow-x-clip text-[var(--ink)]">
+      <div className="mx-auto flex max-w-[96rem] min-w-0 flex-col gap-5 overflow-x-clip px-4 py-5 sm:px-6 lg:px-8">
         <header className="paper-grain overflow-hidden rounded-[34px] border border-white/75 bg-[rgba(255,250,243,0.78)] p-5 shadow-[var(--shadow-soft)] backdrop-blur-xl sm:p-7">
           <div className="relative z-20 flex items-center gap-4 sm:gap-5">
             <MediaOrb
@@ -887,6 +887,26 @@ function QrStudio({
   );
 }
 
+function galleryThumbnailFor(item: WeddingMedia) {
+  if (item.thumbnail) {
+    return item.thumbnail;
+  }
+
+  if ((item.kind === "image" || item.kind === "video") && item.url.startsWith("data:image/")) {
+    return {
+      id: `${item.id}-inline-thumbnail`,
+      url: item.url,
+      kind: "image" as const,
+      mimeType: "image/jpeg",
+      fileName: item.fileName,
+      byteSize: item.byteSize,
+      createdAt: item.createdAt,
+    };
+  }
+
+  return undefined;
+}
+
 function MemoryInbox({
   filter,
   media,
@@ -911,35 +931,10 @@ function MemoryInbox({
     { key: "video", label: text.videos },
     { key: "audio", label: text.voice },
   ];
-  const loadableMediaIds = useMemo(
-    () => media.filter((item) => item.kind === "image" || item.kind === "video").map((item) => item.id),
-    [media],
-  );
-  const [readyMediaState, setReadyMediaState] = useState<{ key: string; ids: Set<string> }>(() => ({
-    key: "",
-    ids: new Set(),
-  }));
   const [selectedMedia, setSelectedMedia] = useState<WeddingMedia | null>(null);
-  const mediaReadyKey = loadableMediaIds.join("|");
-  const readyMediaIds = readyMediaState.key === mediaReadyKey ? readyMediaState.ids : new Set<string>();
-  const waitingForMedia = loadableMediaIds.some((mediaId) => !readyMediaIds.has(mediaId));
   const selectedMediaIndex = selectedMedia
     ? media.findIndex((item) => item.id === selectedMedia.id)
     : -1;
-
-  const markMediaReady = useCallback((mediaId: string) => {
-    setReadyMediaState((current) => {
-      const currentIds = current.key === mediaReadyKey ? current.ids : new Set<string>();
-
-      if (current.key === mediaReadyKey && currentIds.has(mediaId)) {
-        return current;
-      }
-
-      const next = new Set(currentIds);
-      next.add(mediaId);
-      return { key: mediaReadyKey, ids: next };
-    });
-  }, [mediaReadyKey]);
 
   const showPreviousMedia = useCallback(() => {
     setSelectedMedia((current) => {
@@ -1050,67 +1045,48 @@ function MemoryInbox({
           </div>
         ) : (
           <div className="relative">
-            <div
-              className={`grid grid-cols-2 gap-2.5 transition-opacity duration-300 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 ${
-                waitingForMedia ? "opacity-0" : "opacity-100"
-              }`}
-            >
-              {media.map((item) => (
-                <button
-                  type="button"
-                  key={item.id}
-                  onClick={() => setSelectedMedia(item)}
-                  className="focus-ring group overflow-hidden rounded-[22px] border border-[var(--line)] bg-white/60 p-1.5 text-left shadow-[0_14px_34px_rgba(58,40,25,0.08)] transition hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_18px_42px_rgba(58,40,25,0.12)]"
-                >
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+              {media.map((item) => {
+                const thumbnail = galleryThumbnailFor(item);
+
+                return (
+                  <button
+                    type="button"
+                    key={item.id}
+                    onClick={() => setSelectedMedia(item)}
+                    className="focus-ring group overflow-hidden rounded-[22px] border border-[var(--line)] bg-white/60 p-1.5 text-left shadow-[0_14px_34px_rgba(58,40,25,0.08)] transition hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_18px_42px_rgba(58,40,25,0.12)]"
+                  >
                   <div className="relative aspect-square w-full overflow-hidden rounded-[17px] bg-[#ede1d3]">
-                    {item.kind === "image" ? (
-                      <CachedMediaImage
-                        src={item.url}
-                        cacheKey={item.storagePath ?? item.id}
-                        alt={item.note ?? item.fileName}
-                        className="h-full w-full object-cover"
-                        loading="eager"
-                        onReady={() => markMediaReady(item.id)}
-                      />
-                    ) : item.kind === "video" && item.url.startsWith("data:image/") ? (
-                      <div className="relative h-full w-full">
+                    {item.kind === "image" || item.kind === "video" ? (
+                      thumbnail ? (
                         <CachedMediaImage
-                          src={item.url}
-                          cacheKey={item.storagePath ?? item.id}
+                          src={thumbnail.url}
+                          cacheKey={thumbnail.storagePath ?? thumbnail.id}
                           alt={item.note ?? item.fileName}
                           className="h-full w-full object-cover"
-                          loading="eager"
-                          onReady={() => markMediaReady(item.id)}
+                          loading="lazy"
                         />
-                        <div className="absolute inset-0 grid place-items-center bg-black/18">
-                          <div className="grid size-10 place-items-center rounded-full bg-[var(--paper-soft)] text-[var(--ink)] shadow-[0_16px_36px_rgba(0,0,0,0.2)]">
-                            <Play className="ml-0.5 size-4 fill-current" />
-                          </div>
+                      ) : (
+                        <div className="grid h-full place-items-center bg-[radial-gradient(circle_at_30%_18%,#fffaf3,#eadcca)] p-4 text-[var(--champagne-deep)]">
+                          {item.kind === "image" ? (
+                            <ImageIcon className="size-8" />
+                          ) : (
+                            <Film className="size-8" />
+                          )}
                         </div>
-                      </div>
-                    ) : item.kind === "video" ? (
-                      <>
-                        <video
-                          src={item.url}
-                          className="h-full w-full object-cover"
-                          muted
-                          playsInline
-                          preload="auto"
-                          onLoadedData={() => markMediaReady(item.id)}
-                          onCanPlay={() => markMediaReady(item.id)}
-                          onError={() => markMediaReady(item.id)}
-                        />
-                        <div className="absolute inset-0 grid place-items-center bg-black/18">
-                          <div className="grid size-10 place-items-center rounded-full bg-[var(--paper-soft)] text-[var(--ink)] shadow-[0_16px_36px_rgba(0,0,0,0.2)]">
-                            <Play className="ml-0.5 size-4 fill-current" />
-                          </div>
-                        </div>
-                      </>
+                      )
                     ) : (
                       <div className="grid h-full place-items-center bg-[#eadcca] p-4 text-[var(--champagne-deep)]">
                         <Mic className="size-8" />
                       </div>
                     )}
+                    {item.kind === "video" ? (
+                      <div className="absolute inset-0 grid place-items-center bg-black/18">
+                        <div className="grid size-10 place-items-center rounded-full bg-[var(--paper-soft)] text-[var(--ink)] shadow-[0_16px_36px_rgba(0,0,0,0.2)]">
+                          <Play className="ml-0.5 size-4 fill-current" />
+                        </div>
+                      </div>
+                    ) : null}
                     <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-[rgba(31,23,18,0.7)] to-transparent p-2 text-white">
                       <p className="truncate text-xs font-bold">{item.guestName}</p>
                     </div>
@@ -1128,24 +1104,16 @@ function MemoryInbox({
                   <p className="truncate px-1 pb-1 text-xs text-[var(--ink-soft)]">
                     {item.note || text.noNote}
                   </p>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </div>
-
-            {waitingForMedia ? (
-              <div className="absolute inset-0 grid min-h-[18rem] place-items-center rounded-[30px] border border-dashed border-[var(--line)] bg-[rgba(255,250,243,0.84)] p-8 text-center backdrop-blur-sm">
-                <div>
-                  <Loader2 className="mx-auto size-7 animate-spin text-[var(--champagne-deep)]" />
-                  <p className="mt-4 text-sm font-bold text-[var(--ink)]">{text.mediaPreparing}</p>
-                </div>
-              </div>
-            ) : null}
           </div>
         )}
       </article>
 
       {selectedMedia ? (
-        <div className="fixed inset-0 z-[60] grid place-items-center bg-[rgba(31,23,18,0.62)] px-4 py-6 backdrop-blur-md">
+        <div className="fixed inset-0 z-[60] grid place-items-center overflow-x-hidden bg-[rgba(31,23,18,0.62)] px-3 py-4 backdrop-blur-md sm:px-4 sm:py-6">
           <button
             type="button"
             className="absolute inset-0 cursor-default"
@@ -1155,7 +1123,7 @@ function MemoryInbox({
           <motion.div
             initial={{ opacity: 0, y: 10, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            className="relative z-10 grid max-h-[calc(100dvh-2rem)] w-full max-w-5xl gap-4 overflow-y-auto rounded-[32px] border border-white/70 bg-[var(--paper-soft)] p-4 shadow-[0_30px_90px_rgba(0,0,0,0.32)] sm:p-5"
+            className="relative z-10 grid max-h-[calc(100dvh-2rem)] w-full max-w-5xl gap-4 overflow-y-auto overflow-x-hidden rounded-[32px] border border-white/70 bg-[var(--paper-soft)] p-4 shadow-[0_30px_90px_rgba(0,0,0,0.32)] sm:p-5"
             role="dialog"
             aria-modal="true"
           >
@@ -1190,14 +1158,13 @@ function MemoryInbox({
                   src={selectedMedia.url}
                   className="max-h-[72dvh] max-w-full rounded-[24px] object-contain"
                   controls
-                  autoPlay
                   playsInline
-                  preload="auto"
+                  preload="metadata"
                 />
               ) : (
                 <div className="grid w-full max-w-xl gap-5 p-8 text-center">
                   <Mic className="mx-auto size-10 text-[var(--champagne-deep)]" />
-                  <audio src={selectedMedia.url} controls className="w-full" autoPlay />
+                  <audio src={selectedMedia.url} controls className="w-full" />
                 </div>
               )}
 
@@ -1206,7 +1173,7 @@ function MemoryInbox({
                   <button
                     type="button"
                     onClick={showPreviousMedia}
-                    className="focus-ring absolute left-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full border border-white/70 bg-[rgba(255,250,243,0.86)] text-[var(--ink)] shadow-[0_14px_32px_rgba(31,23,18,0.18)] backdrop-blur transition hover:bg-white"
+                    className="focus-ring absolute left-3 top-1/2 hidden size-10 -translate-y-1/2 place-items-center rounded-full border border-white/70 bg-[rgba(255,250,243,0.86)] text-[var(--ink)] shadow-[0_14px_32px_rgba(31,23,18,0.18)] backdrop-blur transition hover:bg-white sm:grid"
                     aria-label="Previous media"
                   >
                     <ChevronLeft className="size-5" />
@@ -1214,7 +1181,7 @@ function MemoryInbox({
                   <button
                     type="button"
                     onClick={showNextMedia}
-                    className="focus-ring absolute right-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full border border-white/70 bg-[rgba(255,250,243,0.86)] text-[var(--ink)] shadow-[0_14px_32px_rgba(31,23,18,0.18)] backdrop-blur transition hover:bg-white"
+                    className="focus-ring absolute right-3 top-1/2 hidden size-10 -translate-y-1/2 place-items-center rounded-full border border-white/70 bg-[rgba(255,250,243,0.86)] text-[var(--ink)] shadow-[0_14px_32px_rgba(31,23,18,0.18)] backdrop-blur transition hover:bg-white sm:grid"
                     aria-label="Next media"
                   >
                     <ChevronRight className="size-5" />
@@ -1222,6 +1189,29 @@ function MemoryInbox({
                 </>
               ) : null}
             </div>
+
+            {media.length > 1 ? (
+              <div className="grid grid-cols-2 gap-2 sm:hidden">
+                <button
+                  type="button"
+                  onClick={showPreviousMedia}
+                  className="focus-ring inline-flex items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white/68 px-4 py-3 text-sm font-bold transition hover:bg-white"
+                  aria-label="Previous media"
+                >
+                  <ChevronLeft className="size-4" />
+                  {text.previous}
+                </button>
+                <button
+                  type="button"
+                  onClick={showNextMedia}
+                  className="focus-ring inline-flex items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white/68 px-4 py-3 text-sm font-bold transition hover:bg-white"
+                  aria-label="Next media"
+                >
+                  {text.next}
+                  <ChevronRight className="size-4" />
+                </button>
+              </div>
+            ) : null}
 
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--champagne-deep)]">
