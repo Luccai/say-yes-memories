@@ -217,16 +217,18 @@ export function GuestExperience({ wedding, demoMode = false }: GuestExperiencePr
               label={displayWedding.coupleName}
               className="mx-auto h-40 w-32"
             />
-            <p className="mt-6 text-xs font-bold uppercase text-[var(--champagne-deep)]">
+            <p className="eyebrow mt-6 text-[var(--champagne-deep)]">
               {text.guest.invited}
             </p>
-            <h1 className="mt-2 font-[var(--font-display)] text-6xl font-semibold leading-none">
+            <h1 className="mt-3 font-display text-fluid-display font-semibold text-balance text-[var(--ink)]">
               {displayWedding.coupleName}
             </h1>
             {displayWedding.eventDate ? (
-              <p className="mt-3 text-sm font-semibold text-[var(--ink-soft)]">{displayWedding.eventDate}</p>
+              <p className="mt-4 text-sm font-semibold tracking-wide text-[var(--ink-soft)]">
+                {displayWedding.eventDate}
+              </p>
             ) : null}
-            <p className="mx-auto mt-5 max-w-sm text-sm leading-7 text-[var(--ink-soft)]">
+            <p className="mx-auto mt-5 max-w-sm text-pretty text-sm leading-relaxed text-[var(--ink-soft)]">
               {displayWedding.welcomeNote}
             </p>
           </div>
@@ -236,10 +238,10 @@ export function GuestExperience({ wedding, demoMode = false }: GuestExperiencePr
           {displayWedding.uploadLocked ? (
             <div className="grid min-h-[18rem] place-items-center text-center">
               <div>
-                <p className="font-[var(--font-display)] text-4xl font-semibold">
+                <p className="font-display text-fluid-heading font-semibold text-[var(--ink)]">
                   {text.guest.uploadsPaused}
                 </p>
-                <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
+                <p className="mt-3 text-sm leading-relaxed text-[var(--ink-soft)]">
                   {text.guest.uploadsPausedBody}
                 </p>
               </div>
@@ -250,10 +252,10 @@ export function GuestExperience({ wedding, demoMode = false }: GuestExperiencePr
                 <div className="mx-auto grid size-16 place-items-center rounded-full bg-[var(--ink)] text-[var(--paper-soft)]">
                   <Check className="size-7" />
                 </div>
-                <p className="mt-5 font-[var(--font-display)] text-4xl font-semibold">
+                <p className="mt-6 font-display text-fluid-heading font-semibold text-[var(--ink)]">
                   {text.guest.thankYou}
                 </p>
-                <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
+                <p className="mt-3 text-sm leading-relaxed text-[var(--ink-soft)]">
                   {text.guest.thankYouBody}
                 </p>
                 <button

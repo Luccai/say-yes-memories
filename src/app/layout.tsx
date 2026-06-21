@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Cormorant_Garamond, Manrope } from "next/font/google";
+import { Cormorant_Garamond, Manrope, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
 const display = Cormorant_Garamond({
@@ -12,6 +12,12 @@ const body = Manrope({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-body",
+});
+
+const tech = Space_Grotesk({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-tech",
 });
 
 export const metadata: Metadata = {
@@ -38,8 +44,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${display.variable} ${body.variable} font-[var(--font-body)]`}>
+    <html lang="en" className="bg-[var(--paper)]">
+      <body className={`${display.variable} ${body.variable} ${tech.variable} font-sans antialiased`}>
         {children}
       </body>
     </html>

@@ -111,10 +111,10 @@ export function LoginExperience() {
                   className="mx-auto h-40 w-32"
                 />
                 <div className="mt-7 text-center">
-                  <p className="text-xs font-bold uppercase text-[var(--champagne-deep)]">
+                  <p className="eyebrow text-[var(--champagne-deep)]">
                     {text.login.welcomeBack}
                   </p>
-                  <h2 className="mt-2 font-[var(--font-display)] text-5xl font-semibold">
+                  <h2 className="mt-3 font-display text-fluid-title font-semibold text-balance text-[var(--ink)]">
                     {returningWedding.coupleName}
                   </h2>
                   <Link
@@ -134,11 +134,11 @@ export function LoginExperience() {
                 className="rounded-[32px] border border-white/80 bg-[var(--paper-soft)] p-6 shadow-[0_24px_60px_rgba(58,40,25,0.13)] sm:p-8"
               >
                 <div className="mb-8">
-                  <p className="flex items-center gap-2 text-xs font-bold uppercase text-[var(--champagne-deep)]">
+                  <p className="eyebrow flex items-center gap-2 text-[var(--champagne-deep)]">
                     <LockKeyhole className="size-4" />
                     {text.login.tokenActivation}
                   </p>
-                  <h2 className="mt-3 font-[var(--font-display)] text-5xl font-semibold leading-none">
+                  <h2 className="mt-3 font-display text-fluid-title font-semibold text-balance text-[var(--ink)]">
                     {text.login.title}
                   </h2>
                 </div>
@@ -223,12 +223,12 @@ export function LoginExperience() {
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-bold uppercase text-[var(--champagne-deep)]">
+                <p className="eyebrow text-[var(--champagne-deep)]">
                   {text.login.helpEyebrow}
                 </p>
                 <h3
                   id="help-title"
-                  className="mt-2 font-[var(--font-display)] text-4xl font-semibold leading-none"
+                  className="mt-2 font-display text-fluid-heading font-semibold text-balance text-[var(--ink)]"
                 >
                   {text.login.helpTitle}
                 </h3>
