@@ -40,8 +40,9 @@ import {
 } from "@/components/shared/CachedMediaImage";
 import { MediaOrb } from "@/components/shared/MediaOrb";
 import { getSupabaseBrowser } from "@/lib/supabase/browser";
-import { useCopy } from "@/lib/i18n";
+import { localizedError, useCopy, useLocale } from "@/lib/i18n";
 import { makeCoupleName } from "@/lib/text";
+import { localizeDemoMedia, localizeDemoWedding } from "@/lib/demo-content";
 
 type AdminExperienceProps = {
   initialWedding: Wedding;
@@ -181,6 +182,7 @@ export function AdminExperience({
   initialMedia,
   demoMode = false,
 }: AdminExperienceProps) {
+  const locale = useLocale();
   const [wedding, setWedding] = useState(initialWedding);
   const [media, setMedia] = useState(initialMedia);
   const [origin, setOrigin] = useState("");
@@ -189,6 +191,7 @@ export function AdminExperience({
   const [menuOpen, setMenuOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [profileUploading, setProfileUploading] = useState(false);
+  const [demoHydrated, setDemoHydrated] = useState(!demoMode);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [menuPosition, setMenuPosition] = useState({ top: 20, right: 16 });
   const text = useCopy();
@@ -248,31 +251,28 @@ export function AdminExperience({
 
   useEffect(() => {
     if (!demoMode) {
+      setDemoHydrated(true);
       return;
     }
 
-    queueMicrotask(() => {
-      const savedWedding = window.localStorage.getItem("sayyes.demo.wedding");
-      const savedMedia = window.localStorage.getItem("sayyes.demo.media");
+    const savedWedding = window.localStorage.getItem("sayyes.demo.wedding");
+    const savedMedia = window.localStorage.getItem("sayyes.demo.media");
+    const sourceWedding = savedWedding ? (JSON.parse(savedWedding) as Wedding) : initialWedding;
+    const sourceMedia = savedMedia ? (JSON.parse(savedMedia) as WeddingMedia[]) : initialMedia;
 
-      if (savedWedding) {
-        setWedding(JSON.parse(savedWedding) as Wedding);
-      }
-
-      if (savedMedia) {
-        setMedia(JSON.parse(savedMedia) as WeddingMedia[]);
-      }
-    });
-  }, [demoMode]);
+    setWedding(localizeDemoWedding(sourceWedding, locale));
+    setMedia(localizeDemoMedia(sourceMedia, locale));
+    setDemoHydrated(true);
+  }, [demoMode, initialMedia, initialWedding, locale]);
 
   useEffect(() => {
-    if (!demoMode) {
+    if (!demoMode || !demoHydrated) {
       return;
     }
 
     window.localStorage.setItem("sayyes.demo.wedding", JSON.stringify(wedding));
     window.localStorage.setItem("sayyes.demo.media", JSON.stringify(media));
-  }, [demoMode, media, wedding]);
+  }, [demoHydrated, demoMode, media, wedding]);
 
   useEffect(() => {
     if (demoMode) {
@@ -422,7 +422,9 @@ export function AdminExperience({
       };
 
       if (!prepareResponse.ok) {
-        throw new Error(preparePayload.message ?? "Profile upload could not be prepared.");
+        throw new Error(
+          localizedError(preparePayload.message, text.errors, text.errors.profilePrepareFailed),
+        );
       }
 
       const supabase = getSupabaseBrowser();
@@ -439,7 +441,7 @@ export function AdminExperience({
         );
 
       if (uploadError) {
-        throw new Error(uploadError.message);
+        throw new Error(localizedError(uploadError.message, text.errors, text.errors.profileUploadFailed));
       }
 
       const completeResponse = await fetch("/api/weddings/current/profile-media/complete", {
@@ -450,7 +452,9 @@ export function AdminExperience({
       const payload = (await completeResponse.json()) as { wedding?: Wedding; message?: string };
 
       if (!completeResponse.ok) {
-        throw new Error(payload.message ?? "Profile upload could not be completed.");
+        throw new Error(
+          localizedError(payload.message, text.errors, text.errors.profileCompleteFailed),
+        );
       }
 
       if (payload.wedding) {
@@ -458,7 +462,17 @@ export function AdminExperience({
         setWedding(payload.wedding);
       }
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Profile photo could not be uploaded.");
+      const rawMessage = error instanceof Error ? error.message : undefined;
+      const alreadyLocalized =
+        rawMessage !== undefined && (Object.values(text.errors) as string[]).includes(rawMessage);
+
+      window.alert(
+        localizedError(
+          rawMessage,
+          text.errors,
+          alreadyLocalized ? rawMessage : text.errors.profileUploadFailed,
+        ),
+      );
     } finally {
       setProfileUploading(false);
       event.target.value = "";
@@ -475,7 +489,7 @@ export function AdminExperience({
 
     if (!response.ok) {
       const payload = (await response.json()) as { message?: string };
-      throw new Error(payload.message ?? "Media could not be deleted.");
+      throw new Error(localizedError(payload.message, text.errors, adminText.deleteFailed));
     }
 
     setMedia((current) => current.filter((item) => item.id !== mediaId));
@@ -845,7 +859,7 @@ function QrStudio({
             {text.scan}
           </p>
           <div className="relative z-10 mx-auto mt-4 grid size-56 place-items-center rounded-[26px] border border-white/80 bg-[var(--paper-soft)] shadow-[0_18px_38px_rgba(58,40,25,0.12)]">
-            <canvas ref={canvasRef} className="size-52" aria-label="Wedding QR code" />
+            <canvas ref={canvasRef} className="size-52" aria-label={text.qrCode} />
           </div>
         </div>
 
@@ -947,16 +961,13 @@ function galleryThumbnailFor(item: WeddingMedia) {
 
 function AdminAudioPlayer({
   media,
-  demoMode,
   text,
 }: {
   media: WeddingMedia;
-  demoMode: boolean;
   text: AdminCopy;
 }) {
   const [failedMediaId, setFailedMediaId] = useState<string | null>(null);
   const playbackFailed = failedMediaId === media.id;
-  const downloadHref = demoMode ? media.url : `/api/media/${media.id}/download`;
 
   return (
     <div className="grid w-full max-w-xl min-w-0 gap-4 p-5 text-center sm:p-8">
@@ -974,14 +985,6 @@ function AdminAudioPlayer({
           onError={() => setFailedMediaId(media.id)}
         />
       )}
-      <a
-        href={downloadHref}
-        download={media.fileName}
-        className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white/68 px-4 py-3 text-sm font-bold transition hover:bg-white"
-      >
-        <Download className="size-4" />
-        {text.downloadVoice}
-      </a>
     </div>
   );
 }
@@ -1204,7 +1207,7 @@ function MemoryInbox({
           <button
             type="button"
             className="absolute inset-0 cursor-default"
-            aria-label="Close"
+            aria-label={text.close}
             onClick={() => setSelectedMedia(null)}
           />
           <motion.div
@@ -1227,7 +1230,7 @@ function MemoryInbox({
                 type="button"
                 onClick={() => setSelectedMedia(null)}
                 className="focus-ring grid size-10 shrink-0 place-items-center rounded-full border border-[var(--line)] bg-white/70 text-[var(--ink)] transition hover:bg-white"
-                aria-label="Close"
+                aria-label={text.close}
               >
                 <X className="size-4" />
               </button>
@@ -1251,7 +1254,7 @@ function MemoryInbox({
                   preload="metadata"
                 />
               ) : (
-                <AdminAudioPlayer media={selectedMedia} demoMode={demoMode} text={text} />
+                <AdminAudioPlayer media={selectedMedia} text={text} />
               )}
 
               {media.length > 1 ? (
@@ -1259,58 +1262,55 @@ function MemoryInbox({
                   <button
                     type="button"
                     onClick={showPreviousMedia}
-                    className="focus-ring absolute left-3 top-1/2 hidden size-10 -translate-y-1/2 place-items-center rounded-full border border-white/70 bg-[rgba(255,250,243,0.86)] text-[var(--ink)] shadow-[0_14px_32px_rgba(31,23,18,0.18)] backdrop-blur transition hover:bg-white sm:grid"
-                    aria-label="Previous media"
+                    className="focus-ring absolute left-3 top-1/2 hidden size-9 -translate-y-1/2 place-items-center rounded-full border border-white/60 bg-[rgba(255,250,243,0.74)] text-[var(--ink-soft)] shadow-[0_10px_26px_rgba(31,23,18,0.14)] backdrop-blur transition hover:bg-white hover:text-[var(--ink)] sm:grid"
+                    aria-label={text.previousMedia}
                   >
-                    <ChevronLeft className="size-5" />
+                    <ChevronLeft className="size-4" />
                   </button>
                   <button
                     type="button"
                     onClick={showNextMedia}
-                    className="focus-ring absolute right-3 top-1/2 hidden size-10 -translate-y-1/2 place-items-center rounded-full border border-white/70 bg-[rgba(255,250,243,0.86)] text-[var(--ink)] shadow-[0_14px_32px_rgba(31,23,18,0.18)] backdrop-blur transition hover:bg-white sm:grid"
-                    aria-label="Next media"
+                    className="focus-ring absolute right-3 top-1/2 hidden size-9 -translate-y-1/2 place-items-center rounded-full border border-white/60 bg-[rgba(255,250,243,0.74)] text-[var(--ink-soft)] shadow-[0_10px_26px_rgba(31,23,18,0.14)] backdrop-blur transition hover:bg-white hover:text-[var(--ink)] sm:grid"
+                    aria-label={text.nextMedia}
                   >
-                    <ChevronRight className="size-5" />
+                    <ChevronRight className="size-4" />
                   </button>
                 </>
               ) : null}
             </div>
 
-            {media.length > 1 ? (
-              <div className="grid grid-cols-2 gap-2 sm:hidden">
-                <button
-                  type="button"
-                  onClick={showPreviousMedia}
-                  className="focus-ring inline-flex items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white/68 px-4 py-3 text-sm font-bold transition hover:bg-white"
-                  aria-label="Previous media"
-                >
-                  <ChevronLeft className="size-4" />
-                  {text.previous}
-                </button>
-                <button
-                  type="button"
-                  onClick={showNextMedia}
-                  className="focus-ring inline-flex items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white/68 px-4 py-3 text-sm font-bold transition hover:bg-white"
-                  aria-label="Next media"
-                >
-                  {text.next}
-                  <ChevronRight className="size-4" />
-                </button>
-              </div>
-            ) : null}
-
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--champagne-deep)]">
+            <div className="flex flex-wrap items-center gap-2 rounded-[22px] border border-white/70 bg-white/48 p-2 shadow-[0_12px_32px_rgba(58,40,25,0.08)]">
+              <p className="rounded-full border border-[var(--line)] bg-[rgba(255,250,243,0.72)] px-3 py-2 text-[0.7rem] font-bold uppercase tracking-[0.14em] text-[var(--champagne-deep)]">
                 {selectedMediaIndex + 1} / {media.length}
               </p>
-              <div className="flex flex-1 justify-end gap-2">
+              {media.length > 1 ? (
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={showPreviousMedia}
+                    className="focus-ring grid size-9 place-items-center rounded-full border border-[var(--line)] bg-white/58 text-[var(--ink-soft)] transition hover:bg-white hover:text-[var(--ink)]"
+                    aria-label={text.previousMedia}
+                  >
+                    <ChevronLeft className="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={showNextMedia}
+                    className="focus-ring grid size-9 place-items-center rounded-full border border-[var(--line)] bg-white/58 text-[var(--ink-soft)] transition hover:bg-white hover:text-[var(--ink)]"
+                    aria-label={text.nextMedia}
+                  >
+                    <ChevronRight className="size-4" />
+                  </button>
+                </div>
+              ) : null}
+              <div className="ml-auto flex min-w-0 items-center gap-1.5">
                 <a
                   href={demoMode ? selectedMedia.url : `/api/media/${selectedMedia.id}/download`}
                   download={selectedMedia.fileName}
-                  className="focus-ring inline-flex items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white/68 px-4 py-2 text-sm font-bold transition hover:bg-white"
+                  className="focus-ring inline-flex max-w-[8.5rem] items-center justify-center gap-1.5 rounded-full border border-[var(--line)] bg-white/62 px-3 py-2 text-[0.78rem] font-bold text-[var(--ink)] transition hover:bg-white"
                 >
-                  <Download className="size-4" />
-                  Download
+                  <Download className="size-3.5 shrink-0" />
+                  <span className="truncate">{text.download}</span>
                 </a>
                 <button
                   type="button"
@@ -1319,10 +1319,10 @@ function MemoryInbox({
                     setSelectedMedia(null);
                     setDeleteError("");
                   }}
-                  className="focus-ring inline-flex items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white/68 px-4 py-2 text-sm font-bold text-[var(--rosewood)] transition hover:bg-white"
+                  className="focus-ring inline-flex max-w-[8rem] items-center justify-center gap-1.5 rounded-full border border-[rgba(124,58,49,0.24)] bg-white/58 px-3 py-2 text-[0.78rem] font-bold text-[var(--rosewood)] transition hover:bg-white"
                 >
-                  <Trash2 className="size-4" />
-                  {text.deleteTitle.replace("?", "")}
+                  <Trash2 className="size-3.5 shrink-0" />
+                  <span className="truncate">{text.deleteMemory}</span>
                 </button>
               </div>
             </div>

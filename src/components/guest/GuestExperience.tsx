@@ -5,7 +5,12 @@ import { Check, Loader2, Mic, Pause, UploadCloud } from "lucide-react";
 import { motion } from "motion/react";
 import type { MediaKind, PublicWedding } from "@/lib/types";
 import { MediaOrb } from "@/components/shared/MediaOrb";
-import { useCopy } from "@/lib/i18n";
+import { localizedError, useCopy, useLocale } from "@/lib/i18n";
+import {
+  getDemoGuestNote,
+  localizeDemoGuestNote,
+  localizeDemoWedding,
+} from "@/lib/demo-content";
 import {
   createCompatibleAudioContext,
   createMp3BlobFromChunks,
@@ -40,9 +45,6 @@ type SignedUploadResponse = {
   upload: SignedUploadTargetResponse;
   thumbnailUpload?: SignedUploadTargetResponse;
 };
-
-const demoGuestNote =
-  "We caught your first dance from our table, and the whole room went quiet for a second. It was beautiful.";
 
 type VoiceRecorder = {
   context: AudioContext;
@@ -79,10 +81,11 @@ function audioExtensionFor(mimeType: string) {
 }
 
 export function GuestExperience({ wedding, demoMode = false, embedded = false }: GuestExperienceProps) {
+  const locale = useLocale();
   const text = useCopy();
   const [displayWedding, setDisplayWedding] = useState(wedding);
   const [guestName, setGuestName] = useState(demoMode ? "Emma" : "");
-  const [note, setNote] = useState(demoMode ? demoGuestNote : "");
+  const [note, setNote] = useState(demoMode ? getDemoGuestNote() : "");
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -94,17 +97,25 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
 
   useEffect(() => {
     if (!demoMode) {
+      setDisplayWedding(wedding);
       return;
     }
 
     queueMicrotask(() => {
       const saved = window.localStorage.getItem("sayyes.demo.wedding");
+      const sourceWedding = saved ? (JSON.parse(saved) as PublicWedding) : wedding;
 
-      if (saved) {
-        setDisplayWedding(JSON.parse(saved) as PublicWedding);
-      }
+      setDisplayWedding(localizeDemoWedding(sourceWedding, locale));
     });
-  }, [demoMode, wedding]);
+  }, [demoMode, locale, wedding]);
+
+  useEffect(() => {
+    if (!demoMode) {
+      return;
+    }
+
+    setNote((current) => localizeDemoGuestNote(current, locale));
+  }, [demoMode, locale]);
 
   useEffect(() => {
     return () => {
@@ -247,7 +258,7 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
       };
 
       if (!prepareResponse.ok) {
-        setError(preparePayload.message ?? text.guest.uploadFailed);
+        setError(localizedError(preparePayload.message, text.errors, text.guest.uploadFailed));
         return;
       }
 
@@ -265,7 +276,7 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
         );
 
       if (uploadError) {
-        setError(uploadError.message);
+        setError(localizedError(uploadError.message, text.errors, text.guest.uploadFailed));
         return;
       }
 
@@ -302,7 +313,7 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
       const completePayload = (await completeResponse.json()) as { message?: string };
 
       if (!completeResponse.ok) {
-        setError(completePayload.message ?? text.guest.uploadFailed);
+        setError(localizedError(completePayload.message, text.errors, text.guest.uploadFailed));
         return;
       }
 

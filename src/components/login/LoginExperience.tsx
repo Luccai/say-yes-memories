@@ -7,7 +7,7 @@ import { motion } from "motion/react";
 import type { Wedding } from "@/lib/types";
 import { BrandMark } from "@/components/shared/BrandMark";
 import { MediaOrb } from "@/components/shared/MediaOrb";
-import { useCopy } from "@/lib/i18n";
+import { localizedError, useCopy } from "@/lib/i18n";
 
 type ActivationForm = {
   brideName: string;
@@ -66,7 +66,7 @@ export function LoginExperience() {
       const payload = (await response.json()) as { wedding?: Wedding; message?: string };
 
       if (!response.ok || !payload.wedding) {
-        setError(payload.message ?? "Could not sign in.");
+        setError(localizedError(payload.message, text.errors, text.errors.signInFailed));
         return;
       }
 
