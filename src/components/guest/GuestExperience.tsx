@@ -1,16 +1,21 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Check, Loader2, Mic, Pause, UploadCloud } from "lucide-react";
 import { motion } from "motion/react";
 import type { MediaKind, PublicWedding } from "@/lib/types";
 import { MediaOrb } from "@/components/shared/MediaOrb";
 import { localizedError, useCopy, useLocale } from "@/lib/i18n";
 import {
+  ensureFreshDemoLocalState,
   getDemoGuestNote,
   localizeDemoGuestNote,
   localizeDemoWedding,
 } from "@/lib/demo-content";
+import {
+  addDemoSessionMedia,
+  createDemoSessionMediaId,
+} from "@/lib/demo-session-media";
 import {
   createCompatibleAudioContext,
   createMp3BlobFromChunks,
@@ -80,12 +85,33 @@ function audioExtensionFor(mimeType: string) {
   return "webm";
 }
 
+function mediaKindFor(file: File): MediaKind | null {
+  if (file.type.startsWith("image/")) {
+    return "image";
+  }
+
+  if (file.type.startsWith("video/")) {
+    return "video";
+  }
+
+  if (file.type.startsWith("audio/")) {
+    return "audio";
+  }
+
+  return null;
+}
+
 export function GuestExperience({ wedding, demoMode = false, embedded = false }: GuestExperienceProps) {
   const locale = useLocale();
   const text = useCopy();
   const [displayWedding, setDisplayWedding] = useState(wedding);
+  const [demoHydrated, setDemoHydrated] = useState(!demoMode);
   const [guestName, setGuestName] = useState(demoMode ? "Emma" : "");
-  const [note, setNote] = useState(demoMode ? getDemoGuestNote() : "");
+  const [rawNote, setRawNote] = useState(demoMode ? getDemoGuestNote() : "");
+  const note = useMemo(
+    () => (demoMode && demoHydrated ? localizeDemoGuestNote(rawNote, locale) : rawNote),
+    [demoHydrated, demoMode, locale, rawNote],
+  );
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -97,25 +123,31 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
 
   useEffect(() => {
     if (!demoMode) {
-      setDisplayWedding(wedding);
       return;
     }
 
-    queueMicrotask(() => {
+    let active = true;
+
+    async function hydrateDemoWedding() {
+      ensureFreshDemoLocalState();
+
       const saved = window.localStorage.getItem("sayyes.demo.wedding");
       const sourceWedding = saved ? (JSON.parse(saved) as PublicWedding) : wedding;
 
-      setDisplayWedding(localizeDemoWedding(sourceWedding, locale));
-    });
-  }, [demoMode, locale, wedding]);
+      if (!active) {
+        return;
+      }
 
-  useEffect(() => {
-    if (!demoMode) {
-      return;
+      setDisplayWedding(localizeDemoWedding(sourceWedding, locale));
+      setDemoHydrated(true);
     }
 
-    setNote((current) => localizeDemoGuestNote(current, locale));
-  }, [demoMode, locale]);
+    void hydrateDemoWedding();
+
+    return () => {
+      active = false;
+    };
+  }, [demoMode, locale, wedding]);
 
   useEffect(() => {
     return () => {
@@ -221,8 +253,59 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
       }
 
       if (demoMode) {
+        if (!uploadFile) {
+          setError(text.guest.missingMedia);
+          return;
+        }
+
+        const kind = mediaKindFor(uploadFile);
+
+        if (!kind) {
+          setError(text.guest.uploadFailed);
+          return;
+        }
+
+        const thumbnailFile = await createMediaThumbnail(uploadFile);
+        const createdAt = new Date().toISOString();
+        const id = createDemoSessionMediaId();
+        const stored = await addDemoSessionMedia({
+          id,
+          weddingId: wedding.id,
+          file: uploadFile,
+          kind,
+          mimeType: uploadFile.type || "application/octet-stream",
+          fileName: uploadFile.name || `memory-${id}`,
+          byteSize: uploadFile.size,
+          createdAt,
+          guestName,
+          note: note || undefined,
+          thumbnail: thumbnailFile
+            ? {
+                id: `${id}-thumb`,
+                file: thumbnailFile,
+                kind: "image",
+                mimeType: thumbnailFile.type,
+                fileName: thumbnailFile.name,
+                byteSize: thumbnailFile.size,
+                createdAt,
+              }
+            : undefined,
+          approved: true,
+          hidden: false,
+          favorite: false,
+        });
+
+        if (!stored) {
+          setError(text.guest.uploadFailed);
+          return;
+        }
+
         await new Promise((resolve) => window.setTimeout(resolve, 520));
         setSubmitted(true);
+        setGuestName("");
+        setRawNote("");
+        setFile(null);
+        setRecordedBlob(null);
         return;
       }
 
@@ -319,7 +402,7 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
 
       setSubmitted(true);
       setGuestName("");
-      setNote("");
+      setRawNote("");
       setFile(null);
       setRecordedBlob(null);
     } finally {
@@ -416,7 +499,7 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
                 {text.guest.note}
                 <textarea
                   value={note}
-                  onChange={(event) => setNote(event.target.value)}
+                  onChange={(event) => setRawNote(event.target.value)}
                   rows={4}
                   className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-4 !text-[16px] leading-7 outline-none"
                   placeholder={text.guest.notePlaceholder}

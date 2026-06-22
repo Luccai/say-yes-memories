@@ -135,9 +135,7 @@ export function CachedMediaImage({
   loading = "lazy",
   onReady,
 }: CachedMediaImageProps) {
-  const [displaySrc, setDisplaySrc] = useState(() =>
-    instantCache ? readInstantMediaCache(cacheKey) : "",
-  );
+  const [displaySrc, setDisplaySrc] = useState(src);
 
   useEffect(() => {
     let cancelled = false;
@@ -151,7 +149,7 @@ export function CachedMediaImage({
         return;
       }
 
-      setDisplaySrc("");
+      setDisplaySrc(src);
 
       if (!src) {
         return;

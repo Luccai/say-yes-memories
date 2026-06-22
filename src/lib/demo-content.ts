@@ -1,6 +1,10 @@
 import type { Wedding, WeddingMedia } from "@/lib/types";
 
 export const DEMO_GUEST_SLUG = "mary-john-demo";
+export const DEMO_CONTENT_VERSION = "demo-couple-png-v1";
+const DEMO_STORAGE_VERSION_KEY = "sayyes.demo.content.version";
+const DEMO_WEDDING_STORAGE_KEY = "sayyes.demo.wedding";
+const DEMO_MEDIA_STORAGE_KEY = "sayyes.demo.media";
 
 const demoPhotoBase = "/demo";
 const demoPhotos = [
@@ -281,6 +285,36 @@ const demoCopy = {
     },
   },
 } as const;
+
+export function ensureFreshDemoLocalState() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    if (window.localStorage.getItem(DEMO_STORAGE_VERSION_KEY) === DEMO_CONTENT_VERSION) {
+      return;
+    }
+
+    window.localStorage.removeItem(DEMO_WEDDING_STORAGE_KEY);
+    window.localStorage.removeItem(DEMO_MEDIA_STORAGE_KEY);
+    window.localStorage.setItem(DEMO_STORAGE_VERSION_KEY, DEMO_CONTENT_VERSION);
+  } catch {
+    // Demo state is best-effort only. If storage is unavailable, use fresh seeded content.
+  }
+}
+
+export function markDemoLocalStateFresh() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(DEMO_STORAGE_VERSION_KEY, DEMO_CONTENT_VERSION);
+  } catch {
+    // Demo state is best-effort only.
+  }
+}
 
 function toDemoLocale(locale?: string): DemoLocale {
   const source = locale?.toLowerCase() ?? "en";

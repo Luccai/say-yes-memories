@@ -12,6 +12,7 @@ import {
 import QRCode from "qrcode";
 import {
   CalendarDays,
+  Check,
   ChevronLeft,
   ChevronRight,
   Copy,
@@ -19,6 +20,7 @@ import {
   Film,
   Image as ImageIcon,
   ImagePlus,
+  LayoutGrid,
   Loader2,
   Lock,
   LogOut,
@@ -42,7 +44,17 @@ import { MediaOrb } from "@/components/shared/MediaOrb";
 import { getSupabaseBrowser } from "@/lib/supabase/browser";
 import { localizedError, useCopy, useLocale } from "@/lib/i18n";
 import { makeCoupleName } from "@/lib/text";
-import { localizeDemoMedia, localizeDemoWedding } from "@/lib/demo-content";
+import {
+  ensureFreshDemoLocalState,
+  localizeDemoMedia,
+  localizeDemoWedding,
+} from "@/lib/demo-content";
+import {
+  getDemoSessionMedia,
+  isDemoSessionMedia,
+  removeDemoSessionMedia,
+  subscribeDemoSessionMedia,
+} from "@/lib/demo-session-media";
 
 type AdminExperienceProps = {
   initialWedding: Wedding;
@@ -52,12 +64,71 @@ type AdminExperienceProps = {
 
 type FilterKey = "all" | MediaKind;
 type AdminPanel = "memories" | "identity" | "qr" | "guest";
+type MemoryGridLayout = "classic" | "story" | "compact";
 type AdminCopy = ReturnType<typeof useCopy>["admin"];
 const DEMO_GUEST_SLUG = "mary-john-demo";
+const MEMORY_GRID_LAYOUT_STORAGE_KEY = "sayyes.admin.memory-grid-layout";
+const MEMORY_GRID_LAYOUTS: MemoryGridLayout[] = ["classic", "story", "compact"];
 const PROFILE_PHOTO_MAX_BYTES = 500 * 1024;
 const PROFILE_PHOTO_MAX_DIMENSION = 1280;
 const PROFILE_PHOTO_START_QUALITY = 0.82;
 const PROFILE_PHOTO_MIN_QUALITY = 0.46;
+
+function mergeDemoMedia(baseMedia: WeddingMedia[], sessionMedia: WeddingMedia[]) {
+  const sessionIds = new Set(sessionMedia.map((item) => item.id));
+
+  return [
+    ...sessionMedia,
+    ...baseMedia.filter((item) => !sessionIds.has(item.id) && !isDemoSessionMedia(item.id)),
+  ];
+}
+
+function isMemoryGridLayout(value: string | null): value is MemoryGridLayout {
+  return value === "classic" || value === "story" || value === "compact";
+}
+
+function nextMemoryGridLayout(layout: MemoryGridLayout) {
+  const currentIndex = MEMORY_GRID_LAYOUTS.indexOf(layout);
+  return MEMORY_GRID_LAYOUTS[(currentIndex + 1) % MEMORY_GRID_LAYOUTS.length] ?? "classic";
+}
+
+function persistMemoryGridLayout(layout: MemoryGridLayout) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(MEMORY_GRID_LAYOUT_STORAGE_KEY, layout);
+  } catch {
+    // Best effort only; private browsing can reject localStorage writes.
+  }
+}
+
+function persistDemoLocalState(wedding: Wedding, media: WeddingMedia[]) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem("sayyes.demo.wedding", JSON.stringify(wedding));
+    window.localStorage.setItem(
+      "sayyes.demo.media",
+      JSON.stringify(media.filter((item) => !isDemoSessionMedia(item.id))),
+    );
+  } catch {
+    // Best effort only; private browsing can reject localStorage writes.
+  }
+}
+
+function memoryGridLayoutLabel(text: AdminCopy, layout: MemoryGridLayout) {
+  const labels: Record<MemoryGridLayout, string> = {
+    classic: text.gridLayoutClassic,
+    story: text.gridLayoutStory,
+    compact: text.gridLayoutCompact,
+  };
+
+  return labels[layout];
+}
 
 type SignedUploadResponse = {
   upload: {
@@ -187,11 +258,14 @@ export function AdminExperience({
   const [media, setMedia] = useState(initialMedia);
   const [origin, setOrigin] = useState("");
   const [filter, setFilter] = useState<FilterKey>("all");
+  const [gridLayout, setGridLayout] = useState<MemoryGridLayout>("classic");
+  const [gridLayoutHydrated, setGridLayoutHydrated] = useState(false);
   const [activePanel, setActivePanel] = useState<AdminPanel>("memories");
   const [menuOpen, setMenuOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [profileUploading, setProfileUploading] = useState(false);
-  const [demoHydrated, setDemoHydrated] = useState(!demoMode);
+  const demoHydratedRef = useRef(!demoMode);
+  const [identitySaveConfirmed, setIdentitySaveConfirmed] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [menuPosition, setMenuPosition] = useState({ top: 20, right: 16 });
   const text = useCopy();
@@ -203,6 +277,26 @@ export function AdminExperience({
   useEffect(() => {
     queueMicrotask(() => setOrigin(window.location.origin));
   }, []);
+
+  useEffect(() => {
+    try {
+      const savedLayout = window.localStorage.getItem(MEMORY_GRID_LAYOUT_STORAGE_KEY);
+
+      if (isMemoryGridLayout(savedLayout)) {
+        setGridLayout(savedLayout);
+      }
+    } finally {
+      setGridLayoutHydrated(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!gridLayoutHydrated) {
+      return;
+    }
+
+    persistMemoryGridLayout(gridLayout);
+  }, [gridLayout, gridLayoutHydrated]);
 
   useLayoutEffect(() => {
     if (!menuOpen) {
@@ -251,28 +345,81 @@ export function AdminExperience({
 
   useEffect(() => {
     if (!demoMode) {
-      setDemoHydrated(true);
       return;
     }
 
-    const savedWedding = window.localStorage.getItem("sayyes.demo.wedding");
-    const savedMedia = window.localStorage.getItem("sayyes.demo.media");
-    const sourceWedding = savedWedding ? (JSON.parse(savedWedding) as Wedding) : initialWedding;
-    const sourceMedia = savedMedia ? (JSON.parse(savedMedia) as WeddingMedia[]) : initialMedia;
+    let active = true;
 
-    setWedding(localizeDemoWedding(sourceWedding, locale));
-    setMedia(localizeDemoMedia(sourceMedia, locale));
-    setDemoHydrated(true);
+    async function hydrateDemoState() {
+      ensureFreshDemoLocalState();
+
+      const savedWedding = window.localStorage.getItem("sayyes.demo.wedding");
+      const savedMedia = window.localStorage.getItem("sayyes.demo.media");
+      const sourceWedding = savedWedding ? (JSON.parse(savedWedding) as Wedding) : initialWedding;
+      const sourceMedia = savedMedia
+        ? (JSON.parse(savedMedia) as WeddingMedia[]).filter((item) => !isDemoSessionMedia(item.id))
+        : initialMedia;
+      const sessionMedia = await getDemoSessionMedia();
+
+      if (!active) {
+        return;
+      }
+
+      const nextWedding = localizeDemoWedding(sourceWedding, locale);
+      const nextMedia = mergeDemoMedia(localizeDemoMedia(sourceMedia, locale), sessionMedia);
+
+      setWedding(nextWedding);
+      setMedia(nextMedia);
+      persistDemoLocalState(nextWedding, nextMedia);
+      demoHydratedRef.current = true;
+    }
+
+    void hydrateDemoState();
+
+    return () => {
+      active = false;
+    };
   }, [demoMode, initialMedia, initialWedding, locale]);
 
   useEffect(() => {
-    if (!demoMode || !demoHydrated) {
+    if (!demoMode || !demoHydratedRef.current) {
       return;
     }
 
-    window.localStorage.setItem("sayyes.demo.wedding", JSON.stringify(wedding));
-    window.localStorage.setItem("sayyes.demo.media", JSON.stringify(media));
-  }, [demoHydrated, demoMode, media, wedding]);
+    persistDemoLocalState(wedding, media);
+  }, [demoMode, media, wedding]);
+
+  useEffect(() => {
+    if (!demoMode) {
+      return;
+    }
+
+    let active = true;
+
+    async function syncSessionMedia() {
+      const sessionMedia = await getDemoSessionMedia();
+
+      if (!active) {
+        return;
+      }
+
+      setMedia((current) =>
+        mergeDemoMedia(
+          current.filter((item) => !isDemoSessionMedia(item.id)),
+          sessionMedia,
+        ),
+      );
+    }
+
+    const unsubscribe = subscribeDemoSessionMedia(() => {
+      void syncSessionMedia();
+    });
+
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [demoMode]);
 
   useEffect(() => {
     if (demoMode) {
@@ -332,6 +479,8 @@ export function AdminExperience({
   }, [filter, media]);
 
   async function saveIdentity(patch: Partial<Wedding>) {
+    setIdentitySaveConfirmed(false);
+
     if (demoMode) {
       setWedding((current) => ({
         ...current,
@@ -349,6 +498,15 @@ export function AdminExperience({
         uploadLocked: patch.uploadLocked ?? current.uploadLocked,
         updatedAt: new Date().toISOString(),
       }));
+      if (
+        patch.brideName !== undefined ||
+        patch.groomName !== undefined ||
+        patch.eventDate !== undefined ||
+        patch.welcomeNote !== undefined
+      ) {
+        setIdentitySaveConfirmed(true);
+        window.setTimeout(() => setIdentitySaveConfirmed(false), 2600);
+      }
       return;
     }
 
@@ -370,6 +528,15 @@ export function AdminExperience({
 
       if (payload.wedding) {
         setWedding(payload.wedding);
+        if (
+          patch.brideName !== undefined ||
+          patch.groomName !== undefined ||
+          patch.eventDate !== undefined ||
+          patch.welcomeNote !== undefined
+        ) {
+          setIdentitySaveConfirmed(true);
+          window.setTimeout(() => setIdentitySaveConfirmed(false), 2600);
+        }
       }
     } finally {
       setSaving(false);
@@ -481,6 +648,10 @@ export function AdminExperience({
 
   async function removeMedia(mediaId: string) {
     if (demoMode) {
+      if (isDemoSessionMedia(mediaId)) {
+        await removeDemoSessionMedia(mediaId);
+      }
+
       setMedia((current) => current.filter((item) => item.id !== mediaId));
       return;
     }
@@ -596,6 +767,7 @@ export function AdminExperience({
               saving={saving}
               profileUploading={profileUploading}
               onUploadProfileMedia={uploadProfileMedia}
+              onDirty={() => setIdentitySaveConfirmed(false)}
               onSave={saveIdentity}
               text={adminText}
             />
@@ -617,14 +789,33 @@ export function AdminExperience({
           {activePanel === "memories" ? (
             <MemoryInbox
               filter={filter}
+              gridLayout={gridLayout}
               media={filteredMedia}
               demoMode={demoMode}
               onFilterChange={setFilter}
+              onGridLayoutChange={() =>
+                setGridLayout((current) => {
+                  const nextLayout = nextMemoryGridLayout(current);
+                  persistMemoryGridLayout(nextLayout);
+                  return nextLayout;
+                })
+              }
               onRemoveMedia={removeMedia}
               text={adminText}
             />
           ) : null}
         </section>
+        {identitySaveConfirmed ? (
+          <motion.p
+            initial={{ opacity: 0, y: 8, x: "-50%" }}
+            animate={{ opacity: 1, y: 0, x: "-50%" }}
+            className="fixed left-1/2 top-12 z-[80] inline-flex items-center gap-2 rounded-full border border-white/20 bg-[var(--ink)] px-5 py-2.5 text-xs font-bold text-[var(--paper-soft)] shadow-[0_18px_46px_rgba(31,23,18,0.28)]"
+            role="status"
+          >
+            <Check className="size-3.5" />
+            {adminText.pageSaved}
+          </motion.p>
+        ) : null}
       </div>
     </main>
   );
@@ -659,6 +850,7 @@ function IdentityCard({
   saving,
   profileUploading,
   onUploadProfileMedia,
+  onDirty,
   onSave,
   text,
 }: {
@@ -666,13 +858,22 @@ function IdentityCard({
   saving: boolean;
   profileUploading: boolean;
   onUploadProfileMedia: (event: ChangeEvent<HTMLInputElement>) => void;
-  onSave: (patch: Partial<Wedding>) => void;
+  onDirty: () => void;
+  onSave: (patch: Partial<Wedding>) => Promise<void>;
   text: AdminCopy;
 }) {
   const [eventDate, setEventDate] = useState(wedding.eventDate ?? "");
   const [welcomeNote, setWelcomeNote] = useState(wedding.welcomeNote);
   const [brideName, setBrideName] = useState(wedding.brideName);
   const [groomName, setGroomName] = useState(wedding.groomName);
+
+  async function handleSaveIdentity() {
+    await onSave({ brideName, groomName, eventDate, welcomeNote });
+  }
+
+  function markDirty() {
+    onDirty();
+  }
 
   return (
     <motion.article
@@ -716,7 +917,10 @@ function IdentityCard({
               {text.brideName}
               <input
                 value={brideName}
-                onChange={(event) => setBrideName(event.target.value)}
+                onChange={(event) => {
+                  setBrideName(event.target.value);
+                  markDirty();
+                }}
                 className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-3 !text-[16px] outline-none"
               />
             </label>
@@ -724,7 +928,10 @@ function IdentityCard({
               {text.groomName}
               <input
                 value={groomName}
-                onChange={(event) => setGroomName(event.target.value)}
+                onChange={(event) => {
+                  setGroomName(event.target.value);
+                  markDirty();
+                }}
                 className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-3 !text-[16px] outline-none"
               />
             </label>
@@ -734,7 +941,10 @@ function IdentityCard({
             <input
               type="date"
               value={eventDate}
-              onChange={(event) => setEventDate(event.target.value)}
+              onChange={(event) => {
+                setEventDate(event.target.value);
+                markDirty();
+              }}
               className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-3 !text-[16px] outline-none"
             />
           </label>
@@ -742,7 +952,10 @@ function IdentityCard({
             {text.welcomeNote}
             <textarea
               value={welcomeNote}
-              onChange={(event) => setWelcomeNote(event.target.value)}
+              onChange={(event) => {
+                setWelcomeNote(event.target.value);
+                markDirty();
+              }}
               rows={4}
               className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-3 !text-[16px] leading-7 outline-none"
             />
@@ -750,7 +963,7 @@ function IdentityCard({
           <div className="grid gap-3 sm:grid-cols-2">
             <button
               type="button"
-              onClick={() => onSave({ brideName, groomName, eventDate, welcomeNote })}
+              onClick={handleSaveIdentity}
               className="focus-ring rounded-full bg-[var(--ink)] px-5 py-3 text-sm font-bold text-[var(--paper-soft)] transition hover:bg-black"
             >
               {text.saveIdentity}
@@ -989,18 +1202,43 @@ function AdminAudioPlayer({
   );
 }
 
+const memoryGridClasses: Record<MemoryGridLayout, string> = {
+  story: "grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4",
+  classic: "grid min-w-0 grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5",
+  compact: "grid min-w-0 grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6 2xl:grid-cols-8",
+};
+
+const memoryCardClasses: Record<MemoryGridLayout, string> = {
+  story:
+    "rounded-[28px] p-2 shadow-[0_16px_36px_rgba(58,40,25,0.09)] hover:shadow-[0_20px_46px_rgba(58,40,25,0.13)]",
+  classic:
+    "rounded-[22px] p-1.5 shadow-[0_14px_34px_rgba(58,40,25,0.08)] hover:shadow-[0_18px_42px_rgba(58,40,25,0.12)]",
+  compact:
+    "rounded-[18px] p-1 shadow-[0_10px_24px_rgba(58,40,25,0.07)] hover:shadow-[0_14px_30px_rgba(58,40,25,0.1)]",
+};
+
+const memoryMediaFrameClasses: Record<MemoryGridLayout, string> = {
+  story: "aspect-[4/3] rounded-[23px]",
+  classic: "aspect-square rounded-[17px]",
+  compact: "aspect-square rounded-[14px]",
+};
+
 function MemoryInbox({
   filter,
+  gridLayout,
   media,
   demoMode,
   onFilterChange,
+  onGridLayoutChange,
   onRemoveMedia,
   text,
 }: {
   filter: FilterKey;
+  gridLayout: MemoryGridLayout;
   media: WeddingMedia[];
   demoMode: boolean;
   onFilterChange: (filter: FilterKey) => void;
+  onGridLayoutChange: () => void;
   onRemoveMedia: (mediaId: string) => Promise<void>;
   text: AdminCopy;
 }) {
@@ -1017,6 +1255,7 @@ function MemoryInbox({
   const selectedMediaIndex = selectedMedia
     ? media.findIndex((item) => item.id === selectedMedia.id)
     : -1;
+  const currentGridLayoutLabel = memoryGridLayoutLabel(text, gridLayout);
 
   const showPreviousMedia = useCallback(() => {
     setSelectedMedia((current) => {
@@ -1086,15 +1325,27 @@ function MemoryInbox({
 
   return (
     <>
-      <article className="rounded-[34px] border border-white/75 bg-[var(--paper-soft)] p-6 shadow-[0_20px_58px_rgba(58,40,25,0.1)]">
-        <div className="mb-7">
-          <p className="eyebrow flex items-center gap-2 text-[var(--champagne-deep)]">
-            <CalendarDays className="size-4" />
-            {text.inbox}
-          </p>
-          <h2 className="text-tech-heading mt-2 text-balance text-[var(--ink)]">
-            {text.uploads}
-          </h2>
+      <article className="rounded-[34px] border border-white/75 bg-[var(--paper-soft)] p-4 shadow-[0_20px_58px_rgba(58,40,25,0.1)] sm:p-6">
+        <div className="mb-5 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="eyebrow flex items-center gap-2 text-[var(--champagne-deep)]">
+              <CalendarDays className="size-4 shrink-0" />
+              {text.inbox}
+            </p>
+            <h2 className="text-tech-heading mt-2 text-balance text-[var(--ink)]">
+              {text.uploads}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onGridLayoutChange}
+            className="focus-ring inline-flex h-10 max-w-[8.5rem] shrink-0 items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white/62 px-3 text-xs font-bold text-[var(--ink)] shadow-[0_10px_24px_rgba(58,40,25,0.08)] transition hover:bg-white"
+            aria-label={`${text.gridLayout}: ${currentGridLayoutLabel}`}
+            title={`${text.gridLayout}: ${currentGridLayoutLabel}`}
+          >
+            <LayoutGrid className="size-4 shrink-0 text-[var(--champagne-deep)]" />
+            <span className="truncate">{currentGridLayoutLabel}</span>
+          </button>
         </div>
 
         <div className="mb-5 flex flex-wrap gap-2">
@@ -1127,77 +1378,99 @@ function MemoryInbox({
           </div>
         ) : (
           <div className="relative">
-            <div className="grid min-w-0 grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+            <motion.div layout className={memoryGridClasses[gridLayout]}>
               {media.map((item) => {
                 const thumbnail = galleryThumbnailFor(item);
 
                 return (
-                  <button
+                  <motion.button
+                    layout
+                    transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
                     type="button"
                     key={item.id}
+                    aria-label={`${item.guestName}. ${item.note || text.noNote}`}
                     onClick={() => setSelectedMedia(item)}
-                    className="focus-ring group min-w-0 max-w-full overflow-hidden rounded-[22px] border border-[var(--line)] bg-white/60 p-1.5 text-left shadow-[0_14px_34px_rgba(58,40,25,0.08)] transition hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_18px_42px_rgba(58,40,25,0.12)]"
+                    className={`focus-ring group min-w-0 max-w-full overflow-hidden border border-[var(--line)] bg-white/60 text-left transition hover:-translate-y-0.5 hover:bg-white ${memoryCardClasses[gridLayout]}`}
                   >
-                  <div className="relative aspect-square w-full min-w-0 max-w-full overflow-hidden rounded-[17px] bg-[#ede1d3]">
-                    {item.kind === "image" || item.kind === "video" ? (
-                      thumbnail ? (
-                        <CachedMediaImage
-                          src={thumbnail.url}
-                          cacheKey={thumbnail.storagePath ?? thumbnail.id}
-                          alt={item.note ?? item.fileName}
-                          className="h-full w-full object-cover"
-                          loading="lazy"
-                        />
-                      ) : item.kind === "video" ? (
-                        <video
-                          src={item.url}
-                          className="h-full w-full object-cover"
-                          muted
-                          playsInline
-                          preload="metadata"
-                        />
+                    <div
+                      className={`relative w-full min-w-0 max-w-full overflow-hidden bg-[#ede1d3] ${memoryMediaFrameClasses[gridLayout]}`}
+                    >
+                      {item.kind === "image" || item.kind === "video" ? (
+                        thumbnail ? (
+                          <CachedMediaImage
+                            src={thumbnail.url}
+                            cacheKey={thumbnail.storagePath ?? thumbnail.id}
+                            alt={item.note ?? item.fileName}
+                            className="h-full w-full object-cover"
+                            loading={gridLayout === "story" ? "eager" : "lazy"}
+                          />
+                        ) : item.kind === "video" ? (
+                          <video
+                            src={item.url}
+                            className="h-full w-full object-cover"
+                            muted
+                            playsInline
+                            preload="metadata"
+                          />
+                        ) : (
+                          <div className="grid h-full place-items-center bg-[radial-gradient(circle_at_30%_18%,#fffaf3,#eadcca)] p-4 text-[var(--champagne-deep)]">
+                            {item.kind === "image" ? (
+                              <ImageIcon className="size-8" />
+                            ) : (
+                              <Film className="size-8" />
+                            )}
+                          </div>
+                        )
                       ) : (
-                        <div className="grid h-full place-items-center bg-[radial-gradient(circle_at_30%_18%,#fffaf3,#eadcca)] p-4 text-[var(--champagne-deep)]">
-                          {item.kind === "image" ? (
-                            <ImageIcon className="size-8" />
-                          ) : (
-                            <Film className="size-8" />
-                          )}
+                        <div className="grid h-full place-items-center bg-[#eadcca] p-4 text-[var(--champagne-deep)]">
+                          <Mic className={gridLayout === "compact" ? "size-6" : "size-8"} />
                         </div>
-                      )
-                    ) : (
-                      <div className="grid h-full place-items-center bg-[#eadcca] p-4 text-[var(--champagne-deep)]">
-                        <Mic className="size-8" />
+                      )}
+                      {item.kind === "video" ? (
+                        <div className="absolute inset-0 grid place-items-center bg-black/18">
+                          <div className="grid size-10 place-items-center rounded-full bg-[var(--paper-soft)] text-[var(--ink)] shadow-[0_16px_36px_rgba(0,0,0,0.2)]">
+                            <Play className="ml-0.5 size-4 fill-current" />
+                          </div>
+                        </div>
+                      ) : null}
+                      <div
+                        className={`absolute left-2 top-2 grid place-items-center rounded-full bg-[rgba(255,250,243,0.86)] text-[var(--ink)] shadow-[0_10px_24px_rgba(31,23,18,0.14)] backdrop-blur ${
+                          gridLayout === "compact" ? "size-6" : "size-7"
+                        }`}
+                      >
+                        {item.kind === "image" ? (
+                          <ImageIcon className={gridLayout === "compact" ? "size-3" : "size-3.5"} />
+                        ) : item.kind === "video" ? (
+                          <Film className={gridLayout === "compact" ? "size-3" : "size-3.5"} />
+                        ) : (
+                          <Mic className={gridLayout === "compact" ? "size-3" : "size-3.5"} />
+                        )}
                       </div>
-                    )}
-                    {item.kind === "video" ? (
-                      <div className="absolute inset-0 grid place-items-center bg-black/18">
-                        <div className="grid size-10 place-items-center rounded-full bg-[var(--paper-soft)] text-[var(--ink)] shadow-[0_16px_36px_rgba(0,0,0,0.2)]">
-                          <Play className="ml-0.5 size-4 fill-current" />
-                        </div>
+                    </div>
+                    {gridLayout !== "compact" ? (
+                      <div className="px-1 pb-1 pt-2">
+                        <p
+                          className={`block max-w-full truncate font-bold text-[var(--ink)] ${
+                            gridLayout === "story" ? "text-sm" : "text-xs"
+                          }`}
+                        >
+                          {item.guestName}
+                        </p>
+                        <p
+                          className={`block max-w-full text-[var(--ink-soft)] ${
+                            gridLayout === "story"
+                              ? "mt-1 line-clamp-2 min-h-[2.3rem] text-sm leading-snug"
+                              : "truncate text-xs"
+                          }`}
+                        >
+                          {item.note || text.noNote}
+                        </p>
                       </div>
                     ) : null}
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 min-w-0 overflow-hidden bg-gradient-to-t from-[rgba(31,23,18,0.7)] to-transparent p-2 text-white">
-                      <p className="block max-w-full truncate text-xs font-bold">{item.guestName}</p>
-                    </div>
-                    <div className="absolute left-2 top-2 grid size-7 place-items-center rounded-full bg-[rgba(255,250,243,0.86)] text-[var(--ink)] shadow-[0_10px_24px_rgba(31,23,18,0.14)] backdrop-blur">
-                      {item.kind === "image" ? (
-                        <ImageIcon className="size-3.5" />
-                      ) : item.kind === "video" ? (
-                        <Film className="size-3.5" />
-                      ) : (
-                        <Mic className="size-3.5" />
-                      )}
-                    </div>
-                  </div>
-                  <p className="mt-2 block max-w-full truncate px-1 text-xs font-bold text-[var(--ink)]">{item.guestName}</p>
-                  <p className="block max-w-full truncate px-1 pb-1 text-xs text-[var(--ink-soft)]">
-                    {item.note || text.noNote}
-                  </p>
-                  </button>
+                  </motion.button>
                 );
               })}
-            </div>
+            </motion.div>
           </div>
         )}
       </article>
