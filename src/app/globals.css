@@ -106,7 +106,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   font-family: var(--font-body), system-ui, sans-serif;
-  letter-spacing: -0.005em;
+  letter-spacing: 0;
 }
 
 button,
@@ -116,6 +116,28 @@ textarea {
 }
 
 @media (max-width: 640px) {
+  :root {
+    --shadow-soft: none;
+  }
+
+  html,
+  body {
+    background-color: var(--app-canvas-color) !important;
+    background-image: linear-gradient(#f1e6d8, #f1e6d8) !important;
+    background-attachment: scroll !important;
+    background-size: auto !important;
+  }
+
+  @supports (-webkit-touch-callout: none) {
+    body {
+      background: var(--app-canvas-color) !important;
+    }
+
+    body::before {
+      display: none;
+    }
+  }
+
   input,
   textarea,
   select {
@@ -212,6 +234,12 @@ button:disabled {
     linear-gradient(90deg, rgba(128, 101, 72, 0.06) 1px, transparent 1px);
   background-size: 21px 21px, 31px 31px;
   mix-blend-mode: soft-light;
+}
+
+@media (max-width: 640px) {
+  .paper-grain::before {
+    opacity: 0.26;
+  }
 }
 
 .embossed {

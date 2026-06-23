@@ -73,6 +73,10 @@ const PROFILE_PHOTO_MAX_BYTES = 500 * 1024;
 const PROFILE_PHOTO_MAX_DIMENSION = 1280;
 const PROFILE_PHOTO_START_QUALITY = 0.82;
 const PROFILE_PHOTO_MIN_QUALITY = 0.46;
+const ADMIN_ACTION_BUTTON_CLASS =
+  "focus-ring inline-flex items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white/58 px-4 py-2.5 text-[0.78rem] font-bold text-[var(--ink)] transition hover:bg-white active:scale-[0.99] disabled:opacity-60";
+const ADMIN_DANGER_ACTION_BUTTON_CLASS =
+  "focus-ring inline-flex items-center justify-center rounded-full border border-[rgba(124,58,49,0.24)] bg-white/58 px-4 py-2.5 text-[0.78rem] font-bold text-[var(--rosewood)] transition hover:bg-white active:scale-[0.99] disabled:opacity-60";
 
 function mergeDemoMedia(baseMedia: WeddingMedia[], sessionMedia: WeddingMedia[]) {
   const sessionIds = new Set(sessionMedia.map((item) => item.id));
@@ -673,7 +677,7 @@ export function AdminExperience({
   return (
     <main className="min-h-[100dvh] overflow-x-clip text-[var(--ink)]">
       <div className="mx-auto flex max-w-[96rem] min-w-0 flex-col gap-5 overflow-x-clip px-4 py-5 sm:px-6 lg:px-8">
-        <header className="paper-grain overflow-hidden rounded-[34px] border border-white/75 bg-[rgba(255,250,243,0.78)] p-5 shadow-[var(--shadow-soft)] backdrop-blur-xl sm:p-7">
+        <header className="paper-grain overflow-hidden rounded-[34px] border border-white/75 bg-[rgba(255,250,243,0.78)] p-5 shadow-none backdrop-blur-xl sm:p-7 sm:shadow-[var(--shadow-soft)]">
           <div className="relative z-20 flex items-center gap-4 sm:gap-5">
             <MediaOrb
               media={wedding.profileMedia}
@@ -689,7 +693,7 @@ export function AdminExperience({
               ref={menuButtonRef}
               type="button"
               onClick={() => setMenuOpen((current) => !current)}
-              className="focus-ring grid size-12 shrink-0 place-items-center rounded-full border border-[var(--line)] bg-white/62 text-[var(--ink)] shadow-[0_12px_28px_rgba(58,40,25,0.1)] transition hover:bg-white"
+              className="focus-ring grid size-12 shrink-0 place-items-center rounded-full border border-[var(--line)] bg-white/62 text-[var(--ink)] shadow-none transition hover:bg-white sm:shadow-[0_12px_28px_rgba(58,40,25,0.1)]"
               aria-expanded={menuOpen}
               aria-label={adminText.menu}
             >
@@ -709,7 +713,7 @@ export function AdminExperience({
             <motion.nav
               initial={{ opacity: 0, y: -8, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              className="fixed grid w-[min(calc(100vw-2rem),22rem)] gap-2 rounded-[30px] border border-white/75 bg-[var(--paper-soft)] p-3 shadow-[0_24px_70px_rgba(58,40,25,0.2)]"
+              className="fixed grid w-[min(calc(100vw-2rem),22rem)] gap-2 rounded-[30px] border border-white/75 bg-[var(--paper-soft)] p-3 shadow-none sm:shadow-[0_24px_70px_rgba(58,40,25,0.2)]"
               style={{ top: menuPosition.top, right: menuPosition.right }}
               aria-label={adminText.menu}
             >
@@ -809,7 +813,7 @@ export function AdminExperience({
           <motion.p
             initial={{ opacity: 0, y: 8, x: "-50%" }}
             animate={{ opacity: 1, y: 0, x: "-50%" }}
-            className="fixed left-1/2 top-12 z-[80] inline-flex items-center gap-2 rounded-full border border-white/20 bg-[var(--ink)] px-5 py-2.5 text-xs font-bold text-[var(--paper-soft)] shadow-[0_18px_46px_rgba(31,23,18,0.28)]"
+            className="fixed left-1/2 top-12 z-[80] inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-white/80 px-4 py-2 text-xs font-bold text-[var(--ink)] shadow-none backdrop-blur sm:shadow-[0_14px_34px_rgba(31,23,18,0.14)]"
             role="status"
           >
             <Check className="size-3.5" />
@@ -836,7 +840,7 @@ function AdminMenuButton({
       onClick={onClick}
       className={`focus-ring rounded-2xl px-4 py-3 text-left text-sm font-bold transition ${
         active
-          ? "bg-[var(--ink)] text-[var(--paper-soft)]"
+          ? "border border-[rgba(139,107,63,0.24)] bg-[rgba(199,166,111,0.16)] text-[var(--ink)]"
           : "border border-[var(--line)] bg-white/50 text-[var(--ink)] hover:bg-white"
       }`}
     >
@@ -879,7 +883,7 @@ function IdentityCard({
     <motion.article
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-[34px] border border-white/75 bg-[var(--paper-soft)] p-6 shadow-[0_20px_58px_rgba(58,40,25,0.1)]"
+      className="rounded-[34px] border border-white/75 bg-[var(--paper-soft)] p-6 shadow-none sm:shadow-[0_20px_58px_rgba(58,40,25,0.1)]"
     >
       <div className="mb-7 flex items-start justify-between gap-4">
         <div className="min-w-0">
@@ -899,7 +903,7 @@ function IdentityCard({
       <div className="grid gap-5 sm:grid-cols-[9rem_1fr]">
         <div className="flex flex-col items-center">
           <MediaOrb media={wedding.profileMedia} label={wedding.coupleName} className="h-44 w-36" />
-          <label className="focus-ring mt-4 flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-[var(--ink)] px-4 py-3 text-sm font-bold text-[var(--paper-soft)] transition hover:bg-black">
+          <label className={`${ADMIN_ACTION_BUTTON_CLASS} mt-4 w-full cursor-pointer`}>
             {profileUploading ? <Loader2 className="size-4 animate-spin" /> : <ImagePlus className="size-4" />}
             {text.upload}
             <input
@@ -964,14 +968,15 @@ function IdentityCard({
             <button
               type="button"
               onClick={handleSaveIdentity}
-              className="focus-ring rounded-full bg-[var(--ink)] px-5 py-3 text-sm font-bold text-[var(--paper-soft)] transition hover:bg-black"
+              className={ADMIN_ACTION_BUTTON_CLASS}
             >
+              <Check className="size-3.5" />
               {text.saveIdentity}
             </button>
             <button
               type="button"
               onClick={() => onSave({ uploadLocked: !wedding.uploadLocked })}
-              className="focus-ring rounded-full border border-[var(--line)] bg-white/65 px-5 py-3 text-sm font-bold text-[var(--ink)] transition hover:bg-white"
+              className={ADMIN_ACTION_BUTTON_CLASS}
             >
               <span className="inline-flex items-center justify-center gap-2">
                 {wedding.uploadLocked ? <Lock className="size-4" /> : <Unlock className="size-4" />}
@@ -1054,7 +1059,7 @@ function QrStudio({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.05 }}
-      className="rounded-[34px] border border-white/75 bg-[var(--paper-soft)] p-6 shadow-[0_20px_58px_rgba(58,40,25,0.1)]"
+      className="rounded-[34px] border border-white/75 bg-[var(--paper-soft)] p-6 shadow-none sm:shadow-[0_20px_58px_rgba(58,40,25,0.1)]"
     >
       <div className="mb-7">
         <p className="eyebrow flex items-center gap-2 text-[var(--champagne-deep)]">
@@ -1071,7 +1076,7 @@ function QrStudio({
           <p className="eyebrow relative z-10 text-[var(--champagne-deep)]">
             {text.scan}
           </p>
-          <div className="relative z-10 mx-auto mt-4 grid size-56 place-items-center rounded-[26px] border border-white/80 bg-[var(--paper-soft)] shadow-[0_18px_38px_rgba(58,40,25,0.12)]">
+          <div className="relative z-10 mx-auto mt-4 grid size-56 place-items-center rounded-[26px] border border-white/80 bg-[var(--paper-soft)] shadow-none sm:shadow-[0_18px_38px_rgba(58,40,25,0.12)]">
             <canvas ref={canvasRef} className="size-52" aria-label={text.qrCode} />
           </div>
         </div>
@@ -1083,34 +1088,34 @@ function QrStudio({
               {eventUrl}
             </p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
             <button
               type="button"
               onClick={copyLink}
-              className="focus-ring rounded-full bg-[var(--ink)] px-4 py-3 text-sm font-bold text-[var(--paper-soft)] transition hover:bg-black"
+              className={ADMIN_ACTION_BUTTON_CLASS}
             >
               <span className="inline-flex items-center justify-center gap-2">
-                <Copy className="size-4" />
+                <Copy className="size-3.5 shrink-0" />
                 {copied ? text.copied : text.copy}
               </span>
             </button>
             <button
               type="button"
               onClick={downloadPng}
-              className="focus-ring rounded-full border border-[var(--line)] bg-white/65 px-4 py-3 text-sm font-bold transition hover:bg-white"
+              className={ADMIN_ACTION_BUTTON_CLASS}
             >
               <span className="inline-flex items-center justify-center gap-2">
-                <Download className="size-4" />
+                <Download className="size-3.5 shrink-0" />
                 PNG
               </span>
             </button>
             <button
               type="button"
               onClick={downloadSvg}
-              className="focus-ring rounded-full border border-[var(--line)] bg-white/65 px-4 py-3 text-sm font-bold transition hover:bg-white"
+              className={ADMIN_ACTION_BUTTON_CLASS}
             >
               <span className="inline-flex items-center justify-center gap-2">
-                <Download className="size-4" />
+                <Download className="size-3.5 shrink-0" />
                 SVG
               </span>
             </button>
@@ -1137,7 +1142,7 @@ function GuestPagePanel({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.05 }}
-      className="overflow-hidden rounded-[34px] border border-white/75 bg-[rgba(255,250,243,0.76)] p-4 shadow-[0_20px_58px_rgba(58,40,25,0.1)] backdrop-blur sm:p-5"
+      className="overflow-hidden rounded-[34px] border border-white/75 bg-[rgba(255,250,243,0.76)] p-4 shadow-none backdrop-blur sm:p-5 sm:shadow-[0_20px_58px_rgba(58,40,25,0.1)]"
     >
       <button
         type="button"
@@ -1210,11 +1215,11 @@ const memoryGridClasses: Record<MemoryGridLayout, string> = {
 
 const memoryCardClasses: Record<MemoryGridLayout, string> = {
   story:
-    "rounded-[28px] p-2 shadow-[0_16px_36px_rgba(58,40,25,0.09)] hover:shadow-[0_20px_46px_rgba(58,40,25,0.13)]",
+    "rounded-[28px] p-2 shadow-none sm:shadow-[0_16px_36px_rgba(58,40,25,0.09)] sm:hover:shadow-[0_20px_46px_rgba(58,40,25,0.13)]",
   classic:
-    "rounded-[22px] p-1.5 shadow-[0_14px_34px_rgba(58,40,25,0.08)] hover:shadow-[0_18px_42px_rgba(58,40,25,0.12)]",
+    "rounded-[22px] p-1.5 shadow-none sm:shadow-[0_14px_34px_rgba(58,40,25,0.08)] sm:hover:shadow-[0_18px_42px_rgba(58,40,25,0.12)]",
   compact:
-    "rounded-[18px] p-1 shadow-[0_10px_24px_rgba(58,40,25,0.07)] hover:shadow-[0_14px_30px_rgba(58,40,25,0.1)]",
+    "rounded-[18px] p-1 shadow-none sm:shadow-[0_10px_24px_rgba(58,40,25,0.07)] sm:hover:shadow-[0_14px_30px_rgba(58,40,25,0.1)]",
 };
 
 const memoryMediaFrameClasses: Record<MemoryGridLayout, string> = {
@@ -1325,21 +1330,18 @@ function MemoryInbox({
 
   return (
     <>
-      <article className="rounded-[34px] border border-white/75 bg-[var(--paper-soft)] p-4 shadow-[0_20px_58px_rgba(58,40,25,0.1)] sm:p-6">
+      <article className="rounded-[34px] border border-white/75 bg-[var(--paper-soft)] p-4 shadow-none sm:p-6 sm:shadow-[0_20px_58px_rgba(58,40,25,0.1)]">
         <div className="mb-5 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="eyebrow flex items-center gap-2 text-[var(--champagne-deep)]">
               <CalendarDays className="size-4 shrink-0" />
               {text.inbox}
             </p>
-            <h2 className="text-tech-heading mt-2 text-balance text-[var(--ink)]">
-              {text.uploads}
-            </h2>
           </div>
           <button
             type="button"
             onClick={onGridLayoutChange}
-            className="focus-ring inline-flex h-10 max-w-[8.5rem] shrink-0 items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white/62 px-3 text-xs font-bold text-[var(--ink)] shadow-[0_10px_24px_rgba(58,40,25,0.08)] transition hover:bg-white"
+            className={`${ADMIN_ACTION_BUTTON_CLASS} h-10 max-w-[8.5rem] shrink-0 px-3`}
             aria-label={`${text.gridLayout}: ${currentGridLayoutLabel}`}
             title={`${text.gridLayout}: ${currentGridLayoutLabel}`}
           >
@@ -1354,9 +1356,9 @@ function MemoryInbox({
               key={item.key}
               type="button"
               onClick={() => onFilterChange(item.key)}
-              className={`focus-ring rounded-full px-4 py-2 text-sm font-bold transition ${
+              className={`focus-ring rounded-full px-3.5 py-2 text-[0.78rem] font-bold transition ${
                 filter === item.key
-                  ? "bg-[var(--ink)] text-[var(--paper-soft)]"
+                  ? "border border-[rgba(139,107,63,0.26)] bg-[rgba(199,166,111,0.16)] text-[var(--ink)]"
                   : "border border-[var(--line)] bg-white/55 text-[var(--ink-soft)] hover:bg-white"
               }`}
             >
@@ -1378,19 +1380,23 @@ function MemoryInbox({
           </div>
         ) : (
           <div className="relative">
-            <motion.div layout className={memoryGridClasses[gridLayout]}>
-              {media.map((item) => {
+            <motion.div
+              layout
+              className={memoryGridClasses[gridLayout]}
+              transition={{ layout: { duration: 0.42, ease: [0.16, 1, 0.3, 1] } }}
+            >
+              {media.map((item, index) => {
                 const thumbnail = galleryThumbnailFor(item);
 
                 return (
                   <motion.button
-                    layout
-                    transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                    layout="position"
+                    transition={{ layout: { duration: 0.42, ease: [0.16, 1, 0.3, 1] } }}
                     type="button"
                     key={item.id}
                     aria-label={`${item.guestName}. ${item.note || text.noNote}`}
                     onClick={() => setSelectedMedia(item)}
-                    className={`focus-ring group min-w-0 max-w-full overflow-hidden border border-[var(--line)] bg-white/60 text-left transition hover:-translate-y-0.5 hover:bg-white ${memoryCardClasses[gridLayout]}`}
+                    className={`focus-ring group min-w-0 max-w-full overflow-hidden border border-[var(--line)] bg-white/60 text-left transition duration-200 hover:bg-white sm:hover:-translate-y-0.5 ${memoryCardClasses[gridLayout]}`}
                   >
                     <div
                       className={`relative w-full min-w-0 max-w-full overflow-hidden bg-[#ede1d3] ${memoryMediaFrameClasses[gridLayout]}`}
@@ -1402,7 +1408,7 @@ function MemoryInbox({
                             cacheKey={thumbnail.storagePath ?? thumbnail.id}
                             alt={item.note ?? item.fileName}
                             className="h-full w-full object-cover"
-                            loading={gridLayout === "story" ? "eager" : "lazy"}
+                            loading={index < 12 ? "eager" : "lazy"}
                           />
                         ) : item.kind === "video" ? (
                           <video
@@ -1592,7 +1598,7 @@ function MemoryInbox({
                     setSelectedMedia(null);
                     setDeleteError("");
                   }}
-                  className="focus-ring inline-flex max-w-[8rem] items-center justify-center gap-1.5 rounded-full border border-[rgba(124,58,49,0.24)] bg-white/58 px-3 py-2 text-[0.78rem] font-bold text-[var(--rosewood)] transition hover:bg-white"
+                  className={`${ADMIN_DANGER_ACTION_BUTTON_CLASS} max-w-[8rem] gap-1.5 px-3 py-2`}
                 >
                   <Trash2 className="size-3.5 shrink-0" />
                   <span className="truncate">{text.deleteMemory}</span>

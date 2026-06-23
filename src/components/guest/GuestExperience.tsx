@@ -59,6 +59,9 @@ type VoiceRecorder = {
   stream: MediaStream;
 };
 
+const GUEST_ACTION_BUTTON_CLASS =
+  "focus-ring inline-flex items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white/58 px-4 py-2.5 text-[0.78rem] font-bold text-[var(--ink)] transition hover:bg-white active:scale-[0.99] disabled:opacity-60";
+
 function cleanMimeType(mimeType: string) {
   return mimeType.split(";")[0]?.trim() || mimeType || "application/octet-stream";
 }
@@ -476,7 +479,7 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
                 <button
                   type="button"
                   onClick={() => setSubmitted(false)}
-                  className="focus-ring mt-6 rounded-full border border-[var(--line)] bg-white/65 px-5 py-3 text-sm font-bold transition hover:bg-white"
+                  className={`${GUEST_ACTION_BUTTON_CLASS} mt-6`}
                 >
                   {text.guest.sendAnother}
                 </button>
@@ -526,7 +529,7 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
                 <button
                   type="button"
                   onClick={recording ? stopRecording : startRecording}
-                  className="focus-ring rounded-full border border-[var(--line)] bg-white/65 px-5 py-3 text-sm font-bold transition hover:bg-white"
+                  className={GUEST_ACTION_BUTTON_CLASS}
                 >
                   <span className="inline-flex items-center justify-center gap-2">
                     {recording ? <Pause className="size-4" /> : <Mic className="size-4" />}
@@ -548,10 +551,10 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
               <button
                 type="submit"
                 disabled={submitting}
-                className="focus-ring rounded-full bg-[var(--ink)] px-6 py-4 text-sm font-bold text-[var(--paper-soft)] shadow-[0_16px_40px_rgba(31,23,18,0.22)] transition hover:bg-black disabled:opacity-60"
+                className={GUEST_ACTION_BUTTON_CLASS}
               >
                 <span className="inline-flex items-center justify-center gap-2">
-                  {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
+                  {submitting ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
                   {text.guest.send}
                 </span>
               </button>

@@ -103,7 +103,7 @@ export function LoginExperience() {
               <motion.div
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="rounded-[32px] border border-white/80 bg-[var(--paper-soft)] p-7 shadow-[0_24px_60px_rgba(58,40,25,0.13)]"
+                className="rounded-[32px] border border-white/80 bg-[var(--paper-soft)] p-7 shadow-none sm:shadow-[0_24px_60px_rgba(58,40,25,0.13)]"
               >
                 <MediaOrb
                   media={returningWedding.profileMedia}
@@ -119,7 +119,7 @@ export function LoginExperience() {
                   </h2>
                   <Link
                     href="/admin"
-                    className="focus-ring mt-7 inline-flex w-full items-center justify-center gap-3 rounded-full bg-[var(--ink)] px-6 py-4 text-sm font-bold text-[var(--paper-soft)] shadow-[0_16px_40px_rgba(31,23,18,0.22)] transition hover:translate-y-[-1px] hover:bg-black"
+                    className="focus-ring mt-7 inline-flex w-full items-center justify-center gap-3 rounded-full bg-[var(--ink)] px-6 py-4 text-sm font-bold text-[var(--paper-soft)] shadow-none transition hover:translate-y-[-1px] hover:bg-black sm:shadow-[0_16px_40px_rgba(31,23,18,0.22)]"
                   >
                     {text.login.enterStudio}
                     <ArrowRight className="size-4" />
@@ -138,7 +138,7 @@ export function LoginExperience() {
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 onSubmit={handleSubmit}
-                className="rounded-[32px] border border-white/80 bg-[var(--paper-soft)] p-6 shadow-[0_24px_60px_rgba(58,40,25,0.13)] sm:p-8"
+                className="rounded-[32px] border border-white/80 bg-[var(--paper-soft)] p-6 shadow-none sm:p-8 sm:shadow-[0_24px_60px_rgba(58,40,25,0.13)]"
               >
                 <div className="mb-8">
                   <p className="eyebrow flex items-center gap-2 text-[var(--champagne-deep)]">
@@ -200,7 +200,7 @@ export function LoginExperience() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="focus-ring mt-6 inline-flex w-full items-center justify-center gap-3 rounded-full bg-[var(--ink)] px-6 py-4 text-sm font-bold text-[var(--paper-soft)] shadow-[0_16px_40px_rgba(31,23,18,0.22)] transition hover:translate-y-[-1px] hover:bg-black disabled:opacity-60"
+                  className="focus-ring mt-6 inline-flex w-full items-center justify-center gap-3 rounded-full bg-[var(--ink)] px-6 py-4 text-sm font-bold text-[var(--paper-soft)] shadow-none transition hover:translate-y-[-1px] hover:bg-black disabled:opacity-60 sm:shadow-[0_16px_40px_rgba(31,23,18,0.22)]"
                 >
                   {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
                   {text.login.create}

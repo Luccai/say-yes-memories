@@ -12,13 +12,35 @@ type CachedMediaImageProps = {
   onReady?: () => void;
 };
 
-const MEDIA_CACHE_NAME = "say-yes-media-v1";
-const INSTANT_CACHE_PREFIX = "sayyes.media.instant.";
+const MEDIA_CACHE_NAME = "say-yes-media-v2";
+const OLD_MEDIA_CACHE_NAMES = ["say-yes-media-v1"];
+const INSTANT_CACHE_PREFIX = "sayyes.media.instant.v2.";
+const OLD_INSTANT_CACHE_PREFIXES = ["sayyes.media.instant."];
 const INSTANT_CACHE_MAX_BYTES = 650 * 1024;
 const INSTANT_CACHE_MAX_DIMENSION = 760;
+let oldMediaCacheCleanupStarted = false;
 
-function mediaCacheRequest(cacheKey: string) {
-  return new Request(`/__sayyes-media-cache/${encodeURIComponent(cacheKey)}`);
+function mediaSourceFingerprint(src: string) {
+  if (src.startsWith("data:")) {
+    return src.slice(0, 96);
+  }
+
+  try {
+    const url = new URL(src, window.location.origin);
+    const explicitVersion = url.searchParams.get("v");
+
+    return explicitVersion ? `${url.pathname}?v=${explicitVersion}` : url.pathname;
+  } catch {
+    return src.slice(0, 96);
+  }
+}
+
+function mediaCacheRequest(cacheKey: string, src: string) {
+  return new Request(
+    `/__sayyes-media-cache/${encodeURIComponent(cacheKey)}?source=${encodeURIComponent(
+      mediaSourceFingerprint(src),
+    )}`,
+  );
 }
 
 function instantCacheKey(cacheKey: string) {
@@ -34,6 +56,40 @@ function readInstantMediaCache(cacheKey?: string) {
     return window.localStorage.getItem(instantCacheKey(cacheKey)) ?? "";
   } catch {
     return "";
+  }
+}
+
+function cleanupOldMediaCaches() {
+  if (oldMediaCacheCleanupStarted || typeof window === "undefined") {
+    return;
+  }
+
+  oldMediaCacheCleanupStarted = true;
+
+  if ("caches" in window) {
+    void Promise.all(OLD_MEDIA_CACHE_NAMES.map((cacheName) => window.caches.delete(cacheName))).catch(
+      () => undefined,
+    );
+  }
+
+  try {
+    const oldKeys: string[] = [];
+
+    for (let index = 0; index < window.localStorage.length; index += 1) {
+      const key = window.localStorage.key(index);
+
+      if (
+        key &&
+        OLD_INSTANT_CACHE_PREFIXES.some((prefix) => key.startsWith(prefix)) &&
+        !key.startsWith(INSTANT_CACHE_PREFIX)
+      ) {
+        oldKeys.push(key);
+      }
+    }
+
+    oldKeys.forEach((key) => window.localStorage.removeItem(key));
+  } catch {
+    // Best effort only. Older browsers/private sessions can reject localStorage access.
   }
 }
 
@@ -141,6 +197,8 @@ export function CachedMediaImage({
     let cancelled = false;
     let objectUrl = "";
 
+    cleanupOldMediaCaches();
+
     async function loadImage() {
       const instantSrc = instantCache ? readInstantMediaCache(cacheKey) : "";
 
@@ -162,7 +220,7 @@ export function CachedMediaImage({
 
       try {
         const cache = await caches.open(MEDIA_CACHE_NAME);
-        const request = mediaCacheRequest(cacheKey);
+        const request = mediaCacheRequest(cacheKey, src);
         const cached = await cache.match(request);
 
         if (cached) {

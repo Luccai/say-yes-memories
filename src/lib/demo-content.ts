@@ -1,12 +1,14 @@
 import type { Wedding, WeddingMedia } from "@/lib/types";
 
 export const DEMO_GUEST_SLUG = "mary-john-demo";
-export const DEMO_CONTENT_VERSION = "demo-couple-png-v1";
+export const DEMO_CONTENT_VERSION = "demo-couple-png-v2";
 const DEMO_STORAGE_VERSION_KEY = "sayyes.demo.content.version";
 const DEMO_WEDDING_STORAGE_KEY = "sayyes.demo.wedding";
 const DEMO_MEDIA_STORAGE_KEY = "sayyes.demo.media";
 
 const demoPhotoBase = "/demo";
+const demoAssetVersion = DEMO_CONTENT_VERSION;
+const demoAssetUrl = (fileName: string) => `${demoPhotoBase}/${fileName}?v=${demoAssetVersion}`;
 const demoPhotos = [
   {
     id: "demo-photo-1",
@@ -391,7 +393,7 @@ export const demoWedding: Wedding = {
   updatedAt: "2026-06-20T17:00:00.000Z",
   profileMedia: {
     id: "demo-profile-media",
-    url: `${demoPhotoBase}/demo-couple-1.png`,
+    url: demoAssetUrl("demo-couple-1.png"),
     kind: "image",
     mimeType: "image/png",
     fileName: "demo-couple-1.png",
@@ -403,7 +405,7 @@ export const demoWedding: Wedding = {
 export const demoMedia: WeddingMedia[] = demoPhotos.map((photo) => ({
   id: photo.id,
   weddingId: demoWedding.id,
-  url: `${demoPhotoBase}/${photo.fileName}`,
+  url: demoAssetUrl(photo.fileName),
   kind: "image",
   mimeType: "image/png",
   fileName: photo.fileName,
@@ -413,7 +415,7 @@ export const demoMedia: WeddingMedia[] = demoPhotos.map((photo) => ({
   note: getDemoPhotoCopy(photo.id, "en")?.note,
   thumbnail: {
     id: `${photo.id}-thumb`,
-    url: `${demoPhotoBase}/${photo.fileName}`,
+    url: demoAssetUrl(photo.fileName),
     kind: "image",
     mimeType: "image/png",
     fileName: photo.fileName,

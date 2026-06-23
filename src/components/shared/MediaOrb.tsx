@@ -19,7 +19,7 @@ export function MediaOrb({ media, label, className = "" }: MediaOrbProps) {
 
   return (
     <div
-      className={`relative isolate overflow-hidden rounded-[999px] border border-white/70 bg-[var(--paper-soft)] shadow-[0_18px_45px_rgba(58,40,25,0.18)] [container-type:inline-size] ${className}`}
+      className={`relative isolate overflow-hidden rounded-[999px] border border-white/70 bg-[var(--paper-soft)] shadow-none [container-type:inline-size] sm:shadow-[0_18px_45px_rgba(58,40,25,0.18)] ${className}`}
     >
       {media?.kind === "image" ? (
         <CachedMediaImage

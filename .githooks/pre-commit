@@ -35,7 +35,7 @@ fi
 
 cd "$project_root"
 
-bunx eslint --fix --max-warnings=0 "${staged_files[@]}"
+bunx eslint --fix --max-warnings=0 --no-warn-ignored "${staged_files[@]}"
 
 git add -- "${staged_files[@]}"
 

@@ -3,7 +3,7 @@ import Image from "next/image";
 export function BrandMark({ compact = false }: { compact?: boolean }) {
   return (
     <div className="flex items-center gap-3">
-      <div className="relative grid size-12 place-items-center overflow-hidden rounded-full border border-[var(--line)] bg-[var(--paper-soft)] shadow-[0_12px_28px_rgba(58,40,25,0.1)]">
+      <div className="relative grid size-12 place-items-center overflow-hidden rounded-full border border-[var(--line)] bg-[var(--paper-soft)] shadow-none sm:shadow-[0_12px_28px_rgba(58,40,25,0.1)]">
         <Image
           src="/brand/logo.png"
           alt="Say Yes Digital"
