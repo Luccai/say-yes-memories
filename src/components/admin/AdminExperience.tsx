@@ -796,8 +796,6 @@ export function AdminExperience({
             <GuestPagePanel
               wedding={wedding}
               demoMode={demoMode}
-              onBack={() => setActivePanel("memories")}
-              text={adminText}
             />
           ) : null}
 
@@ -852,25 +850,25 @@ function AdminMenuButton({
       type="button"
       onClick={onClick}
       aria-current={active ? "page" : undefined}
-      className={`focus-ring group relative flex min-h-12 w-full items-center gap-3 overflow-hidden rounded-[20px] border px-3 py-2.5 text-left text-sm font-bold transition active:scale-[0.99] ${
+      className={`focus-ring group relative flex min-h-11 w-full items-center gap-2.5 overflow-hidden rounded-[18px] border px-2.5 py-2 text-left text-[0.82rem] font-extrabold transition active:scale-[0.99] sm:text-[0.84rem] ${
         active
           ? "border-[rgba(139,107,63,0.24)] bg-[linear-gradient(135deg,rgba(199,166,111,0.22),rgba(255,250,243,0.84))] text-[var(--ink)] shadow-[inset_0_1px_0_rgba(255,255,255,0.86),0_10px_22px_rgba(139,107,63,0.12)]"
           : "border-transparent bg-white/44 text-[var(--ink)] hover:border-[var(--line)] hover:bg-white/72"
       }`}
     >
       <span
-        className={`grid size-9 shrink-0 place-items-center rounded-full border transition ${
+        className={`grid size-8 shrink-0 place-items-center rounded-full border transition ${
           active
             ? "border-[rgba(139,107,63,0.26)] bg-[rgba(255,250,243,0.78)] text-[var(--champagne-deep)]"
             : "border-[var(--line)] bg-white/62 text-[var(--ink-soft)] group-hover:text-[var(--ink)]"
         }`}
       >
-        <Icon className="size-4" />
+        <Icon className="size-3.5" />
       </span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
       {active ? (
-        <span className="grid size-6 shrink-0 place-items-center rounded-full bg-[var(--ink)] text-[var(--paper-soft)]">
-          <Check className="size-3.5" />
+        <span className="grid size-5 shrink-0 place-items-center rounded-full bg-[var(--ink)] text-[var(--paper-soft)]">
+          <Check className="size-3" />
         </span>
       ) : (
         <ChevronRight className="size-4 shrink-0 text-[var(--ink-soft)] opacity-50 transition group-hover:translate-x-0.5 group-hover:opacity-80" />
@@ -1159,13 +1157,9 @@ function QrStudio({
 function GuestPagePanel({
   wedding,
   demoMode,
-  onBack,
-  text,
 }: {
   wedding: Wedding;
   demoMode: boolean;
-  onBack: () => void;
-  text: AdminCopy;
 }) {
   return (
     <motion.article
@@ -1174,14 +1168,6 @@ function GuestPagePanel({
       transition={{ delay: 0.05 }}
       className="overflow-hidden rounded-[34px] border border-white/75 bg-[rgba(255,250,243,0.76)] p-4 shadow-none backdrop-blur sm:p-5 sm:shadow-[0_20px_58px_rgba(58,40,25,0.1)]"
     >
-      <button
-        type="button"
-        onClick={onBack}
-        className="focus-ring mb-3 inline-flex items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white/62 px-4 py-2 text-xs font-bold text-[var(--ink)] transition hover:bg-white"
-      >
-        <ChevronLeft className="size-4" />
-        {text.backToDashboard}
-      </button>
       <GuestExperience wedding={wedding} demoMode={demoMode} embedded />
     </motion.article>
   );
@@ -1593,22 +1579,22 @@ function MemoryInbox({
                 {selectedMediaIndex + 1} / {media.length}
               </p>
               {media.length > 1 ? (
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={showPreviousMedia}
-                    className="focus-ring grid size-9 place-items-center rounded-full border border-[var(--line)] bg-white/58 text-[var(--ink-soft)] transition hover:bg-white hover:text-[var(--ink)]"
+                    className="focus-ring grid size-10 place-items-center rounded-full border border-[rgba(139,107,63,0.24)] bg-white/72 text-[var(--ink)] shadow-[0_10px_24px_rgba(58,40,25,0.12)] transition hover:bg-white active:scale-[0.98]"
                     aria-label={text.previousMedia}
                   >
-                    <ChevronLeft className="size-4" />
+                    <ChevronLeft className="size-5" />
                   </button>
                   <button
                     type="button"
                     onClick={showNextMedia}
-                    className="focus-ring grid size-9 place-items-center rounded-full border border-[var(--line)] bg-white/58 text-[var(--ink-soft)] transition hover:bg-white hover:text-[var(--ink)]"
+                    className="focus-ring grid size-10 place-items-center rounded-full border border-[rgba(139,107,63,0.24)] bg-white/72 text-[var(--ink)] shadow-[0_10px_24px_rgba(58,40,25,0.12)] transition hover:bg-white active:scale-[0.98]"
                     aria-label={text.nextMedia}
                   >
-                    <ChevronRight className="size-4" />
+                    <ChevronRight className="size-5" />
                   </button>
                 </div>
               ) : null}

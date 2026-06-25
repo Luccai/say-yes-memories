@@ -87,10 +87,12 @@ export function LoginExperience() {
                 <button
                   type="button"
                   onClick={() => setHelpOpen(true)}
-                  className="focus-ring inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-white/64 px-4 py-2 text-sm font-bold text-[var(--ink)] transition hover:bg-white"
+                  className="focus-ring inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-[rgba(139,107,63,0.22)] bg-white/70 px-2.5 py-2 text-[0.82rem] font-extrabold text-[var(--ink)] shadow-[0_10px_24px_rgba(58,40,25,0.1)] transition hover:bg-white active:scale-[0.99] sm:px-3.5 sm:text-sm"
                 >
-                  <HelpCircle className="size-4" />
-                  {text.help}
+                  <span className="grid size-7 shrink-0 place-items-center rounded-full border border-[var(--line)] bg-[rgba(255,250,243,0.76)] text-[var(--champagne-deep)]">
+                    <HelpCircle className="size-3.5" />
+                  </span>
+                  <span>{text.help}</span>
                 </button>
               </div>
             </div>
