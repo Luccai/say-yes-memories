@@ -82,7 +82,7 @@ export function LoginExperience() {
         <section className="flex items-center justify-center p-5 sm:p-8 lg:p-12">
           <div className="w-full max-w-[32rem]">
             <div className="mb-8">
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex items-start justify-between gap-3 sm:items-center sm:gap-4">
                 <BrandMark />
                 <button
                   type="button"
