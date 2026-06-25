@@ -2,10 +2,11 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, HelpCircle, Loader2, LockKeyhole, Sparkles, X } from "lucide-react";
+import { ArrowRight, Loader2, LockKeyhole, Sparkles } from "lucide-react";
 import { motion } from "motion/react";
 import type { Wedding } from "@/lib/types";
 import { BrandMark } from "@/components/shared/BrandMark";
+import { GuidanceDialog, HelpTriggerButton } from "@/components/shared/GuidanceDialog";
 import { MediaOrb } from "@/components/shared/MediaOrb";
 import { localizedError, useCopy } from "@/lib/i18n";
 
@@ -84,16 +85,7 @@ export function LoginExperience() {
             <div className="mb-8">
               <div className="flex items-start justify-between gap-3 sm:items-center sm:gap-4">
                 <BrandMark />
-                <button
-                  type="button"
-                  onClick={() => setHelpOpen(true)}
-                  className="focus-ring inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-[rgba(139,107,63,0.22)] bg-white/70 px-2.5 py-2 text-[0.82rem] font-extrabold text-[var(--ink)] shadow-[0_10px_24px_rgba(58,40,25,0.1)] transition hover:bg-white active:scale-[0.99] sm:px-3.5 sm:text-sm"
-                >
-                  <span className="grid size-7 shrink-0 place-items-center rounded-full border border-[var(--line)] bg-[rgba(255,250,243,0.76)] text-[var(--champagne-deep)]">
-                    <HelpCircle className="size-3.5" />
-                  </span>
-                  <span>{text.help}</span>
-                </button>
+                <HelpTriggerButton label={text.help} onClick={() => setHelpOpen(true)} />
               </div>
             </div>
 
@@ -220,54 +212,17 @@ export function LoginExperience() {
           </div>
         </section>
       </div>
-      {helpOpen ? (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-[rgba(31,23,18,0.42)] px-4 backdrop-blur-sm">
-          <motion.div
-            initial={{ opacity: 0, y: 12, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            className="w-full max-w-[34rem] rounded-[30px] border border-white/75 bg-[var(--paper-soft)] p-6 shadow-[0_28px_80px_rgba(31,23,18,0.24)]"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="help-title"
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="eyebrow text-[var(--champagne-deep)]">
-                  {text.login.helpEyebrow}
-                </p>
-                <h3
-                  id="help-title"
-                  className="mt-2 font-display text-fluid-heading font-semibold text-balance text-[var(--ink)]"
-                >
-                  {text.login.helpTitle}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setHelpOpen(false)}
-                className="focus-ring grid size-10 shrink-0 place-items-center rounded-full border border-[var(--line)] bg-white/66 transition hover:bg-white"
-                aria-label={text.close}
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-            <p className="mt-5 text-sm leading-7 text-[var(--ink-soft)]">{text.login.helpBody}</p>
-            <ol className="mt-5 grid gap-3">
-              {text.login.steps.map((step, index) => (
-                <li
-                  key={step}
-                  className="grid grid-cols-[2rem_1fr] gap-3 rounded-2xl border border-[var(--line)] bg-white/54 p-3 text-sm font-semibold"
-                >
-                  <span className="grid size-8 place-items-center rounded-full bg-[var(--ink)] text-xs text-[var(--paper-soft)]">
-                    {index + 1}
-                  </span>
-                  <span className="self-center">{step}</span>
-                </li>
-              ))}
-            </ol>
-          </motion.div>
-        </div>
-      ) : null}
+      <GuidanceDialog
+        open={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        closeLabel={text.close}
+        eyebrow={text.login.helpEyebrow}
+        title={text.login.helpTitle}
+        body={text.login.helpBody}
+        steps={text.login.steps}
+        cards={text.login.helpCards}
+        footer={text.login.helpFooter}
+      />
     </main>
   );
 }

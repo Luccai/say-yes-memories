@@ -20,6 +20,13 @@ Generated raw tokens are written under `private/` and must never be committed.
 - `/admin` - private couple studio
 - `/{coupleSlug}` - guest upload page
 
+## Help and localization
+
+Login, admin, demo, and guest upload screens include contextual Help dialogs.
+All fixed UI copy, including Help content, is served from `src/lib/i18n.ts`
+for `en`, `es`, `fr`, `de`, `pt`, and `zh`; unsupported browser languages
+fall back to English.
+
 ## Storage note
 
 Current V1 uses a local file-backed development store in `.local-data/`.

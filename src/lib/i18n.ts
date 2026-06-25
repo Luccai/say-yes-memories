@@ -78,8 +78,19 @@ export const copy = {
       helpEyebrow: "Private QR memory studio",
       helpTitle: "Need a hand opening your studio?",
       helpBody:
-        "After your Etsy purchase, this is where you set up your private QR page. Add your names, paste your token, and we will make a simple guest link for your wedding. Guests can send the little things you would normally miss: table photos, quick videos, voice notes, and sweet messages. No app, no public gallery, no mess.",
-      steps: ["Add your names and paste the token from Etsy.", "Make the page feel like you with a photo, date, and welcome note.", "Put the QR on your tables or share the link with your guests.", "Open your studio later and find everything waiting privately for you."],
+        "Use this page to activate the private studio from your Etsy purchase. Once it opens, you can personalize the guest page, create the QR link, and collect photos, videos, voice notes, and messages in one private place.",
+      steps: ["Find the Etsy token in your order email or digital download.", "Enter the couple names you want on the page. Use the same names if you come back with this token.", "Open the studio to add your photo, date, welcome note, QR code, and guest link.", "Share the QR or link with guests. Their uploads land privately in your studio."],
+      helpCards: [
+        {
+          title: "Private by default",
+          body: "Guest uploads are not public. Only the couple can see them inside the studio.",
+        },
+        {
+          title: "Token trouble?",
+          body: "Check the Etsy email and spelling. If the token was used before, enter the same couple names.",
+        },
+      ],
+      helpFooter: "Want to look around first? Open the Mary & John demo without using your real token.",
     },
     guest: {
       invited: "You are invited to share a memory for",
@@ -99,6 +110,26 @@ export const copy = {
       missingMedia: "Add a photo, video, or voice note.",
       micDenied: "Microphone permission was not granted. You can choose an audio file instead.",
       uploadFailed: "Upload could not be completed.",
+      helpEyebrow: "Guest memory page",
+      helpTitle: "What can I send?",
+      helpBody:
+        "This page lets you send a private wedding memory straight to the couple. You can add a photo, video, voice note, and a short message without installing an app.",
+      helpSteps: ["Add your name so the couple knows who sent the memory.", "Choose a photo, video, or audio file, or record a voice note if your browser allows it.", "Add an optional note for context, a wish, or a little story.", "Send it once. It goes privately to the couple's studio."],
+      helpCards: [
+        {
+          title: "Private upload",
+          body: "Other guests will not see what you send here.",
+        },
+        {
+          title: "No app needed",
+          body: "If voice recording is blocked, choose an audio file instead.",
+        },
+      ],
+      demoHelpCard: {
+        title: "Demo mode",
+        body: "Demo uploads stay on this device and only show how the flow works.",
+      },
+      helpFooter: "If the couple paused uploads, this page will show a closed message instead of the form.",
     },
     admin: {
       menu: "Studio menu",
@@ -162,6 +193,26 @@ export const copy = {
       next: "Next",
       yes: "Yes",
       no: "No",
+      helpEyebrow: "Studio help",
+      helpTitle: "What should I set up first?",
+      helpBody:
+        "This studio is the private dashboard for the couple. Set up the guest page, share the QR code, and come back here to review everything guests send.",
+      helpSteps: ["Guest Memories is where new photos, videos, voice notes, and messages arrive.", "Wedding Page controls the couple names, profile photo, date, welcome note, and upload lock.", "QR + guest link gives you the link and printable QR for tables, signs, or messages.", "View Guest Page shows what guests will see after scanning the QR."],
+      helpCards: [
+        {
+          title: "Private inbox",
+          body: "Guests do not see each other's uploads. The studio is for the couple.",
+        },
+        {
+          title: "Printed QR stays valid",
+          body: "Changing names or notes updates the page without changing the existing guest link.",
+        },
+      ],
+      demoHelpCard: {
+        title: "Demo mode",
+        body: "Demo edits and uploads stay in this browser and do not touch real storage.",
+      },
+      helpFooter: "Use the menu button to switch sections. Download and delete actions live inside each memory.",
       logout: "Logout",
     },
   },
@@ -211,8 +262,19 @@ export const copy = {
       helpEyebrow: "Estudio privado de recuerdos con QR",
       helpTitle: "Un rincón tranquilo para los recuerdos de su boda.",
       helpBody:
-        "Después de comprar en Etsy, aquí preparan su página QR privada. Escriben sus nombres, pegan el token y creamos un enlace sencillo para la boda. Sus invitados pueden enviar fotos de la mesa, videos cortos, notas de voz y mensajes bonitos. Sin app, sin galería pública y sin desorden.",
-      steps: ["Agreguen sus nombres y peguen el token de Etsy.", "Denle su estilo con una foto, fecha y mensaje de bienvenida.", "Pongan el QR en las mesas o compartan el enlace.", "Vuelvan al estudio y encuentren todo guardado en privado."],
+        "Usen esta página para activar el estudio privado de su compra en Etsy. Después podrán personalizar la página de invitados, crear el QR y reunir fotos, videos, audios y mensajes en un solo lugar privado.",
+      steps: ["Busquen el token de Etsy en el correo del pedido o la descarga digital.", "Escriban los nombres de la pareja como quieren verlos en la página. Usen los mismos nombres si vuelven con este token.", "Abran el estudio para agregar foto, fecha, mensaje, QR y enlace de invitados.", "Compartan el QR o enlace con invitados. Sus cargas llegan en privado al estudio."],
+      helpCards: [
+        {
+          title: "Privado por defecto",
+          body: "Las cargas de invitados no son públicas. Solo la pareja las ve en el estudio.",
+        },
+        {
+          title: "¿Problemas con el token?",
+          body: "Revisen el correo de Etsy y la escritura. Si ya se usó, entren con los mismos nombres.",
+        },
+      ],
+      helpFooter: "¿Quieren mirar primero? Abran la demo de Mary & John sin usar su token real.",
     },
     guest: {
       invited: "Estás invitado a compartir un recuerdo para",
@@ -232,6 +294,26 @@ export const copy = {
       missingMedia: "Agrega una foto, video o nota de voz.",
       micDenied: "No se concedió permiso de micrófono. Puedes elegir un archivo de audio.",
       uploadFailed: "No se pudo completar la carga.",
+      helpEyebrow: "Página de recuerdos",
+      helpTitle: "¿Qué puedo enviar?",
+      helpBody:
+        "Esta página te permite enviar un recuerdo privado directamente a la pareja. Puedes agregar foto, video, nota de voz y un mensaje corto sin instalar ninguna app.",
+      helpSteps: ["Escribe tu nombre para que la pareja sepa quién envió el recuerdo.", "Elige una foto, video o audio, o graba una nota de voz si el navegador lo permite.", "Agrega una nota opcional con contexto, un deseo o una pequeña historia.", "Envíalo una vez. Llega en privado al estudio de la pareja."],
+      helpCards: [
+        {
+          title: "Carga privada",
+          body: "Otros invitados no verán lo que envíes aquí.",
+        },
+        {
+          title: "Sin app",
+          body: "Si la grabación de voz se bloquea, puedes elegir un archivo de audio.",
+        },
+      ],
+      demoHelpCard: {
+        title: "Modo demo",
+        body: "Las cargas de demo quedan en este dispositivo y solo muestran cómo funciona el flujo.",
+      },
+      helpFooter: "Si la pareja pausó las cargas, esta página mostrará un mensaje cerrado en lugar del formulario.",
     },
     admin: {
       menu: "Menú del estudio",
@@ -294,6 +376,26 @@ export const copy = {
       next: "Siguiente",
       yes: "Sí",
       no: "No",
+      helpEyebrow: "Ayuda del estudio",
+      helpTitle: "¿Qué conviene configurar primero?",
+      helpBody:
+        "Este estudio es el panel privado de la pareja. Configuren la página de invitados, compartan el QR y vuelvan aquí para revisar todo lo que envíen los invitados.",
+      helpSteps: ["Recuerdos de invitados es donde llegan fotos, videos, audios y mensajes nuevos.", "Página de la boda controla nombres, foto, fecha, mensaje y bloqueo de cargas.", "QR + enlace entrega el link y el QR imprimible para mesas, carteles o mensajes.", "Abrir página muestra lo que verán los invitados después de escanear el QR."],
+      helpCards: [
+        {
+          title: "Bandeja privada",
+          body: "Los invitados no ven las cargas de otros. El estudio es para la pareja.",
+        },
+        {
+          title: "El QR impreso sigue válido",
+          body: "Cambiar nombres o mensajes actualiza la página sin cambiar el enlace existente.",
+        },
+      ],
+      demoHelpCard: {
+        title: "Modo demo",
+        body: "Los cambios y cargas de demo quedan en este navegador y no tocan almacenamiento real.",
+      },
+      helpFooter: "Usa el menú para cambiar de sección. Descargar y eliminar están dentro de cada recuerdo.",
       logout: "Cerrar sesión",
     },
   },
@@ -343,8 +445,19 @@ export const copy = {
       helpEyebrow: "Studio privé de souvenirs par QR",
       helpTitle: "Un petit espace calme pour vos souvenirs de mariage.",
       helpBody:
-        "Après votre achat Etsy, c'est ici que vous préparez votre page QR privée. Ajoutez vos prénoms, collez le token et nous créons un lien simple pour vos invités. Ils peuvent envoyer les petits moments qu'on rate souvent : photos de table, courtes vidéos, messages vocaux et mots doux. Pas d'app, pas de galerie publique, pas de bazar.",
-      steps: ["Ajoutez vos prénoms et collez le token Etsy.", "Personnalisez la page avec une photo, la date et un message.", "Placez le QR sur vos tables ou partagez le lien.", "Revenez dans le studio et retrouvez tout en privé."],
+        "Utilisez cette page pour activer le studio privé lié à votre achat Etsy. Vous pourrez ensuite personnaliser la page invités, créer le QR et rassembler photos, vidéos, messages vocaux et mots dans un espace privé.",
+      steps: ["Retrouvez le token Etsy dans l'e-mail de commande ou le téléchargement numérique.", "Saisissez les prénoms du couple comme vous voulez les afficher. Réutilisez les mêmes prénoms si vous revenez avec ce token.", "Ouvrez le studio pour ajouter photo, date, message, QR et lien invité.", "Partagez le QR ou le lien. Les envois arrivent en privé dans votre studio."],
+      helpCards: [
+        {
+          title: "Privé par défaut",
+          body: "Les envois invités ne sont pas publics. Seul le couple les voit dans le studio.",
+        },
+        {
+          title: "Token bloqué ?",
+          body: "Vérifiez l'e-mail Etsy et l'orthographe. S'il a déjà été utilisé, entrez les mêmes prénoms.",
+        },
+      ],
+      helpFooter: "Vous voulez explorer d'abord ? Ouvrez la démo Mary & John sans utiliser votre vrai token.",
     },
     guest: {
       invited: "Vous êtes invité à partager un souvenir pour",
@@ -364,6 +477,26 @@ export const copy = {
       missingMedia: "Ajoutez une photo, une vidéo ou un message vocal.",
       micDenied: "L'autorisation du micro a été refusée. Vous pouvez choisir un fichier audio.",
       uploadFailed: "L'envoi n'a pas pu être terminé.",
+      helpEyebrow: "Page souvenir invité",
+      helpTitle: "Que puis-je envoyer ?",
+      helpBody:
+        "Cette page vous permet d'envoyer un souvenir privé directement au couple. Vous pouvez ajouter une photo, une vidéo, un message vocal et un court mot sans installer d'application.",
+      helpSteps: ["Ajoutez votre nom pour que le couple sache qui a envoyé le souvenir.", "Choisissez une photo, une vidéo ou un audio, ou enregistrez un message vocal si le navigateur l'autorise.", "Ajoutez un mot facultatif avec le contexte, un souhait ou une petite histoire.", "Envoyez une seule fois. Le souvenir arrive en privé dans le studio du couple."],
+      helpCards: [
+        {
+          title: "Envoi privé",
+          body: "Les autres invités ne verront pas ce que vous envoyez ici.",
+        },
+        {
+          title: "Aucune app",
+          body: "Si l'enregistrement vocal est bloqué, choisissez plutôt un fichier audio.",
+        },
+      ],
+      demoHelpCard: {
+        title: "Mode démo",
+        body: "Les envois de démo restent sur cet appareil et montrent seulement le fonctionnement.",
+      },
+      helpFooter: "Si le couple a mis les envois en pause, cette page affichera un message fermé au lieu du formulaire.",
     },
     admin: {
       menu: "Menu du studio",
@@ -426,6 +559,26 @@ export const copy = {
       next: "Suivant",
       yes: "Oui",
       no: "Non",
+      helpEyebrow: "Aide du studio",
+      helpTitle: "Que configurer en premier ?",
+      helpBody:
+        "Ce studio est le tableau de bord privé du couple. Préparez la page invités, partagez le QR puis revenez ici pour consulter tout ce que les invités envoient.",
+      helpSteps: ["Souvenirs invités reçoit les nouvelles photos, vidéos, messages vocaux et notes.", "Page du mariage contrôle les prénoms, la photo, la date, le message et le verrouillage des envois.", "QR + lien fournit le lien et le QR imprimable pour tables, affiches ou messages.", "Ouvrir la page montre ce que les invités verront après avoir scanné le QR."],
+      helpCards: [
+        {
+          title: "Boîte privée",
+          body: "Les invités ne voient pas les envois des autres. Le studio est réservé au couple.",
+        },
+        {
+          title: "Le QR imprimé reste valide",
+          body: "Modifier les noms ou messages met la page à jour sans changer le lien existant.",
+        },
+      ],
+      demoHelpCard: {
+        title: "Mode démo",
+        body: "Les modifications et envois de démo restent dans ce navigateur et ne touchent pas le stockage réel.",
+      },
+      helpFooter: "Utilisez le menu pour changer de section. Télécharger et supprimer se trouvent dans chaque souvenir.",
       logout: "Déconnexion",
     },
   },
@@ -475,8 +628,19 @@ export const copy = {
       helpEyebrow: "Privates QR-Erinnerungsstudio",
       helpTitle: "Ein ruhiger Ort für eure Hochzeitsmomente.",
       helpBody:
-        "Nach eurem Etsy-Kauf richtet ihr hier eure private QR-Seite ein. Namen eintragen, Token einfügen, und wir machen daraus einen einfachen Gästelink. Eure Gäste können Tischfotos, kurze Videos, Sprachnachrichten und liebe Nachrichten senden. Keine App, keine öffentliche Galerie, kein Chaos.",
-      steps: ["Namen eintragen und den Etsy-Token einfügen.", "Die Seite mit Foto, Datum und Begrüßung persönlich machen.", "QR auf die Tische legen oder den Link teilen.", "Später ins Studio zurückkommen und alles privat wiederfinden."],
+        "Aktiviert hier das private Studio aus eurem Etsy-Kauf. Danach könnt ihr die Gästeseite anpassen, QR und Link erstellen und Fotos, Videos, Sprachnachrichten und Nachrichten an einem privaten Ort sammeln.",
+      steps: ["Findet den Etsy-Token in der Bestell-E-Mail oder im digitalen Download.", "Gebt die Paar-Namen so ein, wie sie auf der Seite erscheinen sollen. Nutzt dieselben Namen, wenn ihr mit diesem Token zurückkommt.", "Öffnet das Studio und ergänzt Foto, Datum, Begrüßung, QR-Code und Gästelink.", "Teilt QR oder Link mit Gästen. Ihre Uploads landen privat in eurem Studio."],
+      helpCards: [
+        {
+          title: "Standardmäßig privat",
+          body: "Gäste-Uploads sind nicht öffentlich. Nur das Paar sieht sie im Studio.",
+        },
+        {
+          title: "Token-Problem?",
+          body: "Prüft Etsy-E-Mail und Schreibweise. Wurde der Token schon genutzt, gebt dieselben Namen ein.",
+        },
+      ],
+      helpFooter: "Erst umsehen? Öffnet die Mary & John Demo, ohne euren echten Token zu verwenden.",
     },
     guest: {
       invited: "Teile eine Erinnerung für",
@@ -496,6 +660,26 @@ export const copy = {
       missingMedia: "Füge ein Foto, Video oder eine Sprachnachricht hinzu.",
       micDenied: "Mikrofonzugriff wurde nicht erlaubt. Du kannst stattdessen eine Audiodatei wählen.",
       uploadFailed: "Der Upload konnte nicht abgeschlossen werden.",
+      helpEyebrow: "Gäste-Erinnerungsseite",
+      helpTitle: "Was kann ich senden?",
+      helpBody:
+        "Auf dieser Seite sendest du eine private Hochzeitserinnerung direkt an das Paar. Du kannst Foto, Video, Sprachnachricht und eine kurze Nachricht hinzufügen, ohne eine App zu installieren.",
+      helpSteps: ["Gib deinen Namen ein, damit das Paar weiß, von wem die Erinnerung kommt.", "Wähle ein Foto, Video oder Audio aus oder nimm eine Sprachnachricht auf, wenn der Browser es erlaubt.", "Füge optional eine Notiz mit Kontext, Wunsch oder kleiner Geschichte hinzu.", "Sende einmal. Die Erinnerung landet privat im Studio des Paars."],
+      helpCards: [
+        {
+          title: "Privater Upload",
+          body: "Andere Gäste sehen nicht, was du hier sendest.",
+        },
+        {
+          title: "Keine App nötig",
+          body: "Wenn die Sprachaufnahme blockiert ist, wähle stattdessen eine Audiodatei.",
+        },
+      ],
+      demoHelpCard: {
+        title: "Demo-Modus",
+        body: "Demo-Uploads bleiben auf diesem Gerät und zeigen nur, wie der Ablauf funktioniert.",
+      },
+      helpFooter: "Wenn das Paar Uploads pausiert hat, zeigt diese Seite statt des Formulars eine geschlossene Meldung.",
     },
     admin: {
       menu: "Studio-Menü",
@@ -558,6 +742,26 @@ export const copy = {
       next: "Weiter",
       yes: "Ja",
       no: "Nein",
+      helpEyebrow: "Studio-Hilfe",
+      helpTitle: "Was sollte zuerst eingerichtet werden?",
+      helpBody:
+        "Dieses Studio ist das private Dashboard des Paars. Richtet die Gästeseite ein, teilt den QR-Code und kommt zurück, um alles zu prüfen, was Gäste senden.",
+      helpSteps: ["Gäste-Erinnerungen zeigt neue Fotos, Videos, Sprachnachrichten und Nachrichten.", "Hochzeitsseite steuert Namen, Profilfoto, Datum, Begrüßung und Upload-Sperre.", "QR + Link liefert den Link und druckbaren QR für Tische, Schilder oder Nachrichten.", "Seite öffnen zeigt, was Gäste nach dem Scannen des QR sehen."],
+      helpCards: [
+        {
+          title: "Privater Eingang",
+          body: "Gäste sehen die Uploads anderer nicht. Das Studio ist für das Paar.",
+        },
+        {
+          title: "Gedruckter QR bleibt gültig",
+          body: "Namen oder Nachrichten ändern die Seite, ohne den bestehenden Gästelink zu ändern.",
+        },
+      ],
+      demoHelpCard: {
+        title: "Demo-Modus",
+        body: "Demo-Änderungen und Uploads bleiben in diesem Browser und berühren keinen echten Speicher.",
+      },
+      helpFooter: "Über das Menü wechselst du Bereiche. Download und Löschen liegen in jeder Erinnerung.",
       logout: "Abmelden",
     },
   },
@@ -607,8 +811,19 @@ export const copy = {
       helpEyebrow: "Estúdio privado de memórias por QR",
       helpTitle: "Um cantinho tranquilo para as memórias do casamento.",
       helpBody:
-        "Depois da compra na Etsy, é aqui que vocês montam a página QR privada. Coloquem os nomes, colem o token e a gente cria um link simples para os convidados. Eles podem enviar fotos da mesa, vídeos rápidos, áudios e mensagens carinhosas. Sem app, sem galeria pública e sem bagunça.",
-      steps: ["Adicionem os nomes e colem o token da Etsy.", "Deixem a página com a cara de vocês usando foto, data e mensagem.", "Coloquem o QR nas mesas ou compartilhem o link.", "Voltem ao estúdio e encontrem tudo guardado em privado."],
+        "Use esta página para ativar o estúdio privado da compra na Etsy. Depois vocês podem personalizar a página dos convidados, criar o QR e reunir fotos, vídeos, áudios e mensagens em um só lugar privado.",
+      steps: ["Encontrem o token da Etsy no e-mail do pedido ou no download digital.", "Escrevam os nomes do casal como querem ver na página. Usem os mesmos nomes se voltarem com este token.", "Abram o estúdio para adicionar foto, data, mensagem, QR e link dos convidados.", "Compartilhem o QR ou link. Os envios chegam em privado ao estúdio."],
+      helpCards: [
+        {
+          title: "Privado por padrão",
+          body: "Os envios dos convidados não são públicos. Só o casal vê dentro do estúdio.",
+        },
+        {
+          title: "Problema com o token?",
+          body: "Confiram o e-mail da Etsy e a escrita. Se já foi usado, entrem com os mesmos nomes.",
+        },
+      ],
+      helpFooter: "Querem olhar primeiro? Abram a demo Mary & John sem usar o token real.",
     },
     guest: {
       invited: "Você foi convidado a enviar uma memória para",
@@ -628,6 +843,26 @@ export const copy = {
       missingMedia: "Adicione uma foto, vídeo ou áudio.",
       micDenied: "Permissão de microfone negada. Você pode escolher um arquivo de áudio.",
       uploadFailed: "Não foi possível concluir o envio.",
+      helpEyebrow: "Página de memórias",
+      helpTitle: "O que posso enviar?",
+      helpBody:
+        "Esta página permite enviar uma memória privada direto para o casal. Você pode adicionar foto, vídeo, áudio e uma mensagem curta sem instalar nenhum app.",
+      helpSteps: ["Adicione seu nome para o casal saber quem enviou a memória.", "Escolha uma foto, vídeo ou áudio, ou grave uma mensagem de voz se o navegador permitir.", "Adicione uma nota opcional com contexto, desejo ou uma pequena história.", "Envie uma vez. A memória chega em privado ao estúdio do casal."],
+      helpCards: [
+        {
+          title: "Envio privado",
+          body: "Outros convidados não verão o que você enviar aqui.",
+        },
+        {
+          title: "Sem app",
+          body: "Se a gravação de voz for bloqueada, escolha um arquivo de áudio.",
+        },
+      ],
+      demoHelpCard: {
+        title: "Modo demo",
+        body: "Os envios de demo ficam neste dispositivo e só mostram como o fluxo funciona.",
+      },
+      helpFooter: "Se o casal pausou os envios, esta página mostrará uma mensagem fechada no lugar do formulário.",
     },
     admin: {
       menu: "Menu do estúdio",
@@ -690,6 +925,26 @@ export const copy = {
       next: "Próximo",
       yes: "Sim",
       no: "Não",
+      helpEyebrow: "Ajuda do estúdio",
+      helpTitle: "O que configurar primeiro?",
+      helpBody:
+        "Este estúdio é o painel privado do casal. Configurem a página dos convidados, compartilhem o QR e voltem aqui para revisar tudo que os convidados enviarem.",
+      helpSteps: ["Memórias dos convidados é onde chegam novas fotos, vídeos, áudios e mensagens.", "Página do casamento controla nomes, foto, data, mensagem e bloqueio de envios.", "QR + link oferece o link e o QR imprimível para mesas, placas ou mensagens.", "Abrir página mostra o que os convidados verão depois de escanear o QR."],
+      helpCards: [
+        {
+          title: "Caixa privada",
+          body: "Convidados não veem envios de outras pessoas. O estúdio é para o casal.",
+        },
+        {
+          title: "QR impresso continua válido",
+          body: "Alterar nomes ou mensagens atualiza a página sem mudar o link existente.",
+        },
+      ],
+      demoHelpCard: {
+        title: "Modo demo",
+        body: "Alterações e envios de demo ficam neste navegador e não usam armazenamento real.",
+      },
+      helpFooter: "Use o menu para trocar de seção. Baixar e excluir ficam dentro de cada memória.",
       logout: "Sair",
     },
   },
@@ -739,8 +994,19 @@ export const copy = {
       helpEyebrow: "私人二维码婚礼回忆工作室",
       helpTitle: "一个安静保存婚礼回忆的小空间。",
       helpBody:
-        "在 Etsy 购买后，你们可以在这里设置私人二维码页面。填写名字，粘贴令牌，我们会生成一个简单的宾客链接。宾客可以发送餐桌照片、短视频、语音和祝福留言。不用安装应用，不公开展示，也不会乱成一团。",
-      steps: ["填写你们的名字，并粘贴 Etsy 令牌。", "用照片、日期和欢迎语让页面更像你们。", "把二维码放在桌上，或直接分享链接。", "之后回到工作室，私密查看所有回忆。"],
+        "在这里激活你们从 Etsy 购买的私人工作室。打开后可以设置宾客页面、生成二维码链接，并在一个私密空间收集照片、视频、语音和留言。",
+      steps: ["在 Etsy 订单邮件或数字下载中找到令牌。", "填写希望显示在页面上的新人姓名。之后用同一个令牌回来时，也请使用相同姓名。", "进入工作室，添加照片、日期、欢迎语、二维码和宾客链接。", "把二维码或链接分享给宾客。他们上传的内容会私密进入你们的工作室。"],
+      helpCards: [
+        {
+          title: "默认私密",
+          body: "宾客上传不会公开展示，只有新人能在工作室里看到。",
+        },
+        {
+          title: "令牌有问题？",
+          body: "请检查 Etsy 邮件和拼写。如果令牌之前用过，请输入相同的新人姓名。",
+        },
+      ],
+      helpFooter: "想先看看效果？可以打开 Mary & John 演示，不需要使用真实令牌。",
     },
     guest: {
       invited: "邀请你为他们分享一段回忆",
@@ -760,6 +1026,26 @@ export const copy = {
       missingMedia: "请添加照片、视频或语音。",
       micDenied: "未获得麦克风权限。你也可以选择音频文件。",
       uploadFailed: "上传未能完成。",
+      helpEyebrow: "宾客回忆页面",
+      helpTitle: "我可以发送什么？",
+      helpBody:
+        "这个页面可以把婚礼回忆私密发送给新人。你可以上传照片、视频、语音和一段简短留言，不需要安装应用。",
+      helpSteps: ["填写你的姓名，让新人知道是谁发送的。", "选择照片、视频或音频；如果浏览器允许，也可以录制语音。", "可选填写一段说明、祝福或小故事。", "发送一次即可。内容会私密进入新人的工作室。"],
+      helpCards: [
+        {
+          title: "私密上传",
+          body: "其他宾客不会看到你在这里发送的内容。",
+        },
+        {
+          title: "无需应用",
+          body: "如果语音录制被阻止，可以改选一个音频文件。",
+        },
+      ],
+      demoHelpCard: {
+        title: "演示模式",
+        body: "演示上传只保存在这台设备上，用来展示流程如何工作。",
+      },
+      helpFooter: "如果新人暂停了上传，这个页面会显示关闭提示，而不是表单。",
     },
     admin: {
       menu: "工作室菜单",
@@ -822,6 +1108,26 @@ export const copy = {
       next: "下一个",
       yes: "是",
       no: "否",
+      helpEyebrow: "工作室帮助",
+      helpTitle: "应该先设置什么？",
+      helpBody:
+        "这个工作室是新人的私密后台。你们可以设置宾客页面、分享二维码，并回来查看宾客发送的所有内容。",
+      helpSteps: ["宾客回忆会显示新收到的照片、视频、语音和留言。", "婚礼页面用于管理姓名、头像、日期、欢迎语和上传开关。", "二维码 + 链接提供可打印的二维码和宾客链接，用于桌卡、标牌或消息。", "打开页面可以查看宾客扫码后看到的内容。"],
+      helpCards: [
+        {
+          title: "私密收件箱",
+          body: "宾客不会看到其他人的上传。工作室只给新人查看。",
+        },
+        {
+          title: "已打印二维码仍然有效",
+          body: "修改姓名或留言会更新页面，但不会改变原来的宾客链接。",
+        },
+      ],
+      demoHelpCard: {
+        title: "演示模式",
+        body: "演示修改和上传只保存在这个浏览器中，不会写入真实存储。",
+      },
+      helpFooter: "使用菜单切换区域。下载和删除操作在每段回忆里。",
       logout: "退出",
     },
   },

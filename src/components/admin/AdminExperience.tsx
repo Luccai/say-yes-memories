@@ -42,6 +42,7 @@ import {
   CachedMediaImage,
   storeInstantMediaCache,
 } from "@/components/shared/CachedMediaImage";
+import { GuidanceDialog, HelpTriggerButton } from "@/components/shared/GuidanceDialog";
 import { MediaOrb } from "@/components/shared/MediaOrb";
 import { getSupabaseBrowser } from "@/lib/supabase/browser";
 import { localizedError, useCopy, useLocale } from "@/lib/i18n";
@@ -268,6 +269,7 @@ export function AdminExperience({
   const [gridLayoutHydrated, setGridLayoutHydrated] = useState(false);
   const [activePanel, setActivePanel] = useState<AdminPanel>("memories");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [profileUploading, setProfileUploading] = useState(false);
   const demoHydratedRef = useRef(!demoMode);
@@ -276,6 +278,9 @@ export function AdminExperience({
   const [menuPosition, setMenuPosition] = useState({ top: 20, right: 16 });
   const text = useCopy();
   const adminText = text.admin;
+  const adminHelpCards = demoMode
+    ? [...adminText.helpCards, adminText.demoHelpCard]
+    : adminText.helpCards;
 
   const eventSlug = demoMode ? DEMO_GUEST_SLUG : wedding.slug;
   const eventUrl = `${origin || "https://your-domain.com"}/${eventSlug}`;
@@ -691,16 +696,23 @@ export function AdminExperience({
                 {wedding.coupleName}
               </h1>
             </div>
-            <button
-              ref={menuButtonRef}
-              type="button"
-              onClick={() => setMenuOpen((current) => !current)}
-              className="focus-ring grid size-12 shrink-0 place-items-center rounded-full border border-[var(--line)] bg-white/62 text-[var(--ink)] shadow-none transition hover:bg-white sm:shadow-[0_12px_28px_rgba(58,40,25,0.1)]"
-              aria-expanded={menuOpen}
-              aria-label={adminText.menu}
-            >
-              <Menu className="size-5" />
-            </button>
+            <div className="flex shrink-0 items-center gap-2">
+              <HelpTriggerButton
+                label={text.help}
+                onClick={() => setHelpOpen(true)}
+                mobileIconOnly
+              />
+              <button
+                ref={menuButtonRef}
+                type="button"
+                onClick={() => setMenuOpen((current) => !current)}
+                className="focus-ring grid size-12 shrink-0 place-items-center rounded-full border border-[var(--line)] bg-white/62 text-[var(--ink)] shadow-none transition hover:bg-white sm:shadow-[0_12px_28px_rgba(58,40,25,0.1)]"
+                aria-expanded={menuOpen}
+                aria-label={adminText.menu}
+              >
+                <Menu className="size-5" />
+              </button>
+            </div>
           </div>
         </header>
 
@@ -830,6 +842,17 @@ export function AdminExperience({
           </motion.p>
         ) : null}
       </div>
+      <GuidanceDialog
+        open={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        closeLabel={text.close}
+        eyebrow={adminText.helpEyebrow}
+        title={adminText.helpTitle}
+        body={adminText.helpBody}
+        steps={adminText.helpSteps}
+        cards={adminHelpCards}
+        footer={adminText.helpFooter}
+      />
     </main>
   );
 }

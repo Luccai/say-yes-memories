@@ -4,6 +4,7 @@ import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "re
 import { Check, Loader2, Mic, Pause, UploadCloud } from "lucide-react";
 import { motion } from "motion/react";
 import type { MediaKind, PublicWedding } from "@/lib/types";
+import { GuidanceDialog, HelpTriggerButton } from "@/components/shared/GuidanceDialog";
 import { MediaOrb } from "@/components/shared/MediaOrb";
 import { localizedError, useCopy, useLocale } from "@/lib/i18n";
 import {
@@ -119,6 +120,7 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
+  const [helpOpen, setHelpOpen] = useState(false);
   const [recording, setRecording] = useState(false);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [recordedUrl, setRecordedUrl] = useState("");
@@ -414,43 +416,50 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
   }
 
   const Shell: "div" | "main" = embedded ? "div" : "main";
+  const guestHelpCards = demoMode
+    ? [...text.guest.helpCards, text.guest.demoHelpCard]
+    : text.guest.helpCards;
 
   return (
-    <Shell
-      className={
-        embedded
-          ? "overflow-x-clip text-[var(--ink)]"
-          : "min-h-[100dvh] overflow-x-clip px-4 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-5 text-[var(--ink)]"
-      }
-    >
-      <div className="mx-auto max-w-[34rem] min-w-0 overflow-x-clip">
-        <motion.section
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="paper-grain overflow-hidden rounded-[36px] border border-white/75 bg-[var(--paper-soft)] p-6 text-center shadow-none sm:shadow-[var(--shadow-soft)]"
-        >
-          <div className="relative z-10">
-            <MediaOrb
-              media={displayWedding.profileMedia}
-              label={displayWedding.coupleName}
-              className="mx-auto h-40 w-32"
-            />
-            <p className="eyebrow mt-6 text-[var(--champagne-deep)]">
-              {text.guest.invited}
-            </p>
-            <h1 className="mt-3 font-display text-fluid-display font-semibold text-balance text-[var(--ink)]">
-              {displayWedding.coupleName}
-            </h1>
-            {displayWedding.eventDate ? (
-              <p className="mt-4 text-sm font-semibold tracking-wide text-[var(--ink-soft)]">
-                {displayWedding.eventDate}
+    <>
+      <Shell
+        className={
+          embedded
+            ? "overflow-x-clip text-[var(--ink)]"
+            : "min-h-[100dvh] overflow-x-clip px-4 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-5 text-[var(--ink)]"
+        }
+      >
+        <div className="mx-auto max-w-[34rem] min-w-0 overflow-x-clip">
+          <motion.section
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="paper-grain overflow-hidden rounded-[36px] border border-white/75 bg-[var(--paper-soft)] p-6 text-center shadow-none sm:shadow-[var(--shadow-soft)]"
+          >
+            <div className="relative z-10">
+              <div className="mb-4 flex justify-end">
+                <HelpTriggerButton label={text.help} onClick={() => setHelpOpen(true)} />
+              </div>
+              <MediaOrb
+                media={displayWedding.profileMedia}
+                label={displayWedding.coupleName}
+                className="mx-auto h-40 w-32"
+              />
+              <p className="eyebrow mt-6 text-[var(--champagne-deep)]">
+                {text.guest.invited}
               </p>
-            ) : null}
-            <p className="mx-auto mt-5 max-w-sm text-pretty text-sm leading-relaxed text-[var(--ink-soft)]">
-              {displayWedding.welcomeNote}
-            </p>
-          </div>
-        </motion.section>
+              <h1 className="mt-3 font-display text-fluid-display font-semibold text-balance text-[var(--ink)]">
+                {displayWedding.coupleName}
+              </h1>
+              {displayWedding.eventDate ? (
+                <p className="mt-4 text-sm font-semibold tracking-wide text-[var(--ink-soft)]">
+                  {displayWedding.eventDate}
+                </p>
+              ) : null}
+              <p className="mx-auto mt-5 max-w-sm text-pretty text-sm leading-relaxed text-[var(--ink-soft)]">
+                {displayWedding.welcomeNote}
+              </p>
+            </div>
+          </motion.section>
 
         <section className="mt-5 rounded-[34px] border border-white/75 bg-[rgba(255,250,243,0.82)] p-5 shadow-none backdrop-blur sm:shadow-[0_18px_48px_rgba(58,40,25,0.1)]">
           {displayWedding.uploadLocked ? (
@@ -560,8 +569,20 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
               </button>
             </form>
           )}
-        </section>
-      </div>
-    </Shell>
+          </section>
+        </div>
+      </Shell>
+      <GuidanceDialog
+        open={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        closeLabel={text.close}
+        eyebrow={text.guest.helpEyebrow}
+        title={text.guest.helpTitle}
+        body={text.guest.helpBody}
+        steps={text.guest.helpSteps}
+        cards={guestHelpCards}
+        footer={text.guest.helpFooter}
+      />
+    </>
   );
 }

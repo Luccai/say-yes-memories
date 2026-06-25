@@ -20,6 +20,7 @@ Arayüz sakin, sıcak ve premium hissettirmeli. Ürün ucuz SaaS dashboard gibi 
 - Renk dünyası: ivory, pearl, champagne, warm paper, black ink, soft rosewood.
 - Kaçınılacaklar: ağır pembe/teal gradient, emoji kalabalığı, marketing popup, sert dashboard gridleri, gereksiz landing anlatımı.
 - Mobil öncelik: misafir upload ekranı tek elle kullanılabilir olmalı; form, dosya seçimi, ses kaydı ve gönder butonu taşmamalı.
+- Yardım deneyimi: Login, admin ve misafir QR sayfalarında aynı görsel dilde Help butonu ve bağlama özel yardım modalı bulunur. Bu metinler sabit İngilizce yazılmamalı; `src/lib/i18n.ts` üzerinden tüm desteklenen dillere bağlanmalıdır.
 
 ## Teknoloji
 
@@ -137,12 +138,23 @@ Demo:
 - Demo guest route: `/mary-john?demo=1`.
 - Demo profil görseli: `public/demo/beautiful-young-couple-hugging-great-wall-china.jpg`.
 - Demo state localStorage ile simüle edilir; gerçek Supabase DB/Storage yazımı yapmaz.
+- Demo admin ve demo misafir sayfalarında Help modalı görünür; demo modunda gerçek storage'a yazılmadığını anlatan ek kart gösterilir.
+
+## i18n ve Yardım Modalları
+
+- Varsayılan dil İngilizce'dir.
+- `useLocale()` tarayıcı dilinden `en`, `es`, `fr`, `de`, `pt`, `zh` dillerini seçer; desteklenmeyen diller İngilizceye düşer.
+- Login Help: Etsy token'ın nerede bulunacağı, isimlerin tokenla ilişkisi, studio açıldıktan sonra yapılacaklar ve gizlilik bilgisini anlatır.
+- Admin Help: Guest Memories, Wedding Page, QR + Guest Link ve View Guest Page bölümlerini açıklar.
+- Guest Help: QR sonrası misafirin fotoğraf, video, ses ve not gönderme akışını, gizliliği ve uygulama gerekmediğini anlatır.
+- Yeni sabit arayüz metni eklenirse tek dile gömülmemeli; tüm desteklenen dillerde aynı anahtar setiyle `src/lib/i18n.ts` içine eklenmelidir.
 
 ## Misafir Sayfası
 
 Misafir sayfası `/{coupleSlug}` ile açılır.
 
 - Üstte çiftin profil fotoğrafı rozeti, çift adı, tarih ve welcome note görünür.
+- Misafir sayfasında Help butonu vardır; bu modal QR ile gelen misafire ne gönderebileceğini, yüklemenin özel kaldığını ve sorun olursa dosya seçebileceğini anlatır.
 - Misafir adını, opsiyonel notu ve foto/video/ses dosyasını gönderir.
 - Ses kaydı tarayıcı MediaRecorder ile alınır; destek yoksa kullanıcı dosya seçebilir.
 - Upload kapalıysa form yerine kapalı mesajı gösterilir.
@@ -191,5 +203,4 @@ Vercel kontrol listesi:
 - Production URL'de `/login`, `/admin/mary-john`, `/mary-john?demo=1` açılmalı.
 - Gerçek admin için session yoksa `/admin` -> `/login` redirect çalışmalı.
 - Supabase bucket ve migration production projesinde hazır olmalı.
-
 
