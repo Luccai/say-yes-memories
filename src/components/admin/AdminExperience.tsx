@@ -17,6 +17,7 @@ import {
   ChevronRight,
   Copy,
   Download,
+  ExternalLink,
   Film,
   Image as ImageIcon,
   ImagePlus,
@@ -32,6 +33,7 @@ import {
   Trash2,
   Unlock,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { GuestExperience } from "@/components/guest/GuestExperience";
@@ -713,12 +715,13 @@ export function AdminExperience({
             <motion.nav
               initial={{ opacity: 0, y: -8, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              className="fixed grid w-[min(calc(100vw-2rem),22rem)] gap-2 rounded-[30px] border border-white/75 bg-[var(--paper-soft)] p-3 shadow-none sm:shadow-[0_24px_70px_rgba(58,40,25,0.2)]"
+              className="fixed grid w-[min(calc(100vw-2rem),22rem)] gap-2 rounded-[30px] border border-white/80 bg-[rgba(255,250,243,0.92)] p-2.5 shadow-[0_18px_52px_rgba(58,40,25,0.16)] backdrop-blur-xl sm:shadow-[0_24px_70px_rgba(58,40,25,0.2)]"
               style={{ top: menuPosition.top, right: menuPosition.right }}
               aria-label={adminText.menu}
             >
               <AdminMenuButton
                 active={activePanel === "memories"}
+                icon={ImageIcon}
                 label={adminText.memoryRoom}
                 onClick={() => {
                   setActivePanel("memories");
@@ -727,6 +730,7 @@ export function AdminExperience({
               />
               <AdminMenuButton
                 active={activePanel === "identity"}
+                icon={Settings2}
                 label={adminText.weddingPage}
                 onClick={() => {
                   setActivePanel("identity");
@@ -735,6 +739,7 @@ export function AdminExperience({
               />
               <AdminMenuButton
                 active={activePanel === "qr"}
+                icon={QrCode}
                 label={adminText.qrAndLink}
                 onClick={() => {
                   setActivePanel("qr");
@@ -743,6 +748,7 @@ export function AdminExperience({
               />
               <AdminMenuButton
                 active={activePanel === "guest"}
+                icon={ExternalLink}
                 label={adminText.openPage}
                 onClick={() => {
                   setActivePanel("guest");
@@ -753,10 +759,15 @@ export function AdminExperience({
                 <button
                   type="button"
                   onClick={logout}
-                  className="focus-ring inline-flex items-center justify-center gap-1.5 rounded-full border border-[var(--line)] bg-white/42 px-3 py-2 text-xs font-bold text-[var(--ink-soft)] transition hover:bg-white"
+                  className="focus-ring inline-flex w-full items-center justify-between gap-3 rounded-[18px] border border-[rgba(124,58,49,0.16)] bg-white/42 px-3 py-2.5 text-sm font-bold text-[var(--rosewood)] transition hover:bg-white active:scale-[0.99]"
                 >
-                  {adminText.logout}
-                  <LogOut className="size-3.5" />
+                  <span className="inline-flex min-w-0 items-center gap-2">
+                    <span className="grid size-8 shrink-0 place-items-center rounded-full border border-[rgba(124,58,49,0.16)] bg-white/58">
+                      <LogOut className="size-3.5" />
+                    </span>
+                    <span className="truncate">{adminText.logout}</span>
+                  </span>
+                  <ChevronRight className="size-4 shrink-0 opacity-55" />
                 </button>
               </div>
             </motion.nav>
@@ -827,10 +838,12 @@ export function AdminExperience({
 
 function AdminMenuButton({
   active,
+  icon: Icon,
   label,
   onClick,
 }: {
   active: boolean;
+  icon: LucideIcon;
   label: string;
   onClick: () => void;
 }) {
@@ -838,13 +851,30 @@ function AdminMenuButton({
     <button
       type="button"
       onClick={onClick}
-      className={`focus-ring rounded-2xl px-4 py-3 text-left text-sm font-bold transition ${
+      aria-current={active ? "page" : undefined}
+      className={`focus-ring group relative flex min-h-12 w-full items-center gap-3 overflow-hidden rounded-[20px] border px-3 py-2.5 text-left text-sm font-bold transition active:scale-[0.99] ${
         active
-          ? "border border-[rgba(139,107,63,0.24)] bg-[rgba(199,166,111,0.16)] text-[var(--ink)]"
-          : "border border-[var(--line)] bg-white/50 text-[var(--ink)] hover:bg-white"
+          ? "border-[rgba(139,107,63,0.24)] bg-[linear-gradient(135deg,rgba(199,166,111,0.22),rgba(255,250,243,0.84))] text-[var(--ink)] shadow-[inset_0_1px_0_rgba(255,255,255,0.86),0_10px_22px_rgba(139,107,63,0.12)]"
+          : "border-transparent bg-white/44 text-[var(--ink)] hover:border-[var(--line)] hover:bg-white/72"
       }`}
     >
-      {label}
+      <span
+        className={`grid size-9 shrink-0 place-items-center rounded-full border transition ${
+          active
+            ? "border-[rgba(139,107,63,0.26)] bg-[rgba(255,250,243,0.78)] text-[var(--champagne-deep)]"
+            : "border-[var(--line)] bg-white/62 text-[var(--ink-soft)] group-hover:text-[var(--ink)]"
+        }`}
+      >
+        <Icon className="size-4" />
+      </span>
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      {active ? (
+        <span className="grid size-6 shrink-0 place-items-center rounded-full bg-[var(--ink)] text-[var(--paper-soft)]">
+          <Check className="size-3.5" />
+        </span>
+      ) : (
+        <ChevronRight className="size-4 shrink-0 text-[var(--ink-soft)] opacity-50 transition group-hover:translate-x-0.5 group-hover:opacity-80" />
+      )}
     </button>
   );
 }
