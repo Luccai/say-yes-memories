@@ -2,6 +2,7 @@
 
 import { HelpCircle, X } from "lucide-react";
 import { motion } from "motion/react";
+import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 
 type GuidanceCard = {
   title: string;
@@ -57,6 +58,8 @@ export function GuidanceDialog({
   cards,
   footer,
 }: GuidanceDialogProps) {
+  useBodyScrollLock(open);
+
   if (!open) {
     return null;
   }
@@ -77,7 +80,10 @@ export function GuidanceDialog({
         aria-modal="true"
         aria-labelledby="help-title"
       >
-        <div className="max-h-[calc(100dvh-3rem)] overflow-y-auto p-6">
+        <div
+          className="max-h-[calc(100dvh-3rem)] overflow-y-auto p-6"
+          data-scroll-lock-allow="true"
+        >
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="eyebrow text-[var(--champagne-deep)]">{eyebrow}</p>

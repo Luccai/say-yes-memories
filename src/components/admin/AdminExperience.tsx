@@ -47,6 +47,7 @@ import { MediaOrb } from "@/components/shared/MediaOrb";
 import { getSupabaseBrowser } from "@/lib/supabase/browser";
 import { localizedError, useCopy, useLocale } from "@/lib/i18n";
 import { makeCoupleName } from "@/lib/text";
+import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import {
   ensureFreshDemoLocalState,
   localizeDemoMedia,
@@ -284,6 +285,8 @@ export function AdminExperience({
 
   const eventSlug = demoMode ? DEMO_GUEST_SLUG : wedding.slug;
   const eventUrl = `${origin || "https://your-domain.com"}/${eventSlug}`;
+
+  useBodyScrollLock(menuOpen);
 
   useEffect(() => {
     queueMicrotask(() => setOrigin(window.location.origin));
@@ -717,7 +720,11 @@ export function AdminExperience({
         </header>
 
         {menuOpen ? (
-          <div className="fixed inset-0 z-50">
+          <div
+            className="fixed inset-0 z-50"
+            onClick={() => setMenuOpen(false)}
+            role="presentation"
+          >
             <button
               type="button"
               className="absolute inset-0 cursor-default bg-transparent"
@@ -730,6 +737,11 @@ export function AdminExperience({
               className="fixed grid w-[min(calc(100vw-2rem),22rem)] gap-2 rounded-[30px] border border-white/80 bg-[rgba(255,250,243,0.92)] p-2.5 shadow-[0_18px_52px_rgba(58,40,25,0.16)] backdrop-blur-xl sm:shadow-[0_24px_70px_rgba(58,40,25,0.2)]"
               style={{ top: menuPosition.top, right: menuPosition.right }}
               aria-label={adminText.menu}
+              onClick={(event) => {
+                if (event.target === event.currentTarget) {
+                  setMenuOpen(false);
+                }
+              }}
             >
               <AdminMenuButton
                 active={activePanel === "memories"}
@@ -1301,6 +1313,8 @@ function MemoryInbox({
     : -1;
   const currentGridLayoutLabel = memoryGridLayoutLabel(text, gridLayout);
 
+  useBodyScrollLock(Boolean(selectedMedia || deleteTarget));
+
   const showPreviousMedia = useCallback(() => {
     setSelectedMedia((current) => {
       if (!current || media.length === 0) {
@@ -1532,6 +1546,7 @@ function MemoryInbox({
             initial={{ opacity: 0, y: 10, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             className="relative z-10 grid max-h-[calc(100dvh-2rem)] w-full min-w-0 max-w-[calc(100vw-1.5rem)] gap-4 overflow-y-auto overflow-x-hidden rounded-[32px] border border-white/70 bg-[var(--paper-soft)] p-4 shadow-[0_30px_90px_rgba(0,0,0,0.32)] sm:max-w-5xl sm:p-5"
+            data-scroll-lock-allow="true"
             role="dialog"
             aria-modal="true"
           >
