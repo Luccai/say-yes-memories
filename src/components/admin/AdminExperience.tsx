@@ -543,7 +543,13 @@ export function AdminExperience({
           uploadLocked: patch.uploadLocked ?? wedding.uploadLocked,
         }),
       });
-      const payload = (await response.json()) as { wedding: Wedding };
+      const payload = (await response.json()) as { wedding?: Wedding; message?: string };
+
+      if (!response.ok) {
+        throw new Error(
+          localizedError(payload.message, text.errors, text.errors.saveIdentityFailed),
+        );
+      }
 
       if (payload.wedding) {
         setWedding(payload.wedding);
@@ -557,6 +563,8 @@ export function AdminExperience({
           window.setTimeout(() => setIdentitySaveConfirmed(false), 2600);
         }
       }
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : text.errors.saveIdentityFailed);
     } finally {
       setSaving(false);
     }

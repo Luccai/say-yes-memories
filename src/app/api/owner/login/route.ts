@@ -11,12 +11,12 @@ export async function POST(request: Request) {
   const redirectUrl = new URL("/owner/upgrades", request.url);
 
   if (!isOwnerPasswordConfigured()) {
-    redirectUrl.searchParams.set("error", "Owner password is not configured.");
+    redirectUrl.searchParams.set("error", "Owner şifresi ayarlı değil.");
     return NextResponse.redirect(redirectUrl, 303);
   }
 
   if (!verifyOwnerPassword(password)) {
-    redirectUrl.searchParams.set("error", "Invalid owner password.");
+    redirectUrl.searchParams.set("error", "Owner şifresi yanlış.");
     return NextResponse.redirect(redirectUrl, 303);
   }
 
