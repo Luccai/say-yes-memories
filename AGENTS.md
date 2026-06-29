@@ -67,6 +67,9 @@ API route'ları:
 - `/api/auth/activate`: token + çift adı ile studio aktivasyonu veya aktif tokenla tekrar giriş.
 - `/api/auth/session`: mevcut session'daki wedding bilgisini döner.
 - `/api/auth/logout`: session'ı siler, cookie'yi temizler.
+- `/api/owner/login`: owner şifresiyle `/owner/upgrades` için HTTP-only owner session açar.
+- `/api/owner/logout`: owner session cookie'sini temizler.
+- `/api/owner/upgrades/apply`: Studio Code + Etsy sipariş no ile Premium Extension uygular.
 - `/api/uploads/[slug]/prepare`: misafir dosyası için R2 presigned PUT hedefi üretir ve kota/access kontrolü yapar.
 - `/api/uploads/[slug]/complete`: signed upload sonrası DB media kaydını oluşturur.
 - `/api/weddings/current`: admin wedding identity ayarlarını günceller.
@@ -78,7 +81,12 @@ API route'ları:
 
 ## Veri Modeli
 
-Supabase migration dosyası: `supabase/migrations/20260620172446_init_say_yes_schema.sql`.
+Supabase migration dosyaları:
+
+- `supabase/migrations/20260620172446_init_say_yes_schema.sql`: temel wedding, token, media ve session şeması.
+- `supabase/migrations/20260621130000_add_wedding_media_thumbnails.sql`: media thumbnail alanları.
+- `supabase/migrations/20260621164000_allow_more_audio_mime_types.sql`: ek audio MIME tipleri.
+- `supabase/migrations/20260629120000_add_r2_quota_and_upgrades.sql`: R2 kota/access alanları, Studio Code, upgrade logları ve quota RPC'leri.
 
 Ana tablolar:
 
@@ -132,6 +140,16 @@ Private Storage:
 - Hamburger menüde ayrı, minimal bir panel olarak bulunur; Guest Memories'in üstünde büyük kota kartı gösterilmez.
 - Plan, kullanılan/toplam storage, access süresi, Studio Code ve Premium Extension akışı burada gösterilir.
 - Premium button Etsy listing URL env'i varsa listing'i açar; yoksa Studio Code kopyalama yönergesi gösterir.
+- Demo admin panelinde gerçek para/upgrade aksiyonları çalışmaz; demo state yanıltıcı olmamalıdır.
+
+Owner Upgrade Panel:
+
+- `/owner/upgrades` sadece owner içindir ve customer-facing i18n akışından ayrı olarak Türkçe tutulur.
+- `OWNER_ADMIN_PASSWORD` yoksa panel crash etmez; giriş formunda kontrollü hata gösterir.
+- Studio Code ile gerçek galeri bulunur; upgrade uygulamak için Etsy sipariş no zorunludur.
+- Etsy sipariş no ödeme kanıtı ve duplicate guard gibi davranır. Aynı sipariş no ikinci kez uygulanamaz.
+- Premium Extension mevcut erişim bitiş tarihinin üstüne `+50 GB` ve `+6 ay` ekler; müşterinin Studio Code'u dışında ham token kullanılmaz.
+- Gerçek müşteri kaydında test yapılırken upgrade submit edilmemeli; bağlantı testi için geçici wedding kaydı kullanılmalıdır.
 
 Wedding Page:
 
@@ -155,6 +173,7 @@ Demo:
 
 - Varsayılan dil İngilizce'dir.
 - `useLocale()` tarayıcı dilinden `en`, `es`, `fr`, `de`, `pt`, `zh` dillerini seçer; desteklenmeyen diller İngilizceye düşer.
+- Customer-facing login/admin/guest metinleri bu 6 dile bağlı kalmalıdır; owner panel bilinçli olarak Türkçe-only iç araçtır.
 - Login Help: Etsy token'ın nerede bulunacağı, isimlerin tokenla ilişkisi, studio açıldıktan sonra yapılacaklar ve gizlilik bilgisini anlatır.
 - Admin Help: Guest Memories, Wedding Page, QR + Guest Link ve View Guest Page bölümlerini açıklar.
 - Guest Help: QR sonrası misafirin fotoğraf, video, ses ve not gönderme akışını, gizliliği ve uygulama gerekmediğini anlatır.
