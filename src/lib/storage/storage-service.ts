@@ -1,6 +1,13 @@
 import type { MediaKind, StoredMediaObject } from "@/lib/types";
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  HeadObjectCommand,
+  PutObjectCommand,
+} from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createId } from "@/lib/security";
-import { getSupabaseAdmin, SUPABASE_STORAGE_BUCKET } from "@/lib/supabase/admin";
+import { getR2Client, R2_BUCKET } from "@/lib/storage/r2-client";
 
 export const MAX_MEDIA_UPLOAD_BYTES = 100 * 1024 * 1024;
 export const MAX_THUMBNAIL_UPLOAD_BYTES = 1024 * 1024;
@@ -12,9 +19,9 @@ export type PendingStoredMediaObject = Omit<StoredMediaObject, "url"> & {
 };
 
 export type SignedUploadTarget = {
-  bucket: string;
-  path: string;
-  token: string;
+  uploadUrl: string;
+  method: "PUT";
+  headers: Record<string, string>;
   object: PendingStoredMediaObject;
 };
 
@@ -86,16 +93,18 @@ export async function createSignedStorageUrl(
   expiresIn = 60 * 60 * 6,
   download?: string | boolean,
 ) {
-  const supabase = getSupabaseAdmin();
-  const { data, error } = await supabase.storage
-    .from(SUPABASE_STORAGE_BUCKET)
-    .createSignedUrl(storagePath, expiresIn, download ? { download } : undefined);
+  const command = new GetObjectCommand({
+    Bucket: R2_BUCKET,
+    Key: storagePath,
+    ResponseContentDisposition:
+      typeof download === "string"
+        ? `attachment; filename="${download.replace(/"/g, "")}"`
+        : download
+          ? "attachment"
+          : undefined,
+  });
 
-  if (error || !data?.signedUrl) {
-    throw new Error(error?.message ?? "Could not create media URL.");
-  }
-
-  return data.signedUrl;
+  return getSignedUrl(getR2Client(), command, { expiresIn });
 }
 
 export async function deleteStoredFile(storagePath?: string | null) {
@@ -103,12 +112,16 @@ export async function deleteStoredFile(storagePath?: string | null) {
     return;
   }
 
-  const supabase = getSupabaseAdmin();
-  const { error } = await supabase.storage.from(SUPABASE_STORAGE_BUCKET).remove([storagePath]);
+  await getR2Client().send(
+    new DeleteObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: storagePath,
+    }),
+  );
+}
 
-  if (error) {
-    throw new Error(error.message);
-  }
+function storagePrefixFor(weddingId: string, folder: StorageFolder) {
+  return `weddings/${weddingId}/${folder}`;
 }
 
 export async function createSignedUploadTarget(
@@ -127,21 +140,24 @@ export async function createSignedUploadTarget(
     maxBytes: options.maxBytes,
   });
   const id = createId("asset");
-  const storagePath = `${options.weddingId}/${options.folder}/${id}-${sanitizeFileName(file.name)}`;
-  const supabase = getSupabaseAdmin();
-
-  const { data, error } = await supabase.storage.from(SUPABASE_STORAGE_BUCKET).createSignedUploadUrl(storagePath, {
-    upsert: false,
-  });
-
-  if (error || !data?.token) {
-    throw new Error(error?.message ?? "Could not create upload URL.");
-  }
+  const storagePath = `${storagePrefixFor(options.weddingId, options.folder)}/${id}-${sanitizeFileName(file.name)}`;
+  const headers = {
+    "Content-Type": mimeType,
+  };
+  const uploadUrl = await getSignedUrl(
+    getR2Client(),
+    new PutObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: storagePath,
+      ContentType: mimeType,
+    }),
+    { expiresIn: 60 * 60 },
+  );
 
   return {
-    bucket: SUPABASE_STORAGE_BUCKET,
-    path: storagePath,
-    token: data.token,
+    uploadUrl,
+    method: "PUT",
+    headers,
     object: {
       id,
       storagePath,
@@ -170,7 +186,7 @@ export function assertUploadBelongsToWedding(
     maxBytes: options.maxBytes,
   });
 
-  const expectedPrefix = `${options.weddingId}/${options.folder}/${object.id}-`;
+  const expectedPrefix = `${storagePrefixFor(options.weddingId, options.folder)}/${object.id}-`;
 
   if (!/^asset_[a-f0-9]{24}$/.test(object.id)) {
     throw new Error("Upload id is invalid.");
@@ -184,11 +200,15 @@ export function assertUploadBelongsToWedding(
 export async function finalizeSignedUpload(
   object: PendingStoredMediaObject,
 ): Promise<StoredMediaObject> {
-  const supabase = getSupabaseAdmin();
-  const { error } = await supabase.storage.from(SUPABASE_STORAGE_BUCKET).info(object.storagePath);
+  const response = await getR2Client().send(
+    new HeadObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: object.storagePath,
+    }),
+  );
 
-  if (error) {
-    throw new Error(error.message);
+  if (response.ContentLength !== undefined && response.ContentLength !== object.byteSize) {
+    throw new Error("Uploaded file size does not match its metadata.");
   }
 
   return {

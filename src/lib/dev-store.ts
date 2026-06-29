@@ -9,8 +9,14 @@ import type {
   Wedding,
   WeddingMedia,
 } from "@/lib/types";
-import { createId, hashToken, SESSION_MAX_AGE_SECONDS } from "@/lib/security";
+import { createId, createStudioCode, hashToken, SESSION_MAX_AGE_SECONDS } from "@/lib/security";
 import { makeBaseWeddingSlug, makeCoupleName } from "@/lib/text";
+import {
+  buildAccessWindow,
+  buildActivationFallbackWindow,
+  CLASSIC_ACCESS_MONTHS,
+  CLASSIC_STORAGE_BYTES,
+} from "@/lib/storage/quota";
 
 const DATA_DIR = path.join(process.cwd(), ".local-data");
 const STORE_PATH = path.join(DATA_DIR, "store.json");
@@ -121,9 +127,17 @@ export async function activateWedding(input: {
   const weddingId = createId("wed");
   const baseSlug = makeBaseWeddingSlug(brideName, groomName);
   const slug = makeUniqueSlug(baseSlug, store.weddings);
+  const accessWindow = buildActivationFallbackWindow(new Date(now));
   const wedding: Wedding = {
     id: weddingId,
     slug,
+    studioCode: createStudioCode(),
+    plan: "classic",
+    storageQuotaBytes: CLASSIC_STORAGE_BYTES,
+    storageUsedBytes: 0,
+    accessAnchorDate: accessWindow.accessAnchorDate,
+    accessExpiresAt: accessWindow.accessExpiresAt,
+    cleanupAfter: accessWindow.cleanupAfter,
     brideName,
     groomName,
     coupleName: makeCoupleName(brideName, groomName),
@@ -198,6 +212,12 @@ export async function getWeddingBySlug(slug: string): Promise<PublicWedding | nu
   return {
     id: wedding.id,
     slug: wedding.slug,
+    plan: wedding.plan,
+    storageQuotaBytes: wedding.storageQuotaBytes,
+    storageUsedBytes: wedding.storageUsedBytes,
+    accessAnchorDate: wedding.accessAnchorDate,
+    accessExpiresAt: wedding.accessExpiresAt,
+    cleanupAfter: wedding.cleanupAfter,
     brideName: wedding.brideName,
     groomName: wedding.groomName,
     coupleName: wedding.coupleName,
@@ -222,6 +242,11 @@ export async function updateWedding(
   }
 
   Object.assign(wedding, patch, { updatedAt: new Date().toISOString() });
+
+  if (!wedding.accessAnchorDate && wedding.eventDate) {
+    Object.assign(wedding, buildAccessWindow(wedding.eventDate, CLASSIC_ACCESS_MONTHS));
+  }
+
   await writeStore(store);
   return wedding;
 }
@@ -253,6 +278,12 @@ export async function addWeddingMedia(input: {
   };
 
   store.media.push(media);
+  const wedding = store.weddings.find((item) => item.id === input.weddingId);
+
+  if (wedding) {
+    wedding.storageUsedBytes = Math.max(0, (wedding.storageUsedBytes ?? 0) + input.object.byteSize);
+  }
+
   await writeStore(store);
   return media;
 }
@@ -276,10 +307,20 @@ export async function updateMediaForWedding(
 
 export async function deleteMedia(mediaId: string, weddingId: string) {
   const store = await readStore();
+  const existing = store.media.find((item) => item.id === mediaId && item.weddingId === weddingId);
   const before = store.media.length;
   store.media = store.media.filter(
     (item) => !(item.id === mediaId && item.weddingId === weddingId),
   );
+
+  if (existing) {
+    const wedding = store.weddings.find((item) => item.id === weddingId);
+
+    if (wedding) {
+      wedding.storageUsedBytes = Math.max(0, (wedding.storageUsedBytes ?? 0) - existing.byteSize);
+    }
+  }
+
   await writeStore(store);
   return store.media.length !== before;
 }

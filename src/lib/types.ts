@@ -1,5 +1,6 @@
 export type TokenStatus = "unused" | "active" | "revoked";
 export type MediaKind = "image" | "video" | "audio";
+export type WeddingPlan = "classic" | "premium";
 
 export type StoredMediaObject = {
   id: string;
@@ -24,6 +25,13 @@ export type TokenRecord = {
 export type Wedding = {
   id: string;
   slug: string;
+  studioCode: string;
+  plan: WeddingPlan;
+  storageQuotaBytes: number;
+  storageUsedBytes: number;
+  accessAnchorDate?: string;
+  accessExpiresAt?: string;
+  cleanupAfter?: string;
   brideName: string;
   groomName: string;
   coupleName: string;
@@ -58,6 +66,12 @@ export type PublicWedding = Pick<
   Wedding,
   | "id"
   | "slug"
+  | "plan"
+  | "storageQuotaBytes"
+  | "storageUsedBytes"
+  | "accessAnchorDate"
+  | "accessExpiresAt"
+  | "cleanupAfter"
   | "brideName"
   | "groomName"
   | "coupleName"

@@ -20,6 +20,13 @@ export async function GET(
     return NextResponse.json({ message: "Media not found." }, { status: 404 });
   }
 
-  const url = await createSignedStorageUrl(media.storagePath, 10 * 60, media.fileName);
-  return NextResponse.redirect(url);
+  try {
+    const url = await createSignedStorageUrl(media.storagePath, 10 * 60, media.fileName);
+    return NextResponse.redirect(url);
+  } catch (error) {
+    return NextResponse.json(
+      { message: error instanceof Error ? error.message : "Download could not be prepared." },
+      { status: 500 },
+    );
+  }
 }

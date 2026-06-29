@@ -16,9 +16,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Copy,
+  Crown,
   Download,
   ExternalLink,
   Film,
+  HardDrive,
   Image as ImageIcon,
   ImagePlus,
   LayoutGrid,
@@ -49,6 +51,17 @@ import { localizedError, useCopy, useLocale } from "@/lib/i18n";
 import { makeCoupleName } from "@/lib/text";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import {
+  type ClientSignedUploadTarget,
+  uploadToSignedTarget,
+} from "@/lib/storage/client-upload";
+import {
+  formatStorageBytes,
+  getStorageLevel,
+  isAccessExpired,
+  storageUsagePercent,
+} from "@/lib/storage/quota";
+import {
+  demoWedding,
   ensureFreshDemoLocalState,
   localizeDemoMedia,
   localizeDemoWedding,
@@ -67,10 +80,9 @@ type AdminExperienceProps = {
 };
 
 type FilterKey = "all" | MediaKind;
-type AdminPanel = "memories" | "identity" | "qr" | "guest";
+type AdminPanel = "memories" | "storage" | "identity" | "qr" | "guest";
 type MemoryGridLayout = "classic" | "story" | "compact";
 type AdminCopy = ReturnType<typeof useCopy>["admin"];
-const DEMO_GUEST_SLUG = "mary-john-demo";
 const MEMORY_GRID_LAYOUT_STORAGE_KEY = "sayyes.admin.memory-grid-layout";
 const MEMORY_GRID_LAYOUTS: MemoryGridLayout[] = ["classic", "story", "compact"];
 const PROFILE_PHOTO_MAX_BYTES = 500 * 1024;
@@ -81,6 +93,8 @@ const ADMIN_ACTION_BUTTON_CLASS =
   "focus-ring inline-flex items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white/58 px-4 py-2.5 text-[0.78rem] font-bold text-[var(--ink)] transition hover:bg-white active:scale-[0.99] disabled:opacity-60";
 const ADMIN_DANGER_ACTION_BUTTON_CLASS =
   "focus-ring inline-flex items-center justify-center rounded-full border border-[rgba(124,58,49,0.24)] bg-white/58 px-4 py-2.5 text-[0.78rem] font-bold text-[var(--rosewood)] transition hover:bg-white active:scale-[0.99] disabled:opacity-60";
+const ADMIN_STORAGE_PILL_BUTTON_CLASS =
+  "focus-ring inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-[var(--line)] bg-white/62 px-3 text-[0.72rem] font-extrabold text-[var(--ink)] transition hover:bg-white active:scale-[0.99] disabled:cursor-default disabled:opacity-55";
 
 function mergeDemoMedia(baseMedia: WeddingMedia[], sessionMedia: WeddingMedia[]) {
   const sessionIds = new Set(sessionMedia.map((item) => item.id));
@@ -139,20 +153,7 @@ function memoryGridLayoutLabel(text: AdminCopy, layout: MemoryGridLayout) {
 }
 
 type SignedUploadResponse = {
-  upload: {
-    bucket: string;
-    path: string;
-    token: string;
-    object: {
-      id: string;
-      storagePath: string;
-      kind: MediaKind;
-      mimeType: string;
-      fileName: string;
-      byteSize: number;
-      createdAt: string;
-    };
-  };
+  upload: ClientSignedUploadTarget;
 };
 
 async function loadProfileImageSource(file: File): Promise<CanvasImageSource & { width: number; height: number }> {
@@ -283,7 +284,7 @@ export function AdminExperience({
     ? [...adminText.helpCards, adminText.demoHelpCard]
     : adminText.helpCards;
 
-  const eventSlug = demoMode ? DEMO_GUEST_SLUG : wedding.slug;
+  const eventSlug = demoMode ? demoWedding.slug : wedding.slug;
   const eventUrl = `${origin || "https://your-domain.com"}/${eventSlug}`;
 
   useBodyScrollLock(menuOpen);
@@ -448,8 +449,12 @@ export function AdminExperience({
         return;
       }
 
-      const payload = (await response.json()) as { media: WeddingMedia[] };
+      const payload = (await response.json()) as { media: WeddingMedia[]; wedding?: Wedding };
       setMedia(payload.media ?? []);
+
+      if (payload.wedding) {
+        setWedding(payload.wedding);
+      }
     };
     const syncIfVisible = () => {
       if (!document.hidden) {
@@ -608,22 +613,7 @@ export function AdminExperience({
         );
       }
 
-      const supabase = getSupabaseBrowser();
-      const { error: uploadError } = await supabase.storage
-        .from(preparePayload.upload.bucket)
-        .uploadToSignedUrl(
-          preparePayload.upload.path,
-          preparePayload.upload.token,
-          file,
-          {
-            cacheControl: "31536000",
-            contentType: preparePayload.upload.object.mimeType,
-          },
-        );
-
-      if (uploadError) {
-        throw new Error(localizedError(uploadError.message, text.errors, text.errors.profileUploadFailed));
-      }
+      await uploadToSignedTarget(preparePayload.upload, file);
 
       const completeResponse = await fetch("/api/weddings/current/profile-media/complete", {
         method: "POST",
@@ -753,6 +743,15 @@ export function AdminExperience({
                 }}
               />
               <AdminMenuButton
+                active={activePanel === "storage"}
+                icon={HardDrive}
+                label={adminText.storageEyebrow}
+                onClick={() => {
+                  setActivePanel("storage");
+                  setMenuOpen(false);
+                }}
+              />
+              <AdminMenuButton
                 active={activePanel === "identity"}
                 icon={Settings2}
                 label={adminText.weddingPage}
@@ -821,6 +820,10 @@ export function AdminExperience({
               wedding={wedding}
               demoMode={demoMode}
             />
+          ) : null}
+
+          {activePanel === "storage" ? (
+            <StorageOverview wedding={wedding} demoMode={demoMode} text={adminText} />
           ) : null}
 
           {activePanel === "memories" ? (
@@ -909,6 +912,237 @@ function AdminMenuButton({
         <ChevronRight className="size-4 shrink-0 text-[var(--ink-soft)] opacity-50 transition group-hover:translate-x-0.5 group-hover:opacity-80" />
       )}
     </button>
+  );
+}
+
+function fillTemplate(template: string, values: Record<string, string | number>) {
+  return Object.entries(values).reduce(
+    (current, [key, value]) => current.replace(`{${key}}`, String(value)),
+    template,
+  );
+}
+
+function daysUntil(isoDateTime?: string) {
+  if (!isoDateTime) {
+    return null;
+  }
+
+  return Math.ceil((new Date(isoDateTime).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+}
+
+function storageStatusText(text: AdminCopy, wedding: Wedding) {
+  if (isAccessExpired(wedding)) {
+    return text.storageExpired;
+  }
+
+  const level = getStorageLevel(wedding);
+
+  if (level === "full") {
+    return text.storageFull;
+  }
+
+  if (level === "critical") {
+    return text.storageCritical;
+  }
+
+  if (level === "warning") {
+    return text.storageWarning;
+  }
+
+  return text.storageHealthy;
+}
+
+function StorageOverview({
+  wedding,
+  demoMode,
+  text,
+}: {
+  wedding: Wedding;
+  demoMode: boolean;
+  text: AdminCopy;
+}) {
+  const [premiumOpen, setPremiumOpen] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
+  const premiumUpgradeUrl = process.env.NEXT_PUBLIC_ETSY_PREMIUM_UPGRADE_URL;
+  const isDemoStorage = demoMode || wedding.demo;
+  const displayStudioCode = isDemoStorage ? text.demoStudioCode : wedding.studioCode;
+  const percent = storageUsagePercent(wedding.storageUsedBytes, wedding.storageQuotaBytes);
+  const usedLabel = formatStorageBytes(wedding.storageUsedBytes);
+  const quotaLabel = formatStorageBytes(wedding.storageQuotaBytes);
+  const remainingDays = daysUntil(wedding.accessExpiresAt);
+  const status = storageStatusText(text, wedding);
+  const planLabel = wedding.plan === "premium" ? "Premium" : "Classic";
+
+  useBodyScrollLock(premiumOpen);
+
+  async function copyStudioCode() {
+    if (isDemoStorage) {
+      return;
+    }
+
+    await navigator.clipboard.writeText(wedding.studioCode);
+    setCodeCopied(true);
+    window.setTimeout(() => setCodeCopied(false), 1600);
+  }
+
+  return (
+    <>
+      <article className="overflow-hidden rounded-[34px] border border-white/75 bg-[rgba(255,250,243,0.84)] p-4 shadow-none backdrop-blur sm:p-6 sm:shadow-[0_20px_58px_rgba(58,40,25,0.1)]">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)] lg:items-stretch">
+          <div className="min-w-0">
+            <p className="eyebrow flex items-center gap-2 text-[var(--champagne-deep)]">
+              <HardDrive className="size-4 shrink-0" />
+              {text.storageEyebrow}
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <span className="rounded-full border border-[rgba(139,107,63,0.24)] bg-white/58 px-3 py-1 text-[0.72rem] font-bold uppercase text-[var(--champagne-deep)]">
+                {planLabel}
+              </span>
+            </div>
+            <p className="mt-3 text-sm leading-relaxed text-[var(--ink-soft)]">
+              {status}
+            </p>
+
+            <div className="mt-5">
+              <div className="mb-2 flex items-center justify-between gap-3 text-xs font-bold text-[var(--ink-soft)]">
+                <span>
+                  {fillTemplate(text.storageUsedOf, { used: usedLabel, quota: quotaLabel })}
+                </span>
+                <span>{Math.round(percent)}%</span>
+              </div>
+              <div className="h-3 overflow-hidden rounded-full border border-[rgba(139,107,63,0.18)] bg-white/64">
+                <div
+                  className="h-full rounded-full bg-[linear-gradient(90deg,var(--champagne-deep),var(--rosewood))] transition-[width] duration-500"
+                  style={{ width: `${Math.min(100, percent)}%` }}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid min-w-0 content-between gap-4 rounded-[26px] border border-[var(--line)] bg-white/46 p-4">
+            <div className="grid gap-3">
+              <div>
+                <p className="text-[0.68rem] font-bold uppercase text-[var(--ink-soft)]">
+                  {text.studioCode}
+                </p>
+                <p className="mt-1 break-all font-mono text-lg font-bold text-[var(--ink)]">
+                  {displayStudioCode}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={copyStudioCode}
+                  disabled={isDemoStorage}
+                  title={isDemoStorage ? text.demoStorageNotice : undefined}
+                  className={ADMIN_STORAGE_PILL_BUTTON_CLASS}
+                >
+                  <Copy className="size-3.5" />
+                  <span>{codeCopied ? text.copied : text.copy}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!isDemoStorage) {
+                      setPremiumOpen(true);
+                    }
+                  }}
+                  disabled={isDemoStorage}
+                  title={isDemoStorage ? text.demoStorageNotice : undefined}
+                  className={`${ADMIN_STORAGE_PILL_BUTTON_CLASS} border-[rgba(124,58,49,0.22)] bg-[rgba(124,58,49,0.08)] text-[var(--rosewood)]`}
+                >
+                  <Crown className="size-3.5" />
+                  <span>{text.premiumPill}</span>
+                </button>
+              </div>
+              {isDemoStorage ? (
+                <p className="rounded-[18px] border border-[rgba(139,107,63,0.18)] bg-[rgba(255,250,243,0.72)] px-3 py-2 text-xs font-bold leading-5 text-[var(--ink-soft)]">
+                  {text.demoStorageNotice}
+                </p>
+              ) : null}
+            </div>
+            <p className="text-xs font-bold text-[var(--ink-soft)]">
+              {remainingDays === null
+                ? text.storageNoDate
+                : fillTemplate(text.storageDaysLeft, { days: Math.max(0, remainingDays) })}
+            </p>
+          </div>
+        </div>
+      </article>
+
+      {premiumOpen && !isDemoStorage ? (
+        <div className="fixed inset-0 z-[70] grid place-items-end bg-[rgba(31,23,18,0.24)] p-3 backdrop-blur-sm sm:place-items-center">
+          <button
+            type="button"
+            aria-label={text.close}
+            className="absolute inset-0 cursor-default"
+            onClick={() => setPremiumOpen(false)}
+          />
+          <motion.div
+            initial={{ opacity: 0, y: 18, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            className="relative w-full max-w-[32rem] rounded-[30px] border border-white/80 bg-[var(--paper-soft)] p-5 shadow-[0_28px_80px_rgba(31,23,18,0.22)]"
+          >
+            <button
+              type="button"
+              onClick={() => setPremiumOpen(false)}
+              className="focus-ring absolute right-4 top-4 grid size-10 place-items-center rounded-full border border-[var(--line)] bg-white/62 text-[var(--ink)]"
+              aria-label={text.close}
+            >
+              <X className="size-4" />
+            </button>
+            <p className="eyebrow flex items-center gap-2 text-[var(--champagne-deep)]">
+              <Crown className="size-4" />
+              {text.upgradePremium}
+            </p>
+            <h2 className="mt-3 pr-10 font-display text-2xl font-semibold text-[var(--ink)]">
+              {text.premiumModalTitle}
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-[var(--ink-soft)]">
+              {text.premiumModalBody}
+            </p>
+            <ol className="mt-5 grid gap-3 text-sm font-semibold text-[var(--ink)]">
+              <li>{text.premiumStepCopy}</li>
+              <li>{text.premiumStepBuy}</li>
+              <li>{text.premiumStepSend}</li>
+            </ol>
+            <div className="mt-5 rounded-[22px] border border-[var(--line)] bg-white/54 p-4">
+              <p className="text-[0.68rem] font-bold uppercase text-[var(--ink-soft)]">
+                {text.studioCode}
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className="break-all font-mono text-lg font-bold text-[var(--ink)]">
+                  {wedding.studioCode}
+                </span>
+                <button
+                  type="button"
+                  onClick={copyStudioCode}
+                  className={`${ADMIN_ACTION_BUTTON_CLASS} px-3 py-2`}
+                >
+                  <Copy className="size-4" />
+                  {codeCopied ? text.copied : text.copy}
+                </button>
+              </div>
+            </div>
+            {premiumUpgradeUrl ? (
+              <a
+                href={premiumUpgradeUrl}
+                target="_blank"
+                rel="noreferrer"
+                className={`${ADMIN_ACTION_BUTTON_CLASS} mt-5 w-full bg-[var(--ink)] text-[var(--paper-soft)] hover:bg-[var(--ink)]`}
+              >
+                <ExternalLink className="size-4" />
+                {text.openEtsyListing}
+              </a>
+            ) : (
+              <p className="mt-5 rounded-[20px] border border-[var(--line)] bg-white/44 p-4 text-sm leading-relaxed text-[var(--ink-soft)]">
+                {text.premiumNoLink}
+              </p>
+            )}
+          </motion.div>
+        </div>
+      ) : null}
+    </>
   );
 }
 

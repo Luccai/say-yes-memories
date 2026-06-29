@@ -2,6 +2,7 @@
 
 import { HelpCircle, X } from "lucide-react";
 import { motion } from "motion/react";
+import { createPortal } from "react-dom";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 
 type GuidanceCard = {
@@ -60,11 +61,11 @@ export function GuidanceDialog({
 }: GuidanceDialogProps) {
   useBodyScrollLock(open);
 
-  if (!open) {
+  if (!open || typeof document === "undefined") {
     return null;
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-[rgba(31,23,18,0.42)] px-4 py-6 backdrop-blur-sm">
       <button
         type="button"
@@ -141,6 +142,7 @@ export function GuidanceDialog({
           ) : null}
         </div>
       </motion.div>
-    </div>
+    </div>,
+    document.body,
   );
 }

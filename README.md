@@ -29,6 +29,21 @@ fall back to English.
 
 ## Storage note
 
-Current V1 uses a local file-backed development store in `.local-data/`.
-The code keeps media storage behind a small adapter so production can later move
-to Supabase Storage, Vercel Blob, or Cloudflare R2.
+Production media storage uses Cloudflare R2 with private objects and presigned
+PUT/GET URLs. Supabase stores metadata, quota, access windows, sessions, and
+upgrade logs.
+
+Required R2 environment variables:
+
+```bash
+R2_ACCOUNT_ID=
+R2_ACCESS_KEY_ID=
+R2_SECRET_ACCESS_KEY=
+R2_BUCKET=say-yes-memories
+NEXT_PUBLIC_ETSY_PREMIUM_UPGRADE_URL=
+OWNER_ADMIN_PASSWORD=
+```
+
+Enable R2 in the Cloudflare dashboard before deploying, create the
+`say-yes-memories` bucket, keep it private, and configure CORS for local and
+production origins.

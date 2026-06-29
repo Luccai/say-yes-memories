@@ -24,7 +24,11 @@ import {
   shouldNormalizeAudioFile,
 } from "@/lib/audio-encoding";
 import { createMediaThumbnail } from "@/lib/media-thumbnails";
-import { getSupabaseBrowser } from "@/lib/supabase/browser";
+import {
+  type ClientSignedUploadTarget,
+  uploadToSignedTarget,
+} from "@/lib/storage/client-upload";
+import { canAcceptGuestUpload } from "@/lib/storage/quota";
 
 type GuestExperienceProps = {
   wedding: PublicWedding;
@@ -32,24 +36,9 @@ type GuestExperienceProps = {
   embedded?: boolean;
 };
 
-type SignedUploadTargetResponse = {
-  bucket: string;
-  path: string;
-  token: string;
-  object: {
-    id: string;
-    storagePath: string;
-    kind: MediaKind;
-    mimeType: string;
-    fileName: string;
-    byteSize: number;
-    createdAt: string;
-  };
-};
-
 type SignedUploadResponse = {
-  upload: SignedUploadTargetResponse;
-  thumbnailUpload?: SignedUploadTargetResponse;
+  upload: ClientSignedUploadTarget;
+  thumbnailUpload?: ClientSignedUploadTarget;
 };
 
 type VoiceRecorder = {
@@ -125,6 +114,7 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [recordedUrl, setRecordedUrl] = useState("");
   const recorderRef = useRef<VoiceRecorder | null>(null);
+  const uploadsPaused = displayWedding.uploadLocked || !canAcceptGuestUpload(displayWedding);
 
   useEffect(() => {
     if (!demoMode) {
@@ -350,41 +340,16 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
         return;
       }
 
-      const supabase = getSupabaseBrowser();
-      const { error: uploadError } = await supabase.storage
-        .from(preparePayload.upload.bucket)
-        .uploadToSignedUrl(
-          preparePayload.upload.path,
-          preparePayload.upload.token,
-          uploadFile,
-          {
-            cacheControl: "31536000",
-            contentType: preparePayload.upload.object.mimeType,
-          },
-        );
+      await uploadToSignedTarget(preparePayload.upload, uploadFile);
 
-      if (uploadError) {
-        setError(localizedError(uploadError.message, text.errors, text.guest.uploadFailed));
-        return;
-      }
-
-      let thumbnailObject: SignedUploadTargetResponse["object"] | undefined;
+      let thumbnailObject: ClientSignedUploadTarget["object"] | undefined;
 
       if (thumbnailFile && preparePayload.thumbnailUpload) {
-        const { error: thumbnailUploadError } = await supabase.storage
-          .from(preparePayload.thumbnailUpload.bucket)
-          .uploadToSignedUrl(
-            preparePayload.thumbnailUpload.path,
-            preparePayload.thumbnailUpload.token,
-            thumbnailFile,
-            {
-              cacheControl: "31536000",
-              contentType: preparePayload.thumbnailUpload.object.mimeType,
-            },
-          );
-
-        if (!thumbnailUploadError) {
+        try {
+          await uploadToSignedTarget(preparePayload.thumbnailUpload, thumbnailFile);
           thumbnailObject = preparePayload.thumbnailUpload.object;
+        } catch {
+          thumbnailObject = undefined;
         }
       }
 
@@ -410,6 +375,8 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
       setRawNote("");
       setFile(null);
       setRecordedBlob(null);
+    } catch (error) {
+      setError(localizedError(error instanceof Error ? error.message : undefined, text.errors, text.guest.uploadFailed));
     } finally {
       setSubmitting(false);
     }
@@ -462,7 +429,7 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
           </motion.section>
 
         <section className="mt-5 rounded-[34px] border border-white/75 bg-[rgba(255,250,243,0.82)] p-5 shadow-none backdrop-blur sm:shadow-[0_18px_48px_rgba(58,40,25,0.1)]">
-          {displayWedding.uploadLocked ? (
+          {uploadsPaused ? (
             <div className="grid min-h-[18rem] place-items-center text-center">
               <div>
                 <p className="font-display text-fluid-heading font-semibold text-[var(--ink)]">

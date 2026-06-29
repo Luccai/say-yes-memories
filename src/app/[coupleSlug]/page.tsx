@@ -5,15 +5,12 @@ import { DEMO_GUEST_SLUG, demoWedding } from "@/lib/demo-content";
 
 export default async function GuestPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ coupleSlug: string }>;
-  searchParams: Promise<{ demo?: string }>;
 }) {
   const { coupleSlug } = await params;
-  const { demo } = await searchParams;
 
-  if (coupleSlug === DEMO_GUEST_SLUG || (coupleSlug === demoWedding.slug && demo === "1")) {
+  if (coupleSlug === demoWedding.slug || coupleSlug === DEMO_GUEST_SLUG) {
     return <GuestExperience wedding={demoWedding} demoMode />;
   }
 

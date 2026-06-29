@@ -30,7 +30,7 @@ Arayüz sakin, sıcak ve premium hissettirmeli. Ürün ucuz SaaS dashboard gibi 
 - UI: React, Tailwind CSS, Motion for React.
 - İkonlar: lucide-react.
 - QR üretimi: `qrcode`.
-- Backend/veri: Supabase Postgres, Supabase Storage, HTTP-only session cookie.
+- Backend/veri: Supabase Postgres metadata/session/kota, Cloudflare R2 private media storage, HTTP-only session cookie.
 
 Komutlar:
 
@@ -58,6 +58,7 @@ Kalite komutları:
 - `/login`: Etsy token aktivasyonu, geri dönen cihazda stüdyoya giriş kartı ve Mary & John demo CTA'sı.
 - `/admin`: HTTP-only session cookie ile gerçek çift admin paneli.
 - `/admin/mary-john`: Mary & John demo admin paneli.
+- `/owner/upgrades`: owner secret cookie ile manuel Premium Extension uygulama paneli.
 - `/{coupleSlug}`: gerçek misafir upload sayfası.
 - `/mary-john?demo=1`: demo misafir upload sayfası.
 
@@ -66,11 +67,11 @@ API route'ları:
 - `/api/auth/activate`: token + çift adı ile studio aktivasyonu veya aktif tokenla tekrar giriş.
 - `/api/auth/session`: mevcut session'daki wedding bilgisini döner.
 - `/api/auth/logout`: session'ı siler, cookie'yi temizler.
-- `/api/uploads/[slug]/prepare`: misafir dosyası için Supabase signed upload hedefi üretir.
+- `/api/uploads/[slug]/prepare`: misafir dosyası için R2 presigned PUT hedefi üretir ve kota/access kontrolü yapar.
 - `/api/uploads/[slug]/complete`: signed upload sonrası DB media kaydını oluşturur.
 - `/api/weddings/current`: admin wedding identity ayarlarını günceller.
 - `/api/weddings/current/media`: admin memory inbox listesini döner.
-- `/api/weddings/current/profile-media/prepare`: admin profil fotoğrafı için signed upload hedefi üretir.
+- `/api/weddings/current/profile-media/prepare`: admin profil fotoğrafı için R2 presigned PUT hedefi üretir.
 - `/api/weddings/current/profile-media/complete`: profil fotoğrafını doğrular ve wedding kaydına bağlar.
 - `/api/media/[id]`: admin media update/delete işlemleri.
 - `/api/media/[id]/download`: admin indirme için kısa süreli signed download URL'ye redirect eder.
@@ -81,17 +82,21 @@ Supabase migration dosyası: `supabase/migrations/20260620172446_init_say_yes_sc
 
 Ana tablolar:
 
-- `weddings`: çift bilgisi, slug, welcome note, upload kilidi, profil medya metadata'sı.
+- `weddings`: çift bilgisi, slug, studio code, plan, kota, access süresi, welcome note, upload kilidi ve profil medya metadata'sı.
 - `tokens`: hash'li Etsy token kayıtları; ham token repo'ya girmez.
 - `wedding_media`: misafir medya metadata'sı.
+- `upgrade_logs`: owner panelden uygulanan Premium Extension kayıtları.
 - `sessions`: HTTP-only cookie ile eşleşen admin session kayıtları.
 
 Storage bucket:
 
 - Varsayılan bucket: `say-yes-memories`.
 - Bucket private olmalı.
-- Misafir ve profil dosyaları doğrudan Supabase Storage'a signed upload ile yüklenir.
+- Misafir ve profil dosyaları doğrudan Cloudflare R2'ye presigned PUT ile yüklenir.
 - Next.js API route'ları büyük dosyayı body olarak taşımamalı; Vercel serverless limitleri için bu kritik.
+- Supabase sadece medya metadata'sı, `storage_used_bytes`, kota, access süresi ve upgrade loglarını tutar.
+- Classic paket 50 GB ve düğün tarihinden itibaren 3 ay access verir. Premium Extension +50 GB ve mevcut access bitişine +6 ay ekler.
+- Kota dolunca misafir upload hard stop olur. Access bitince upload kapanır; dosyalar 30 gün cleanup grace sonrası owner cleanup için adaydır.
 
 ## Auth ve Token Akışı
 
@@ -108,7 +113,7 @@ Admin ana ekranı mobilde sade kalmalıdır:
 
 - Üstte profil rozeti, taşmayan çift adı kapsülü ve hamburger menü.
 - Varsayılan panel: Guest Memories.
-- Hamburger menü: Guest Memories, Wedding Page, QR + Guest Link, View Guest Page ve küçük Logout aksiyonu.
+- Hamburger menü: Guest Memories, Private Storage, Wedding Page, QR + Guest Link, View Guest Page ve küçük Logout aksiyonu.
 - Logout menüde mini aksiyon gibi görünür ve `/login` sayfasına döndürür.
 - View Guest Page yeni sekmede misafir sayfasını açar; QR panelinde ayrıca ikinci bir misafir sayfası butonu tutulmaz.
 
@@ -122,6 +127,12 @@ Guest Memories:
 - İndirme `/api/media/[id]/download` üzerinden signed download ile yapılır.
 - Silme doğrudan çalışmaz; önce onay modalı açılır. Evet derse Storage ve DB tarafında silinir, Hayır derse işlem yapılmaz.
 
+Private Storage:
+
+- Hamburger menüde ayrı, minimal bir panel olarak bulunur; Guest Memories'in üstünde büyük kota kartı gösterilmez.
+- Plan, kullanılan/toplam storage, access süresi, Studio Code ve Premium Extension akışı burada gösterilir.
+- Premium button Etsy listing URL env'i varsa listing'i açar; yoksa Studio Code kopyalama yönergesi gösterir.
+
 Wedding Page:
 
 - Profil fotoğrafı upload eder. Video PP kullanılmaz.
@@ -129,7 +140,7 @@ Wedding Page:
 - Profil fotoğrafı küçük olduğu için cihazda instant cache'e alınır; geri dönüş/login/admin/guest header'da mümkünse ilk render'da fotoğraf gösterilir, cache yoksa boş beyaz oval değil yükleniyor yüzeyi görünür.
 - Bride/groom isimleri, event date, welcome note ve upload lock ayarlarını yönetir.
 - İsim değişince misafir tarafındaki görünen çift adı da güncellenir; slug aynı kalır çünkü basılmış QR/link kırılmamalıdır.
-- Profil medya da signed upload ile Supabase Storage'a gider.
+- Profil medya da presigned upload ile R2'ye gider ancak guest storage kotasına dahil edilmez.
 
 Demo:
 
@@ -169,15 +180,20 @@ Gerekli environment variable'lar:
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
-SUPABASE_STORAGE_BUCKET=say-yes-memories
+R2_ACCOUNT_ID=
+R2_ACCESS_KEY_ID=
+R2_SECRET_ACCESS_KEY=
+R2_BUCKET=say-yes-memories
+NEXT_PUBLIC_ETSY_PREMIUM_UPGRADE_URL=
+OWNER_ADMIN_PASSWORD=
 ```
 
-Vercel tarafında Production, Preview ve Development ortamları için bu değerler girilmelidir. `SUPABASE_SERVICE_ROLE_KEY` kesinlikle frontend'e açılmamalı; `NEXT_PUBLIC_` prefix'i almamalıdır.
+Vercel tarafında Production, Preview ve Development ortamları için bu değerler girilmelidir. `SUPABASE_SERVICE_ROLE_KEY` ve R2 secret değerleri kesinlikle frontend'e açılmamalı; `NEXT_PUBLIC_` prefix'i almamalıdır.
 
 ## Güvenlik ve Veri Notları
 
 - Service role sadece server route ve server helper içinde kullanılır.
-- Storage bucket private kalır; görüntüleme ve indirme signed URL ile yapılır.
+- R2 bucket private kalır; görüntüleme ve indirme presigned GET URL ile yapılır.
 - Upload prepare/complete iki aşamalıdır; complete aşaması storage path'in ilgili wedding/folder altında olduğunu ve `asset_` ID formatını doğrular.
 - Dosya tipi image/video/audio ile sınırlıdır.
 - Dosya boyutu sınırı uygulama tarafında 100 MB'dır.
@@ -203,4 +219,3 @@ Vercel kontrol listesi:
 - Production URL'de `/login`, `/admin/mary-john`, `/mary-john?demo=1` açılmalı.
 - Gerçek admin için session yoksa `/admin` -> `/login` redirect çalışmalı.
 - Supabase bucket ve migration production projesinde hazır olmalı.
-

@@ -4,6 +4,7 @@ import {
   createSignedUploadTarget,
   MAX_THUMBNAIL_UPLOAD_BYTES,
 } from "@/lib/storage/storage-service";
+import { canAcceptGuestUpload, isAccessExpired } from "@/lib/storage/quota";
 
 type PrepareUploadBody = {
   guestName?: string;
@@ -39,12 +40,25 @@ export async function POST(
     return NextResponse.json({ message: "Your name is required." }, { status: 400 });
   }
 
+  const byteSize = Number(body.byteSize ?? 0);
+
+  if (isAccessExpired(wedding)) {
+    return NextResponse.json({ message: "Gallery access has expired." }, { status: 403 });
+  }
+
+  if (!canAcceptGuestUpload(wedding, byteSize)) {
+    return NextResponse.json(
+      { message: "Storage is full. The couple needs to upgrade before more uploads can be added." },
+      { status: 403 },
+    );
+  }
+
   try {
     const upload = await createSignedUploadTarget(
       {
         name: String(body.fileName ?? "upload"),
         type: String(body.mimeType ?? "application/octet-stream"),
-        size: Number(body.byteSize ?? 0),
+        size: byteSize,
       },
       { weddingId: wedding.id, folder: "guest" },
     );

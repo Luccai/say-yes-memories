@@ -1,7 +1,8 @@
 import type { Wedding, WeddingMedia } from "@/lib/types";
+import { CLASSIC_STORAGE_BYTES } from "@/lib/storage/quota";
 
 export const DEMO_GUEST_SLUG = "mary-john-demo";
-export const DEMO_CONTENT_VERSION = "demo-couple-png-v2";
+export const DEMO_CONTENT_VERSION = "demo-couple-png-v5";
 const DEMO_STORAGE_VERSION_KEY = "sayyes.demo.content.version";
 const DEMO_WEDDING_STORAGE_KEY = "sayyes.demo.wedding";
 const DEMO_MEDIA_STORAGE_KEY = "sayyes.demo.media";
@@ -357,6 +358,7 @@ export function localizeDemoWedding<T extends { id: string; welcomeNote: string 
   }
 
   return {
+    ...demoWedding,
     ...wedding,
     welcomeNote: demoCopy[toDemoLocale(locale)].welcomeNote,
   };
@@ -381,6 +383,13 @@ export function localizeDemoMedia(media: WeddingMedia[], locale?: string): Weddi
 export const demoWedding: Wedding = {
   id: "demo-wedding-mary-john",
   slug: "mary-john",
+  studioCode: "SY-DEMO-2026",
+  plan: "classic",
+  storageQuotaBytes: CLASSIC_STORAGE_BYTES,
+  storageUsedBytes: 14199513,
+  accessAnchorDate: "2027-06-14",
+  accessExpiresAt: "2027-09-14T23:59:59.999Z",
+  cleanupAfter: "2027-10-14T23:59:59.999Z",
   brideName: "Mary",
   groomName: "John",
   coupleName: "Mary & John",
@@ -392,7 +401,7 @@ export const demoWedding: Wedding = {
   createdAt: "2026-06-20T17:00:00.000Z",
   updatedAt: "2026-06-20T17:00:00.000Z",
   profileMedia: {
-    id: "demo-profile-media",
+    id: `demo-profile-media-${DEMO_CONTENT_VERSION}`,
     url: demoAssetUrl("demo-couple-1.png"),
     kind: "image",
     mimeType: "image/png",

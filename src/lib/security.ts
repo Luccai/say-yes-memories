@@ -23,3 +23,8 @@ export function createPublicToken() {
   ];
   return `SYD-${parts.join("-")}`.toUpperCase();
 }
+
+export function createStudioCode() {
+  const parts = [randomBytes(2).toString("hex"), randomBytes(2).toString("hex")];
+  return `SY-${parts.join("-")}`.toUpperCase();
+}

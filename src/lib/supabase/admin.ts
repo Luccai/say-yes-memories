@@ -2,9 +2,6 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 let adminClient: SupabaseClient | null = null;
 
-export const SUPABASE_STORAGE_BUCKET =
-  process.env.SUPABASE_STORAGE_BUCKET ?? "say-yes-memories";
-
 export function getSupabaseAdmin() {
   if (adminClient) {
     return adminClient;

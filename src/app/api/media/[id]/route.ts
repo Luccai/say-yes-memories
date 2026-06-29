@@ -40,7 +40,16 @@ export async function DELETE(
   }
 
   const { id } = await context.params;
-  const deleted = await deleteMedia(id, current.wedding.id);
+  let deleted = false;
+
+  try {
+    deleted = await deleteMedia(id, current.wedding.id);
+  } catch (error) {
+    return NextResponse.json(
+      { message: error instanceof Error ? error.message : "Could not delete this file. Please try again." },
+      { status: 500 },
+    );
+  }
 
   if (!deleted) {
     return NextResponse.json({ message: "Media not found." }, { status: 404 });

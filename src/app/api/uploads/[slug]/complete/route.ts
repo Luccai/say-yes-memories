@@ -3,10 +3,12 @@ import type { StoredMediaObject } from "@/lib/types";
 import { addWeddingMedia, getWeddingRecordBySlug } from "@/lib/supabase-store";
 import {
   assertUploadBelongsToWedding,
+  deleteStoredFile,
   finalizeSignedUpload,
   MAX_THUMBNAIL_UPLOAD_BYTES,
   type PendingStoredMediaObject,
 } from "@/lib/storage/storage-service";
+import { isAccessExpired } from "@/lib/storage/quota";
 import { broadcastWeddingMediaChange } from "@/lib/supabase/realtime";
 
 type CompleteUploadBody = {
@@ -29,6 +31,10 @@ export async function POST(
 
   if (wedding.uploadLocked) {
     return NextResponse.json({ message: "Guest uploads are currently closed." }, { status: 403 });
+  }
+
+  if (isAccessExpired(wedding)) {
+    return NextResponse.json({ message: "Gallery access has expired." }, { status: 403 });
   }
 
   const body = (await request.json()) as CompleteUploadBody;
@@ -69,8 +75,17 @@ export async function POST(
 
     return NextResponse.json({ media });
   } catch (error) {
+    await deleteStoredFile(body.object?.storagePath).catch(() => undefined);
+    await deleteStoredFile(body.thumbnail?.storagePath).catch(() => undefined);
+    const message =
+      error instanceof Error && error.message.includes("Storage quota")
+        ? "Storage is full. The couple needs to upgrade before more uploads can be added."
+        : error instanceof Error
+          ? error.message
+          : "Upload could not be completed.";
+
     return NextResponse.json(
-      { message: error instanceof Error ? error.message : "Upload could not be completed." },
+      { message },
       { status: 400 },
     );
   }

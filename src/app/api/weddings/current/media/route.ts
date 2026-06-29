@@ -10,5 +10,5 @@ export async function GET() {
   }
 
   const media = await listWeddingMedia(current.wedding.id);
-  return NextResponse.json({ media });
+  return NextResponse.json({ media, wedding: current.wedding });
 }

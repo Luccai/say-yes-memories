@@ -5,15 +5,30 @@ import type {
   TokenRecord,
   Wedding,
   WeddingMedia,
+  WeddingPlan,
 } from "@/lib/types";
-import { createId, hashToken, SESSION_MAX_AGE_SECONDS } from "@/lib/security";
+import { createId, createStudioCode, hashToken, SESSION_MAX_AGE_SECONDS } from "@/lib/security";
 import { makeBaseWeddingSlug, makeCoupleName } from "@/lib/text";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { createSignedStorageUrl, deleteStoredFile } from "@/lib/storage/storage-service";
+import {
+  buildAccessWindow,
+  buildActivationFallbackWindow,
+  CLASSIC_ACCESS_MONTHS,
+  CLASSIC_STORAGE_BYTES,
+  PREMIUM_EXTENSION_MONTHS,
+} from "@/lib/storage/quota";
 
 type WeddingRow = {
   id: string;
   slug: string;
+  studio_code: string;
+  plan: WeddingPlan;
+  storage_quota_bytes: number;
+  storage_used_bytes: number;
+  access_anchor_date: string | null;
+  access_expires_at: string | null;
+  cleanup_after: string | null;
   bride_name: string;
   groom_name: string;
   couple_name: string;
@@ -110,6 +125,13 @@ async function weddingFromRow(row: WeddingRow): Promise<Wedding> {
   return {
     id: row.id,
     slug: row.slug,
+    studioCode: row.studio_code,
+    plan: row.plan,
+    storageQuotaBytes: row.storage_quota_bytes,
+    storageUsedBytes: row.storage_used_bytes,
+    accessAnchorDate: row.access_anchor_date ?? undefined,
+    accessExpiresAt: row.access_expires_at ?? undefined,
+    cleanupAfter: row.cleanup_after ?? undefined,
     brideName: row.bride_name,
     groomName: row.groom_name,
     coupleName: row.couple_name,
@@ -128,6 +150,12 @@ function publicWedding(wedding: Wedding): PublicWedding {
   return {
     id: wedding.id,
     slug: wedding.slug,
+    plan: wedding.plan,
+    storageQuotaBytes: wedding.storageQuotaBytes,
+    storageUsedBytes: wedding.storageUsedBytes,
+    accessAnchorDate: wedding.accessAnchorDate,
+    accessExpiresAt: wedding.accessExpiresAt,
+    cleanupAfter: wedding.cleanupAfter,
     brideName: wedding.brideName,
     groomName: wedding.groomName,
     coupleName: wedding.coupleName,
@@ -211,6 +239,27 @@ async function makeUniqueSlug(baseSlug: string) {
   }
 }
 
+async function makeUniqueStudioCode() {
+  const supabase = getSupabaseAdmin();
+
+  while (true) {
+    const candidate = createStudioCode();
+    const { data, error } = await supabase
+      .from("weddings")
+      .select("id")
+      .eq("studio_code", candidate)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    if (!data) {
+      return candidate;
+    }
+  }
+}
+
 function normalizeNameForMatch(name: string) {
   return name.trim().toLowerCase();
 }
@@ -277,11 +326,20 @@ export async function activateWedding(input: {
   const now = new Date().toISOString();
   const weddingId = createId("wed");
   const slug = await makeUniqueSlug(makeBaseWeddingSlug(brideName, groomName));
+  const studioCode = await makeUniqueStudioCode();
+  const accessWindow = buildActivationFallbackWindow(new Date(now));
   const { data: weddingRow, error: weddingError } = await supabase
     .from("weddings")
     .insert({
       id: weddingId,
       slug,
+      studio_code: studioCode,
+      plan: "classic",
+      storage_quota_bytes: CLASSIC_STORAGE_BYTES,
+      storage_used_bytes: 0,
+      access_anchor_date: accessWindow.accessAnchorDate,
+      access_expires_at: accessWindow.accessExpiresAt,
+      cleanup_after: accessWindow.cleanupAfter,
       bride_name: brideName,
       groom_name: groomName,
       couple_name: makeCoupleName(brideName, groomName),
@@ -377,6 +435,66 @@ export async function getWeddingById(weddingId: string) {
   return data ? weddingFromRow(data) : null;
 }
 
+export async function getWeddingByStudioCode(studioCode: string) {
+  const supabase = getSupabaseAdmin();
+  const normalizedCode = studioCode.trim().toUpperCase();
+
+  if (!normalizedCode) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("weddings")
+    .select("*")
+    .eq("studio_code", normalizedCode)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data ? weddingFromRow(data) : null;
+}
+
+export async function listUpgradeLogs(weddingId: string) {
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("upgrade_logs")
+    .select("*")
+    .eq("wedding_id", weddingId)
+    .order("created_at", { ascending: false })
+    .limit(12);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data ?? [];
+}
+
+export async function applyPremiumExtension(input: {
+  studioCode: string;
+  etsyOrderNumber: string;
+  note?: string;
+}) {
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase.rpc("apply_premium_extension", {
+    p_studio_code: input.studioCode,
+    p_etsy_order_number: input.etsyOrderNumber,
+    p_note: input.note ?? null,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data) {
+    throw new Error("Premium extension could not be applied.");
+  }
+
+  return weddingFromRow(data);
+}
+
 export async function getWeddingBySlug(slug: string): Promise<PublicWedding | null> {
   const wedding = await getWeddingRecordBySlug(slug);
   return wedding ? publicWedding(wedding) : null;
@@ -421,6 +539,15 @@ export async function updateWedding(
 ) {
   const supabase = getSupabaseAdmin();
   const update: Record<string, unknown> = {};
+  const { data: existingRow, error: existingError } = await supabase
+    .from("weddings")
+    .select("*")
+    .eq("id", weddingId)
+    .single();
+
+  if (existingError) {
+    throw new Error(existingError.message);
+  }
 
   if (patch.brideName !== undefined || patch.groomName !== undefined) {
     const brideName = patch.brideName?.trim();
@@ -436,7 +563,19 @@ export async function updateWedding(
   }
 
   if ("eventDate" in patch) {
-    update.event_date = patch.eventDate || null;
+    const nextEventDate = patch.eventDate || null;
+    update.event_date = nextEventDate;
+
+    if (!existingRow.event_date && nextEventDate) {
+      const accessMonths =
+        existingRow.plan === "premium"
+          ? CLASSIC_ACCESS_MONTHS + PREMIUM_EXTENSION_MONTHS
+          : CLASSIC_ACCESS_MONTHS;
+      const accessWindow = buildAccessWindow(nextEventDate, accessMonths);
+      update.access_anchor_date = accessWindow.accessAnchorDate;
+      update.access_expires_at = accessWindow.accessExpiresAt;
+      update.cleanup_after = accessWindow.cleanupAfter;
+    }
   }
 
   if ("welcomeNote" in patch && patch.welcomeNote !== undefined) {
@@ -514,35 +653,31 @@ export async function addWeddingMedia(input: {
   }
 
   const supabase = getSupabaseAdmin();
-  const { data, error } = await supabase
-    .from("wedding_media")
-    .insert({
-      id: input.object.id,
-      wedding_id: input.weddingId,
-      storage_path: input.object.storagePath,
-      kind: input.object.kind,
-      mime_type: input.object.mimeType,
-      file_name: input.object.fileName,
-      byte_size: input.object.byteSize,
-      thumbnail_id: input.thumbnail?.id,
-      thumbnail_path: input.thumbnail?.storagePath,
-      thumbnail_mime_type: input.thumbnail?.mimeType,
-      thumbnail_file_name: input.thumbnail?.fileName,
-      thumbnail_byte_size: input.thumbnail?.byteSize,
-      thumbnail_created_at: input.thumbnail?.createdAt,
-      guest_name: input.guestName,
-      note: input.note,
-      approved: true,
-      hidden: false,
-      favorite: false,
-      created_at: input.object.createdAt,
-      updated_at: input.object.createdAt,
-    })
-    .select("*")
-    .single();
+  const { data, error } = await supabase.rpc("add_wedding_media_with_quota", {
+    p_id: input.object.id,
+    p_wedding_id: input.weddingId,
+    p_storage_path: input.object.storagePath,
+    p_kind: input.object.kind,
+    p_mime_type: input.object.mimeType,
+    p_file_name: input.object.fileName,
+    p_byte_size: input.object.byteSize,
+    p_thumbnail_id: input.thumbnail?.id ?? null,
+    p_thumbnail_path: input.thumbnail?.storagePath ?? null,
+    p_thumbnail_mime_type: input.thumbnail?.mimeType ?? null,
+    p_thumbnail_file_name: input.thumbnail?.fileName ?? null,
+    p_thumbnail_byte_size: input.thumbnail?.byteSize ?? null,
+    p_thumbnail_created_at: input.thumbnail?.createdAt ?? null,
+    p_guest_name: input.guestName,
+    p_note: input.note ?? null,
+    p_created_at: input.object.createdAt,
+  });
 
   if (error) {
     throw new Error(error.message);
+  }
+
+  if (!data) {
+    throw new Error("Media could not be saved.");
   }
 
   return mediaFromRow(data);
@@ -601,6 +736,15 @@ export async function deleteMedia(mediaId: string, weddingId: string) {
 
   if (error) {
     throw new Error(error.message);
+  }
+
+  const { error: updateWeddingError } = await supabase.rpc("decrement_wedding_storage_usage", {
+    p_wedding_id: weddingId,
+    p_byte_size: existing.byte_size,
+  });
+
+  if (updateWeddingError) {
+    throw new Error(updateWeddingError.message);
   }
 
   return true;
