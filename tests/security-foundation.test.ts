@@ -149,6 +149,14 @@ mock.module("@/lib/auth", () => ({
       realtimeTopic: weddingRow.realtime_topic,
     },
   }),
+  sessionCookieOptions: () => ({
+    httpOnly: true,
+    sameSite: "lax" as const,
+    secure: false,
+    path: "/",
+    maxAge: 60 * 60 * 24 * 30,
+  }),
+  clearSessionCookie: async () => undefined,
 }));
 
 mock.module("@/lib/supabase/realtime", () => ({

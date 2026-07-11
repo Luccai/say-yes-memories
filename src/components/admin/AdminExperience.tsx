@@ -49,6 +49,7 @@ import { MediaOrb } from "@/components/shared/MediaOrb";
 import { getSupabaseBrowser } from "@/lib/supabase/browser";
 import { localizedError, useCopy, useLocale } from "@/lib/i18n";
 import { makeCoupleName } from "@/lib/text";
+import { rememberMembership } from "@/lib/auth/device-hint";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import {
   type ClientSignedUploadTarget,
@@ -274,6 +275,8 @@ export function AdminExperience({
   const [helpOpen, setHelpOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [profileUploading, setProfileUploading] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
   const demoHydratedRef = useRef(!demoMode);
   const [identitySaveConfirmed, setIdentitySaveConfirmed] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -292,6 +295,12 @@ export function AdminExperience({
   useEffect(() => {
     queueMicrotask(() => setOrigin(window.location.origin));
   }, []);
+
+  useEffect(() => {
+    if (!demoMode) {
+      rememberMembership(wedding);
+    }
+  }, [demoMode, wedding]);
 
   useEffect(() => {
     try {
@@ -678,8 +687,29 @@ export function AdminExperience({
     setMedia((current) => current.filter((item) => item.id !== mediaId));
   }
 
-  function logout() {
-    window.location.href = "/login";
+  async function logout() {
+    if (demoMode) {
+      window.location.assign("/login");
+      return;
+    }
+
+    setLoggingOut(true);
+    setLogoutError("");
+    try {
+      const response = await fetch("/api/auth/logout", { method: "POST" });
+      const payload = (await response.json().catch(() => null)) as {
+        code?: string;
+      } | null;
+      if (response.ok || payload?.code === "LOGOUT_UNAVAILABLE") {
+        window.location.assign("/login");
+        return;
+      }
+      setLogoutError(text.errors.signInFailed);
+    } catch {
+      setLogoutError(text.errors.signInFailed);
+    } finally {
+      setLoggingOut(false);
+    }
   }
 
   return (
@@ -789,17 +819,28 @@ export function AdminExperience({
               <div className="mt-1 flex justify-end border-t border-[var(--line)] pt-2">
                 <button
                   type="button"
-                  onClick={logout}
-                  className="focus-ring inline-flex w-full items-center justify-between gap-3 rounded-[18px] border border-[rgba(124,58,49,0.16)] bg-white/42 px-3 py-2.5 text-sm font-bold text-[var(--rosewood)] transition hover:bg-white active:scale-[0.99]"
+                  onClick={() => void logout()}
+                  disabled={loggingOut}
+                  aria-busy={loggingOut || undefined}
+                  className="focus-ring inline-flex w-full items-center justify-between gap-3 rounded-[18px] border border-[rgba(124,58,49,0.16)] bg-white/42 px-3 py-2.5 text-sm font-bold text-[var(--rosewood)] transition hover:bg-white active:scale-[0.99] disabled:opacity-60"
                 >
                   <span className="inline-flex min-w-0 items-center gap-2">
                     <span className="grid size-8 shrink-0 place-items-center rounded-full border border-[rgba(124,58,49,0.16)] bg-white/58">
-                      <LogOut className="size-3.5" />
+                      {loggingOut ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <LogOut className="size-3.5" />
+                      )}
                     </span>
                     <span className="truncate">{adminText.logout}</span>
                   </span>
                   <ChevronRight className="size-4 shrink-0 opacity-55" />
                 </button>
+                {logoutError ? (
+                  <p role="alert" className="mt-2 text-xs font-semibold text-[var(--rosewood)]">
+                    {logoutError}
+                  </p>
+                ) : null}
               </div>
             </motion.nav>
           </div>

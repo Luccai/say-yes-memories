@@ -1,10 +1,9 @@
 import { cookies } from "next/headers";
 import {
-  createSession,
-  deleteSession,
-  getSession,
-  getWeddingById,
-} from "@/lib/supabase-store";
+  getCustomerSession,
+  revokeCustomerSession,
+} from "@/lib/auth/customer-store";
+import { isSessionToken } from "@/lib/auth/session-tokens";
 import { SESSION_COOKIE_NAME, SESSION_MAX_AGE_SECONDS } from "@/lib/security";
 
 export function sessionCookieOptions(request?: Request) {
@@ -20,34 +19,31 @@ export function sessionCookieOptions(request?: Request) {
   };
 }
 
-export async function setSessionCookie(weddingId: string) {
-  const session = await createSession(weddingId);
-  const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE_NAME, session.id, sessionCookieOptions());
-  return session;
-}
-
 export async function clearSessionCookie() {
   const cookieStore = await cookies();
-  const sessionId = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-  await deleteSession(sessionId);
-  cookieStore.delete(SESSION_COOKIE_NAME);
+  const rawToken = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+  let revokeError: unknown;
+
+  try {
+    if (isSessionToken(rawToken)) {
+      await revokeCustomerSession(rawToken);
+    }
+  } catch (error) {
+    revokeError = error;
+  } finally {
+    cookieStore.delete(SESSION_COOKIE_NAME);
+  }
+
+  if (revokeError) {
+    throw revokeError;
+  }
 }
 
 export async function getCurrentWeddingFromCookie() {
   const cookieStore = await cookies();
-  const sessionId = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-  const session = await getSession(sessionId);
-
-  if (!session) {
+  const rawToken = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+  if (!isSessionToken(rawToken)) {
     return null;
   }
-
-  const wedding = await getWeddingById(session.weddingId);
-
-  if (!wedding) {
-    return null;
-  }
-
-  return { session, wedding };
+  return getCustomerSession(rawToken);
 }
