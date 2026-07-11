@@ -13,11 +13,8 @@ import { makeBaseWeddingSlug, makeCoupleName } from "@/lib/text";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { createSignedStorageUrl, deleteStoredFile } from "@/lib/storage/storage-service";
 import {
-  buildAccessWindow,
   buildActivationFallbackWindow,
-  CLASSIC_ACCESS_MONTHS,
   CLASSIC_STORAGE_BYTES,
-  PREMIUM_EXTENSION_MONTHS,
 } from "@/lib/storage/quota";
 
 type WeddingRow = {
@@ -514,50 +511,12 @@ export async function getDemoWeddingBySlug(slug: string) {
 
 export async function updateWedding(
   weddingId: string,
-  patch: Partial<Pick<Wedding, "brideName" | "groomName" | "eventDate" | "welcomeNote" | "uploadLocked">> & {
+  patch: Partial<Pick<Wedding, "welcomeNote" | "uploadLocked">> & {
     profileMedia?: StoredMediaObject;
   },
 ) {
   const supabase = getSupabaseAdmin();
   const update: Record<string, unknown> = {};
-  const { data: existingRow, error: existingError } = await supabase
-    .from("weddings")
-    .select("*")
-    .eq("id", weddingId)
-    .single();
-
-  if (existingError) {
-    throw new Error(existingError.message);
-  }
-
-  if (patch.brideName !== undefined || patch.groomName !== undefined) {
-    const brideName = patch.brideName?.trim();
-    const groomName = patch.groomName?.trim();
-
-    if (!brideName || !groomName) {
-      throw new Error("Both names are required.");
-    }
-
-    update.bride_name = brideName;
-    update.groom_name = groomName;
-    update.couple_name = makeCoupleName(brideName, groomName);
-  }
-
-  if ("eventDate" in patch) {
-    const nextEventDate = patch.eventDate || null;
-    update.event_date = nextEventDate;
-
-    if (!existingRow.event_date && nextEventDate) {
-      const accessMonths =
-        existingRow.plan === "premium"
-          ? CLASSIC_ACCESS_MONTHS + PREMIUM_EXTENSION_MONTHS
-          : CLASSIC_ACCESS_MONTHS;
-      const accessWindow = buildAccessWindow(nextEventDate, accessMonths);
-      update.access_anchor_date = accessWindow.accessAnchorDate;
-      update.access_expires_at = accessWindow.accessExpiresAt;
-      update.cleanup_after = accessWindow.cleanupAfter;
-    }
-  }
 
   if ("welcomeNote" in patch && patch.welcomeNote !== undefined) {
     update.welcome_note = patch.welcomeNote;

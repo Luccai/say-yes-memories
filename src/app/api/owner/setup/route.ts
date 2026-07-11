@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
-import { verifyPassword } from "@/lib/auth/passwords";
+import { hashPassword } from "@/lib/auth/passwords";
 import { setOwnerSessionCookie } from "@/lib/owner/cookies";
-import { validateOwnerLoginRequest } from "@/lib/owner/input";
+import { validateOwnerSetupRequest } from "@/lib/owner/input";
 import {
   clearOwnerAuthLimit,
   consumeOwnerAuthLimit,
 } from "@/lib/owner/rate-limit";
 import { ownerRequestMetadata } from "@/lib/owner/request-metadata";
 import { createOwnerSessionToken } from "@/lib/owner/session-tokens";
-import { createOwnerSession, getOwnerCredentials } from "@/lib/owner/store";
+import { verifyOwnerSetupCode } from "@/lib/owner/setup-secret";
+import { getOwnerCredentials, setupOwner } from "@/lib/owner/store";
 
 function errorResponse(code: string, status: number) {
   return NextResponse.json(
@@ -25,18 +26,17 @@ export async function POST(request: Request) {
     return errorResponse("INVALID_REQUEST", 400);
   }
 
-  const validated = validateOwnerLoginRequest(rawBody);
+  const validated = validateOwnerSetupRequest(rawBody);
   if (!validated.ok) {
     return errorResponse(validated.code, 400);
   }
 
   try {
-    const credentials = await getOwnerCredentials();
-    if (!credentials) {
-      return errorResponse("SETUP_REQUIRED", 409);
+    if (await getOwnerCredentials()) {
+      return errorResponse("SETUP_ALREADY_COMPLETED", 409);
     }
 
-    const limit = await consumeOwnerAuthLimit(request, "login");
+    const limit = await consumeOwnerAuthLimit(request, "setup");
     if (!limit.allowed) {
       return NextResponse.json(
         { code: "TOO_MANY_ATTEMPTS" },
@@ -49,16 +49,16 @@ export async function POST(request: Request) {
         },
       );
     }
-    if (!(await verifyPassword(validated.value.password, credentials.passwordHash))) {
-      return errorResponse("INVALID_CREDENTIALS", 401);
+    if (!verifyOwnerSetupCode(validated.value.setupCode)) {
+      return errorResponse("INVALID_SETUP_CODE", 401);
     }
 
     const session = createOwnerSessionToken();
     const metadata = ownerRequestMetadata(request);
-    await createOwnerSession({
+    await setupOwner({
+      passwordHash: await hashPassword(validated.value.password),
       sessionId: session.id,
       sessionTokenHash: session.tokenHash,
-      passwordVersion: credentials.passwordVersion,
       deviceLabel: validated.value.deviceLabel,
       userAgentHash: metadata.userAgentHash,
       ipHash: metadata.ipHash,
@@ -72,7 +72,10 @@ export async function POST(request: Request) {
     );
     setOwnerSessionCookie(response, session.rawToken, request);
     return response;
-  } catch {
-    return errorResponse("LOGIN_UNAVAILABLE", 503);
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("already completed")) {
+      return errorResponse("SETUP_ALREADY_COMPLETED", 409);
+    }
+    return errorResponse("SETUP_UNAVAILABLE", 503);
   }
 }

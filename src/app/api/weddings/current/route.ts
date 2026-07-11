@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentWeddingFromCookie } from "@/lib/auth";
 import { updateWedding } from "@/lib/supabase-store";
+import { parseCustomerWeddingUpdate } from "@/lib/weddings/customer-update";
 
 export async function GET() {
   const current = await getCurrentWeddingFromCookie();
@@ -19,22 +20,9 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ message: "Session not found." }, { status: 401 });
   }
 
-  const body = (await request.json()) as {
-    brideName?: string;
-    groomName?: string;
-    eventDate?: string;
-    welcomeNote?: string;
-    uploadLocked?: boolean;
-  };
-
   try {
-    const wedding = await updateWedding(current.wedding.id, {
-      brideName: body.brideName,
-      groomName: body.groomName,
-      eventDate: body.eventDate,
-      welcomeNote: body.welcomeNote,
-      uploadLocked: body.uploadLocked,
-    });
+    const patch = parseCustomerWeddingUpdate(await request.json());
+    const wedding = await updateWedding(current.wedding.id, patch);
 
     return NextResponse.json({ wedding });
   } catch (error) {

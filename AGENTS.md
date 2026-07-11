@@ -58,21 +58,25 @@ Kalite komutları:
 - `/login`: Etsy token aktivasyonu, geri dönen cihazda stüdyoya giriş kartı ve Mary & John demo CTA'sı.
 - `/admin`: HTTP-only session cookie ile gerçek çift admin paneli.
 - `/admin/mary-john`: Mary & John demo admin paneli.
-- `/owner/upgrades`: owner secret cookie ile manuel Premium Extension uygulama paneli.
+- `/owner`: Türkçe owner kokpiti; üyelik, token, paket, temizlik, cihaz ve sistem durumunu yönetir.
+- `/owner/upgrades`: eski uyumluluk route'udur ve `/owner` adresine yönlendirir.
 - `/{coupleSlug}`: gerçek misafir upload sayfası.
 - `/mary-john?demo=1`: demo misafir upload sayfası.
 
 API route'ları:
 
-- `/api/auth/activate`: token + çift adı ile studio aktivasyonu veya aktif tokenla tekrar giriş.
+- `/api/auth/activate`: token + iki isim + şifre + düğün tarihi + saat dilimiyle atomik ilk aktivasyon.
+- `/api/auth/login`: aynı cihazda slug + şifre, yeni cihazda aktif token + şifre ile giriş.
+- `/api/auth/recover`: aktif tokenla şifreyi yeniler ve bütün eski oturumları kapatır.
 - `/api/auth/session`: mevcut session'daki wedding bilgisini döner.
-- `/api/auth/logout`: session'ı siler, cookie'yi temizler.
-- `/api/owner/login`: owner şifresiyle `/owner/upgrades` için HTTP-only owner session açar.
-- `/api/owner/logout`: owner session cookie'sini temizler.
-- `/api/owner/upgrades/apply`: Studio Code + Etsy sipariş no ile Premium Extension uygular.
+- `/api/auth/logout`: sunucu oturumunu iptal eder ve cookie'yi temizler.
+- `/api/owner/setup`: yalnızca bir kez çalışan kurulum koduyla ilk owner şifresi ve cihaz oturumu açar.
+- `/api/owner/login`, `/api/owner/session`, `/api/owner/logout`: hash'li, cihaz bazlı ve kullanıldıkça 90 gün yenilenen owner oturumlarını yönetir.
+- `/api/owner/*`: çift arama/detay, token, paket/düzeltme, temizlik, hareket, cihaz, şifre ve sistem durumu API'leridir.
+- `/api/owner/upgrades/apply`: kaldırılmış eski Studio Code akışıdır ve `410` döner.
 - `/api/uploads/[slug]/prepare`: misafir dosyası için R2 presigned PUT hedefi üretir ve kota/access kontrolü yapar.
 - `/api/uploads/[slug]/complete`: signed upload sonrası DB media kaydını oluşturur.
-- `/api/weddings/current`: admin wedding identity ayarlarını günceller.
+- `/api/weddings/current`: müşteri için yalnızca welcome note ve upload lock alanlarını günceller; isim/tarih değişikliği owner'a özeldir.
 - `/api/weddings/current/media`: admin memory inbox listesini döner.
 - `/api/weddings/current/profile-media/prepare`: admin profil fotoğrafı için R2 presigned PUT hedefi üretir.
 - `/api/weddings/current/profile-media/complete`: profil fotoğrafını doğrular ve wedding kaydına bağlar.
@@ -87,6 +91,9 @@ Supabase migration dosyaları:
 - `supabase/migrations/20260621130000_add_wedding_media_thumbnails.sql`: media thumbnail alanları.
 - `supabase/migrations/20260621164000_allow_more_audio_mime_types.sql`: ek audio MIME tipleri.
 - `supabase/migrations/20260629120000_add_r2_quota_and_upgrades.sql`: R2 kota/access alanları, Studio Code, upgrade logları ve quota RPC'leri.
+- `supabase/migrations/20260711114338_product_ready_core.sql`: şifreli müşteri üyeliği, ortak slug/alias alanı, değişmez hak hareketleri, kota rezervasyonları ve güvenli silme kuyruğu.
+- `supabase/migrations/20260711180000_add_auth_rate_limits.sql`: veritabanı tabanlı giriş deneme sınırları.
+- `supabase/migrations/20260711203000_add_owner_cockpit.sql`: owner kimliği, 90 günlük cihaz oturumları, token yaşam döngüsü, kokpit sorguları ve onaylı temizlik.
 
 Ana tablolar:
 
@@ -95,6 +102,10 @@ Ana tablolar:
 - `wedding_media`: misafir medya metadata'sı.
 - `upgrade_logs`: owner panelden uygulanan Premium Extension kayıtları.
 - `sessions`: HTTP-only cookie ile eşleşen admin session kayıtları.
+- `wedding_slugs`: canonical ve eski yönlendirme adresleri; isim değişse de eski QR çalışır.
+- `entitlement_events`: Classic, Premium Extension, tarih değişikliği ve kayıtlı düzeltmelerin değiştirilemeyen hareket defteri.
+- `owner_credentials`, `owner_sessions`, `owner_audit_logs`: owner şifresi, cihaz oturumları ve hareket geçmişi.
+- `system_health_checks`, `media_deletion_jobs`: günlük servis kontrolü ve owner onaylı R2 silme kuyruğu.
 
 Storage bucket:
 
@@ -110,9 +121,10 @@ Storage bucket:
 
 - Token frontend'de kalıcı saklanmaz.
 - Token normalize edilip SHA-256 hash ile `tokens.token_hash` karşılaştırılır.
-- İlk başarılı aktivasyonda wedding oluşturulur, token `active` olur ve session cookie set edilir.
-- Aktif token aynı çift isimleriyle tekrar girilirse yeni wedding yaratmadan mevcut wedding session açılır.
-- Farklı isimlerle aktif token kullanımı reddedilir.
+- İlk başarılı aktivasyon tek veritabanı işleminde wedding, canonical slug ve hash'li session oluşturur; aynı token eşzamanlı ikinci üyelik açamaz.
+- Şifreler kişiye özel salt, scrypt ve sunucu `AUTH_PASSWORD_PEPPER` değeriyle korunur; açık şifre saklanmaz.
+- Aynı cihaz yalnızca slug/çift adı/profil ipucunu hatırlar; token ve şifre tarayıcıda saklanmaz.
+- Logout gerçek sunucu oturumunu iptal eder. Aktif tokenla recovery bütün eski oturumları kapatır.
 - Admin route'ları `getCurrentWeddingFromCookie()` ile server tarafında session doğrular.
 
 ## Admin Panel Davranışı
@@ -138,26 +150,29 @@ Guest Memories:
 Private Storage:
 
 - Hamburger menüde ayrı, minimal bir panel olarak bulunur; Guest Memories'in üstünde büyük kota kartı gösterilmez.
-- Plan, kullanılan/toplam storage, access süresi, Studio Code ve Premium Extension akışı burada gösterilir.
-- Premium button Etsy listing URL env'i varsa listing'i açar; yoksa Studio Code kopyalama yönergesi gösterir.
+- Plan, kullanılan/toplam storage, access süresi, çift adı ve Premium Extension akışı burada gösterilir.
+- Premium button Etsy listing URL env'i varsa listing'i açar; müşteri Etsy personalization alanına yalnızca paneldeki çift adını yazar.
 - Demo admin panelinde gerçek para/upgrade aksiyonları çalışmaz; demo state yanıltıcı olmamalıdır.
 
-Owner Upgrade Panel:
+Owner Kokpiti:
 
-- `/owner/upgrades` sadece owner içindir ve customer-facing i18n akışından ayrı olarak Türkçe tutulur.
-- `OWNER_ADMIN_PASSWORD` yoksa panel crash etmez; giriş formunda kontrollü hata gösterir.
-- Studio Code ile gerçek galeri bulunur; upgrade uygulamak için Etsy sipariş no zorunludur.
-- Etsy sipariş no ödeme kanıtı ve duplicate guard gibi davranır. Aynı sipariş no ikinci kez uygulanamaz.
-- Premium Extension mevcut erişim bitiş tarihinin üstüne `+50 GB` ve `+6 ay` ekler; müşterinin Studio Code'u dışında ham token kullanılmaz.
-- Gerçek müşteri kaydında test yapılırken upgrade submit edilmemeli; bağlantı testi için geçici wedding kaydı kullanılmalıdır.
+- `/owner` customer-facing i18n akışından ayrı ve Türkçe tutulur.
+- İlk açılış `OWNER_SETUP_SECRET` ile tek kullanımlık kurulum ister; owner şifresi en az 12 karakterdir ve açık saklanmaz.
+- Owner oturumu sunucuda yalnızca hash'li anahtarla tutulur, kullanıldıkça 90 gün yenilenir ve Ayarlar'dan cihaz bazında kapatılır.
+- Genel Bakış, Çiftler, Tokenlar, Hareketler, Temizlik, Ayarlar ve Sistem Durumu bölümleri vardır.
+- Çift araması `Fatma Mihail` ile `Fatma & Mihail` yazımını aynı üyelik için bulur; aynı isimli üyelikler slug ve açılış tarihiyle ayırt edilir.
+- Premium Extension seçilen üyeliğe tam `+50 GB` ve `+6 ay` ekler. Aynı operation key yeniden gönderilirse ikinci kez uygulanmaz.
+- Yanlış pakette geçmiş silinmez; zorunlu nedenli reversal hareketi eklenir ve bütün haklar yeniden hesaplanır.
+- Temizlik yalnızca 30 günlük indirme dönemi bittikten sonra, tam slug yazılarak owner onayıyla başlar. R2 işleri bitmeden üyelik anonimleştirilmez.
+- Gerçek müşteri kaydında write-test yapılmaz; tüm canlı doğrulama geçici wedding ve ayrı storage klasörüyle yürütülür.
 
 Wedding Page:
 
 - Profil fotoğrafı upload eder. Video PP kullanılmaz.
 - Profil fotoğrafı client-side sıkıştırılır ve API tarafında 500 KB üstü profil fotoğrafı kabul edilmez.
 - Profil fotoğrafı küçük olduğu için cihazda instant cache'e alınır; geri dönüş/login/admin/guest header'da mümkünse ilk render'da fotoğraf gösterilir, cache yoksa boş beyaz oval değil yükleniyor yüzeyi görünür.
-- Bride/groom isimleri, event date, welcome note ve upload lock ayarlarını yönetir.
-- İsim değişince misafir tarafındaki görünen çift adı da güncellenir; slug aynı kalır çünkü basılmış QR/link kırılmamalıdır.
+- Müşteri profil fotoğrafı, welcome note ve upload lock ayarlarını yönetir; isim ve düğün tarihi güvenlik için salt okunurdur.
+- İsim/tarih yalnızca owner kokpitinden değişir. Yeni canonical slug üretilir; eski slug alias olarak kaldığı için basılmış QR/link yeni adrese yönlenir.
 - Profil medya da presigned upload ile R2'ye gider ancak guest storage kotasına dahil edilmez.
 
 Demo:
@@ -204,7 +219,9 @@ R2_ACCESS_KEY_ID=
 R2_SECRET_ACCESS_KEY=
 R2_BUCKET=say-yes-memories
 NEXT_PUBLIC_ETSY_PREMIUM_UPGRADE_URL=
-OWNER_ADMIN_PASSWORD=
+AUTH_PASSWORD_PEPPER=
+AUTH_RATE_LIMIT_SECRET=
+OWNER_SETUP_SECRET=
 ```
 
 Vercel tarafında Production, Preview ve Development ortamları için bu değerler girilmelidir. `SUPABASE_SERVICE_ROLE_KEY` ve R2 secret değerleri kesinlikle frontend'e açılmamalı; `NEXT_PUBLIC_` prefix'i almamalıdır.

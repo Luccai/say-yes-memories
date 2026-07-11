@@ -21,7 +21,8 @@ Generated raw tokens are written under `private/` and must never be committed.
 - `/admin/mary-john` - local/demo admin studio
 - `/{coupleSlug}` - guest upload page
 - `/mary-john?demo=1` - local/demo guest upload page
-- `/owner/upgrades` - owner-only manual Premium Extension panel
+- `/owner` - Turkish-only owner cockpit for memberships, tokens, packages, cleanup, devices, and system status
+- `/owner/upgrades` - legacy route; redirects to `/owner`
 
 ## Help and localization
 
@@ -30,7 +31,7 @@ All fixed UI copy, including Help content, is served from `src/lib/i18n.ts`
 for `en`, `es`, `fr`, `de`, `pt`, and `zh`; unsupported browser languages
 fall back to English.
 
-The owner upgrade panel is intentionally Turkish-only because it is an internal
+The owner cockpit is intentionally Turkish-only because it is an internal
 operator tool, not a customer-facing screen.
 
 ## Storage and plans
@@ -47,9 +48,11 @@ Current product model:
 - Expired files are not deleted immediately; they become cleanup candidates
   after the 30-day grace window.
 
-Premium Extension is applied manually from `/owner/upgrades` with the couple's
-Studio Code and Etsy order number. The Etsy order number is required to prevent
-applying the same paid upgrade twice.
+Premium Extension is applied manually from `/owner` after finding the membership
+by couple name. Customers copy only their couple name into Etsy personalization;
+Studio Code and Etsy order number are no longer part of the customer flow. Every
+application uses an idempotent operation key and an immutable entitlement event,
+so an accidental retry cannot add the package twice.
 
 Required R2 environment variables:
 
@@ -59,7 +62,9 @@ R2_ACCESS_KEY_ID=
 R2_SECRET_ACCESS_KEY=
 R2_BUCKET=say-yes-memories
 NEXT_PUBLIC_ETSY_PREMIUM_UPGRADE_URL=
-OWNER_ADMIN_PASSWORD=
+AUTH_PASSWORD_PEPPER=
+AUTH_RATE_LIMIT_SECRET=
+OWNER_SETUP_SECRET=
 ```
 
 Enable R2 in the Cloudflare dashboard before deploying, create the
@@ -68,8 +73,9 @@ production origins.
 
 ## Verification notes
 
-Before touching a real paid customer, test upgrade behavior with a temporary
-wedding record. The expected check is: owner login works, Studio Code lookup
-finds the gallery, applying Premium Extension changes the temp record to 100 GB
-and adds one upgrade log, and a second apply with the same Etsy order number is
-rejected.
+Before touching a real paid customer, test owner and upgrade behavior with a
+temporary wedding record. The expected check is: one-time owner setup and login
+work, couple-name search finds the temporary membership, Premium Extension adds
+exactly 50 GB and 6 months, retrying the same operation key does not apply it a
+second time, and the temporary records are removed after verification. Never run
+a write-test against a real customer membership.

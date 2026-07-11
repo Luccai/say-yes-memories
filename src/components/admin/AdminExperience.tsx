@@ -48,7 +48,6 @@ import { GuidanceDialog, HelpTriggerButton } from "@/components/shared/GuidanceD
 import { MediaOrb } from "@/components/shared/MediaOrb";
 import { getSupabaseBrowser } from "@/lib/supabase/browser";
 import { localizedError, useCopy, useLocale } from "@/lib/i18n";
-import { makeCoupleName } from "@/lib/text";
 import { rememberMembership } from "@/lib/auth/device-hint";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import {
@@ -83,6 +82,7 @@ type AdminExperienceProps = {
 type FilterKey = "all" | MediaKind;
 type AdminPanel = "memories" | "storage" | "identity" | "qr" | "guest";
 type MemoryGridLayout = "classic" | "story" | "compact";
+type CustomerWeddingPatch = Partial<Pick<Wedding, "welcomeNote" | "uploadLocked">>;
 type AdminCopy = ReturnType<typeof useCopy>["admin"];
 const MEMORY_GRID_LAYOUT_STORAGE_KEY = "sayyes.admin.memory-grid-layout";
 const MEMORY_GRID_LAYOUTS: MemoryGridLayout[] = ["classic", "story", "compact"];
@@ -95,7 +95,7 @@ const ADMIN_ACTION_BUTTON_CLASS =
 const ADMIN_DANGER_ACTION_BUTTON_CLASS =
   "focus-ring inline-flex items-center justify-center rounded-full border border-[rgba(124,58,49,0.24)] bg-white/58 px-4 py-2.5 text-[0.78rem] font-bold text-[var(--rosewood)] transition hover:bg-white active:scale-[0.99] disabled:opacity-60";
 const ADMIN_STORAGE_PILL_BUTTON_CLASS =
-  "focus-ring inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-[var(--line)] bg-white/62 px-3 text-[0.72rem] font-extrabold text-[var(--ink)] transition hover:bg-white active:scale-[0.99] disabled:cursor-default disabled:opacity-55";
+  "focus-ring inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white/62 px-4 text-xs font-extrabold text-[var(--ink)] transition hover:bg-white active:scale-[0.99] disabled:cursor-default disabled:opacity-55";
 
 function mergeDemoMedia(baseMedia: WeddingMedia[], sessionMedia: WeddingMedia[]) {
   const sessionIds = new Set(sessionMedia.map((item) => item.id));
@@ -506,32 +506,17 @@ export function AdminExperience({
     return media.filter((item) => item.kind === filter);
   }, [filter, media]);
 
-  async function saveIdentity(patch: Partial<Wedding>) {
+  async function saveIdentity(patch: CustomerWeddingPatch) {
     setIdentitySaveConfirmed(false);
 
     if (demoMode) {
       setWedding((current) => ({
         ...current,
-        brideName: patch.brideName ?? current.brideName,
-        groomName: patch.groomName ?? current.groomName,
-        coupleName:
-          patch.brideName !== undefined || patch.groomName !== undefined
-            ? makeCoupleName(
-                patch.brideName ?? current.brideName,
-                patch.groomName ?? current.groomName,
-              )
-            : current.coupleName,
-        eventDate: patch.eventDate ?? current.eventDate,
         welcomeNote: patch.welcomeNote ?? current.welcomeNote,
         uploadLocked: patch.uploadLocked ?? current.uploadLocked,
         updatedAt: new Date().toISOString(),
       }));
-      if (
-        patch.brideName !== undefined ||
-        patch.groomName !== undefined ||
-        patch.eventDate !== undefined ||
-        patch.welcomeNote !== undefined
-      ) {
+      if (patch.welcomeNote !== undefined) {
         setIdentitySaveConfirmed(true);
         window.setTimeout(() => setIdentitySaveConfirmed(false), 2600);
       }
@@ -544,13 +529,7 @@ export function AdminExperience({
       const response = await fetch("/api/weddings/current", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          brideName: patch.brideName ?? wedding.brideName,
-          groomName: patch.groomName ?? wedding.groomName,
-          eventDate: patch.eventDate ?? wedding.eventDate ?? "",
-          welcomeNote: patch.welcomeNote ?? wedding.welcomeNote,
-          uploadLocked: patch.uploadLocked ?? wedding.uploadLocked,
-        }),
+        body: JSON.stringify(patch),
       });
       const payload = (await response.json()) as { wedding?: Wedding; message?: string };
 
@@ -562,12 +541,7 @@ export function AdminExperience({
 
       if (payload.wedding) {
         setWedding(payload.wedding);
-        if (
-          patch.brideName !== undefined ||
-          patch.groomName !== undefined ||
-          patch.eventDate !== undefined ||
-          patch.welcomeNote !== undefined
-        ) {
+        if (patch.welcomeNote !== undefined) {
           setIdentitySaveConfirmed(true);
           window.setTimeout(() => setIdentitySaveConfirmed(false), 2600);
         }
@@ -1011,10 +985,9 @@ function StorageOverview({
   text: AdminCopy;
 }) {
   const [premiumOpen, setPremiumOpen] = useState(false);
-  const [codeCopied, setCodeCopied] = useState(false);
+  const [coupleNameCopied, setCoupleNameCopied] = useState(false);
   const premiumUpgradeUrl = process.env.NEXT_PUBLIC_ETSY_PREMIUM_UPGRADE_URL;
   const isDemoStorage = demoMode || wedding.demo;
-  const displayStudioCode = isDemoStorage ? text.demoStudioCode : wedding.studioCode;
   const percent = storageUsagePercent(wedding.storageUsedBytes, wedding.storageQuotaBytes);
   const usedLabel = formatStorageBytes(wedding.storageUsedBytes);
   const quotaLabel = formatStorageBytes(wedding.storageQuotaBytes);
@@ -1024,14 +997,14 @@ function StorageOverview({
 
   useBodyScrollLock(premiumOpen);
 
-  async function copyStudioCode() {
+  async function copyCoupleName() {
     if (isDemoStorage) {
       return;
     }
 
-    await navigator.clipboard.writeText(wedding.studioCode);
-    setCodeCopied(true);
-    window.setTimeout(() => setCodeCopied(false), 1600);
+    await navigator.clipboard.writeText(wedding.coupleName);
+    setCoupleNameCopied(true);
+    window.setTimeout(() => setCoupleNameCopied(false), 1600);
   }
 
   return (
@@ -1072,22 +1045,22 @@ function StorageOverview({
             <div className="grid gap-3">
               <div>
                 <p className="text-[0.68rem] font-bold uppercase text-[var(--ink-soft)]">
-                  {text.studioCode}
+                  {text.upgradeCoupleName}
                 </p>
-                <p className="mt-1 break-all font-mono text-lg font-bold text-[var(--ink)]">
-                  {displayStudioCode}
+                <p className="mt-1 break-words font-display text-xl font-semibold text-[var(--ink)]">
+                  {wedding.coupleName}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={copyStudioCode}
+                  onClick={copyCoupleName}
                   disabled={isDemoStorage}
                   title={isDemoStorage ? text.demoStorageNotice : undefined}
                   className={ADMIN_STORAGE_PILL_BUTTON_CLASS}
                 >
                   <Copy className="size-3.5" />
-                  <span>{codeCopied ? text.copied : text.copy}</span>
+                  <span>{coupleNameCopied ? text.copied : text.copyCoupleName}</span>
                 </button>
                 <button
                   type="button"
@@ -1157,19 +1130,19 @@ function StorageOverview({
             </ol>
             <div className="mt-5 rounded-[22px] border border-[var(--line)] bg-white/54 p-4">
               <p className="text-[0.68rem] font-bold uppercase text-[var(--ink-soft)]">
-                {text.studioCode}
+                {text.upgradeCoupleName}
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <span className="break-all font-mono text-lg font-bold text-[var(--ink)]">
-                  {wedding.studioCode}
+                <span className="break-words font-display text-xl font-semibold text-[var(--ink)]">
+                  {wedding.coupleName}
                 </span>
                 <button
                   type="button"
-                  onClick={copyStudioCode}
+                  onClick={copyCoupleName}
                   className={`${ADMIN_ACTION_BUTTON_CLASS} px-3 py-2`}
                 >
                   <Copy className="size-4" />
-                  {codeCopied ? text.copied : text.copy}
+                  {coupleNameCopied ? text.copied : text.copyCoupleName}
                 </button>
               </div>
             </div>
@@ -1209,16 +1182,13 @@ function IdentityCard({
   profileUploading: boolean;
   onUploadProfileMedia: (event: ChangeEvent<HTMLInputElement>) => void;
   onDirty: () => void;
-  onSave: (patch: Partial<Wedding>) => Promise<void>;
+  onSave: (patch: CustomerWeddingPatch) => Promise<void>;
   text: AdminCopy;
 }) {
-  const [eventDate, setEventDate] = useState(wedding.eventDate ?? "");
   const [welcomeNote, setWelcomeNote] = useState(wedding.welcomeNote);
-  const [brideName, setBrideName] = useState(wedding.brideName);
-  const [groomName, setGroomName] = useState(wedding.groomName);
 
   async function handleSaveIdentity() {
-    await onSave({ brideName, groomName, eventDate, welcomeNote });
+    await onSave({ welcomeNote });
   }
 
   function markDirty() {
@@ -1263,41 +1233,28 @@ function IdentityCard({
 
         <div className="grid gap-4">
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="grid gap-2 text-sm font-semibold">
+            <div className="grid gap-2 text-sm font-semibold">
               {text.brideName}
-              <input
-                value={brideName}
-                onChange={(event) => {
-                  setBrideName(event.target.value);
-                  markDirty();
-                }}
-                className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-3 !text-[16px] outline-none"
-              />
-            </label>
-            <label className="grid gap-2 text-sm font-semibold">
+              <p className="min-h-12 rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-3 text-base font-medium text-[var(--ink)]">
+                {wedding.brideName}
+              </p>
+            </div>
+            <div className="grid gap-2 text-sm font-semibold">
               {text.groomName}
-              <input
-                value={groomName}
-                onChange={(event) => {
-                  setGroomName(event.target.value);
-                  markDirty();
-                }}
-                className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-3 !text-[16px] outline-none"
-              />
-            </label>
+              <p className="min-h-12 rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-3 text-base font-medium text-[var(--ink)]">
+                {wedding.groomName}
+              </p>
+            </div>
           </div>
-          <label className="grid gap-2 text-sm font-semibold">
+          <div className="grid gap-2 text-sm font-semibold">
             {text.eventDate}
-            <input
-              type="date"
-              value={eventDate}
-              onChange={(event) => {
-                setEventDate(event.target.value);
-                markDirty();
-              }}
-              className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-3 !text-[16px] outline-none"
-            />
-          </label>
+            <p className="min-h-12 rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-3 text-base font-medium text-[var(--ink)]">
+              {wedding.eventDate ?? "—"}
+            </p>
+          </div>
+          <p className="rounded-[20px] border border-[rgba(139,107,63,0.2)] bg-white/54 px-4 py-3 text-xs font-semibold leading-5 text-[var(--ink-soft)]">
+            {text.identityOwnerManaged}
+          </p>
           <label className="grid gap-2 text-sm font-semibold">
             {text.welcomeNote}
             <textarea

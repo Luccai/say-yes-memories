@@ -13,9 +13,7 @@ import { createId, createStudioCode, hashToken, SESSION_MAX_AGE_SECONDS } from "
 import { toPublicWedding } from "@/lib/public-wedding";
 import { makeBaseWeddingSlug, makeCoupleName } from "@/lib/text";
 import {
-  buildAccessWindow,
   buildActivationFallbackWindow,
-  CLASSIC_ACCESS_MONTHS,
   CLASSIC_STORAGE_BYTES,
 } from "@/lib/storage/quota";
 
@@ -215,7 +213,7 @@ export async function getWeddingBySlug(slug: string): Promise<PublicWedding | nu
 
 export async function updateWedding(
   weddingId: string,
-  patch: Partial<Pick<Wedding, "eventDate" | "welcomeNote" | "uploadLocked">> & {
+  patch: Partial<Pick<Wedding, "welcomeNote" | "uploadLocked">> & {
     profileMedia?: StoredMediaObject;
   },
 ) {
@@ -227,10 +225,6 @@ export async function updateWedding(
   }
 
   Object.assign(wedding, patch, { updatedAt: new Date().toISOString() });
-
-  if (!wedding.accessAnchorDate && wedding.eventDate) {
-    Object.assign(wedding, buildAccessWindow(wedding.eventDate, CLASSIC_ACCESS_MONTHS));
-  }
 
   await writeStore(store);
   return wedding;
