@@ -13,6 +13,8 @@ export type StoredMediaObject = {
   createdAt: string;
 };
 
+export type PublicStoredMediaObject = Omit<StoredMediaObject, "storagePath">;
+
 export type TokenRecord = {
   id: string;
   tokenHash: string;
@@ -77,9 +79,10 @@ export type PublicWedding = Pick<
   | "coupleName"
   | "eventDate"
   | "welcomeNote"
-  | "profileMedia"
   | "uploadLocked"
->;
+> & {
+  profileMedia?: PublicStoredMediaObject;
+};
 
 export type AppStore = {
   tokens: TokenRecord[];

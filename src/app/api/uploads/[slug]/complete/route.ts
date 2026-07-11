@@ -3,7 +3,6 @@ import type { StoredMediaObject } from "@/lib/types";
 import { addWeddingMedia, getWeddingRecordBySlug } from "@/lib/supabase-store";
 import {
   assertUploadBelongsToWedding,
-  deleteStoredFile,
   finalizeSignedUpload,
   MAX_THUMBNAIL_UPLOAD_BYTES,
   type PendingStoredMediaObject,
@@ -71,12 +70,11 @@ export async function POST(
       object,
       thumbnail,
     });
-    await broadcastWeddingMediaChange(wedding.realtimeTopic);
+    // Persistence is authoritative; Realtime notification is best-effort.
+    await broadcastWeddingMediaChange(wedding.realtimeTopic).catch(() => undefined);
 
     return NextResponse.json({ media });
   } catch (error) {
-    await deleteStoredFile(body.object?.storagePath).catch(() => undefined);
-    await deleteStoredFile(body.thumbnail?.storagePath).catch(() => undefined);
     const message =
       error instanceof Error && error.message.includes("Storage quota")
         ? "Storage is full. The couple needs to upgrade before more uploads can be added."

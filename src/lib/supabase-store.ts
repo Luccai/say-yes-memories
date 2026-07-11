@@ -8,6 +8,7 @@ import type {
   WeddingPlan,
 } from "@/lib/types";
 import { createId, createStudioCode, hashToken, SESSION_MAX_AGE_SECONDS } from "@/lib/security";
+import { toPublicWedding } from "@/lib/public-wedding";
 import { makeBaseWeddingSlug, makeCoupleName } from "@/lib/text";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { createSignedStorageUrl, deleteStoredFile } from "@/lib/storage/storage-service";
@@ -143,26 +144,6 @@ async function weddingFromRow(row: WeddingRow): Promise<Wedding> {
     uploadLocked: row.upload_locked,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-  };
-}
-
-function publicWedding(wedding: Wedding): PublicWedding {
-  return {
-    id: wedding.id,
-    slug: wedding.slug,
-    plan: wedding.plan,
-    storageQuotaBytes: wedding.storageQuotaBytes,
-    storageUsedBytes: wedding.storageUsedBytes,
-    accessAnchorDate: wedding.accessAnchorDate,
-    accessExpiresAt: wedding.accessExpiresAt,
-    cleanupAfter: wedding.cleanupAfter,
-    brideName: wedding.brideName,
-    groomName: wedding.groomName,
-    coupleName: wedding.coupleName,
-    eventDate: wedding.eventDate,
-    welcomeNote: wedding.welcomeNote,
-    profileMedia: wedding.profileMedia,
-    uploadLocked: wedding.uploadLocked,
   };
 }
 
@@ -497,7 +478,7 @@ export async function applyPremiumExtension(input: {
 
 export async function getWeddingBySlug(slug: string): Promise<PublicWedding | null> {
   const wedding = await getWeddingRecordBySlug(slug);
-  return wedding ? publicWedding(wedding) : null;
+  return wedding ? toPublicWedding(wedding) : null;
 }
 
 export async function getWeddingRecordBySlug(slug: string) {
