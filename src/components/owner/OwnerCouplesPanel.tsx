@@ -33,18 +33,23 @@ import {
   ownerInputClass,
   ownerStatusLabel,
 } from "@/components/owner/utils";
+import { shouldShowOwnerProfile } from "@/components/owner/avatar-state";
 
 type CoupleListResponse = { weddings: OwnerWeddingSummary[]; total: number };
 
 function CoupleAvatar({ wedding }: { wedding: OwnerWeddingSummary }) {
-  if (wedding.hasProfile) {
+  const source = `/api/owner/couples/${wedding.id}/profile?v=${encodeURIComponent(wedding.updatedAt)}`;
+  const [failedSource, setFailedSource] = useState("");
+
+  if (shouldShowOwnerProfile(wedding.hasProfile, source, failedSource)) {
     return (
       <Image
-        src={`/api/owner/couples/${wedding.id}/profile`}
+        src={source}
         alt=""
         width={64}
         height={80}
         unoptimized
+        onError={() => setFailedSource(source)}
         className="h-16 w-13 rounded-[50%] border border-white/80 object-cover shadow-sm"
       />
     );
