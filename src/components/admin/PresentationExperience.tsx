@@ -449,6 +449,14 @@ export function PresentationExperience({
   }, [started]);
 
   useEffect(() => {
+    if (!started) return;
+    const frame = window.requestAnimationFrame(() => {
+      stageRef.current?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [started]);
+
+  useEffect(() => {
     setFullscreenSupported(
       Boolean(document.fullscreenEnabled && stageRef.current?.requestFullscreen),
     );
@@ -466,6 +474,10 @@ export function PresentationExperience({
       }
     } catch {
       setFullscreenError(true);
+    } finally {
+      window.requestAnimationFrame(() => {
+        stageRef.current?.focus({ preventScroll: true });
+      });
     }
   }, []);
 
@@ -565,7 +577,8 @@ export function PresentationExperience({
   return (
     <main
       ref={stageRef}
-      className="relative grid min-h-[100dvh] touch-manipulation select-none place-items-center overflow-hidden bg-[#17110e] text-white"
+      tabIndex={-1}
+      className="relative grid h-[100dvh] min-h-0 w-full touch-manipulation select-none place-items-center overflow-hidden bg-[#17110e] text-white"
       onClick={(event) => {
         if (event.target instanceof Element && event.target.closest("[data-presentation-interactive]")) {
           return;
@@ -654,13 +667,24 @@ export function PresentationExperience({
         </motion.section>
       </AnimatePresence>
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 via-black/20 to-transparent px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-28 sm:px-6">
-        <div className="mx-auto flex max-w-6xl items-end justify-between gap-4">
-          <div className="min-w-0">
-            <p className="truncate text-sm font-extrabold">{current.guestName}</p>
-            <p className="mt-1 line-clamp-2 max-w-xl text-xs leading-5 text-white/65">
-              {current.note || text.noNote}
-            </p>
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 via-black/20 to-transparent px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-28 sm:px-6">
+        <div className="mx-auto flex min-h-16 max-w-6xl items-end justify-between gap-4">
+          <div data-presentation-caption="stable" className="relative h-16 min-w-0 flex-1 overflow-hidden">
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={`caption-${current.id}`}
+                className="absolute inset-0 grid grid-rows-[1.25rem_2.5rem] content-end"
+                initial={reduceMotion ? false : { opacity: 0, y: 7 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={reduceMotion ? undefined : { opacity: 0, y: -5 }}
+                transition={{ duration: reduceMotion ? 0 : 0.2, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <p className="truncate text-sm font-extrabold">{current.guestName}</p>
+                <p className="line-clamp-2 h-10 max-w-xl text-xs leading-5 text-white/65">
+                  {current.note || text.noNote}
+                </p>
+              </motion.div>
+            </AnimatePresence>
           </div>
           <p className="shrink-0 rounded-full border border-white/15 bg-black/30 px-3 py-2 text-xs font-bold tabular-nums backdrop-blur">
             {counter}
@@ -668,12 +692,22 @@ export function PresentationExperience({
         </div>
       </div>
 
-      {!started ? (
-        <div
+      <AnimatePresence>
+        {!started ? (
+        <motion.div
           className="absolute inset-0 z-20 grid place-items-center bg-black/42 px-5 backdrop-blur-sm"
           data-presentation-interactive="true"
+          initial={reduceMotion ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: reduceMotion ? 0 : 0.22 }}
         >
-          <section className="max-w-md text-center">
+          <motion.section
+            className="max-w-md text-center"
+            initial={reduceMotion ? false : { opacity: 0, y: 14, scale: 0.985 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={reduceMotion ? undefined : { opacity: 0, y: -8, scale: 0.99 }}
+          >
             <MediaOrb
               media={wedding.profileMedia}
               label={wedding.coupleName}
@@ -687,9 +721,10 @@ export function PresentationExperience({
               <Play className="size-4 fill-current" />
               {text.presentationStart}
             </Button>
-          </section>
-        </div>
-      ) : null}
+          </motion.section>
+        </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       <nav
         className="absolute left-1/2 top-[max(1rem,env(safe-area-inset-top))] z-30 flex max-w-[calc(100vw-1rem)] -translate-x-1/2 items-center gap-2 rounded-full border border-white/14 bg-black/42 p-1.5 shadow-[0_18px_60px_rgba(0,0,0,0.28)] backdrop-blur-xl"

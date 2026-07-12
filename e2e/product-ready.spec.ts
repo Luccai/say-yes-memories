@@ -31,16 +31,54 @@ test("login, studio menu and mobile grid remain usable", async ({ page }) => {
   await expectNoHorizontalOverflow(page);
 
   await page.getByRole("button", { name: "Studio menu" }).click();
-  await expect(
-    page
-      .getByRole("navigation", { name: "Studio menu" })
-      .getByRole("link", { name: "Flow mode" }),
-  ).toBeVisible();
+  const studioMenu = page.getByRole("navigation", { name: "Studio menu" });
+  await expect(studioMenu.getByRole("link", { name: "Flow mode" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Flow mode" })).toHaveCount(1);
   await page.keyboard.press("Escape");
 
   const layoutButton = page.getByRole("button", { name: /^Grid layout:/ });
   await layoutButton.click();
   await expectNoHorizontalOverflow(page);
+});
+
+test("studio keeps duplicated destinations in the menu and animates panel changes", async ({ page }) => {
+  await page.goto("/admin/mary-john");
+
+  await page.getByRole("button", { name: "Studio menu" }).click();
+  const studioMenu = page.getByRole("navigation", { name: "Studio menu" });
+  await studioMenu.getByRole("button", { name: "QR + guest link" }).click();
+
+  const qrPanel = page.locator('[data-admin-panel="qr"]');
+  await expect(qrPanel).toBeVisible();
+  await expect(qrPanel).toHaveAttribute("data-panel-motion", "enter-exit");
+  await expect(page.getByRole("link", { name: "View guest page" })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Studio menu" }).click();
+  await expect(page.getByRole("link", { name: "View guest page" })).toHaveCount(1);
+  await expect(page.getByRole("link", { name: "Flow mode" })).toHaveCount(1);
+});
+
+test("guest-memory thumbnails stay mounted while navigating between studio panels", async ({ page }) => {
+  await page.goto("/admin/mary-john");
+  const firstThumbnail = page.locator('[data-memory-inbox="true"] img').first();
+  await expect(firstThumbnail).toBeVisible();
+  await firstThumbnail.evaluate((image) => {
+    image.dataset.cacheProbe = "preserved";
+  });
+
+  await page.getByRole("button", { name: "Studio menu" }).click();
+  await page
+    .getByRole("navigation", { name: "Studio menu" })
+    .getByRole("button", { name: "Private storage" })
+    .click();
+  await expect(page.getByText(/34\.8 GB used of 50 GB/i)).toBeVisible();
+  await page.getByRole("button", { name: "Studio menu" }).click();
+  await page
+    .getByRole("navigation", { name: "Studio menu" })
+    .getByRole("button", { name: "Guest Memories" })
+    .click();
+
+  await expect(firstThumbnail).toHaveAttribute("data-cache-probe", "preserved");
 });
 
 test("demo guest can send a private photo", async ({ page }) => {
@@ -91,10 +129,19 @@ test("flow mode supports touch and keyboard playback controls", async ({ page })
   await page.goto("/admin/mary-john/presentation");
   await page.getByRole("button", { name: "Start flow mode" }).click();
   await expect(page.getByRole("button", { name: "Pause" })).toBeVisible();
+  const enterFullscreen = page.getByRole("button", { name: "Enter full screen" });
+  if (await enterFullscreen.isEnabled()) {
+    await enterFullscreen.click();
+    await expect(page.getByRole("button", { name: "Exit full screen" })).toBeVisible();
+  }
+  const caption = page.locator('[data-presentation-caption="stable"]');
+  const captionBefore = await caption.boundingBox();
 
   await page.keyboard.press("Space");
   await expect(page.getByRole("button", { name: "Resume" })).toBeVisible();
   await page.keyboard.press("ArrowRight");
+  await expect.poll(async () => (await caption.boundingBox())?.height).toBe(captionBefore?.height);
+  await expect.poll(async () => (await caption.boundingBox())?.y).toBe(captionBefore?.y);
   await page.getByRole("main").click({ position: { x: 10, y: 300 } });
   await expect(page.getByRole("button", { name: /Pause|Resume/ })).toBeVisible();
   await expectNoHorizontalOverflow(page);

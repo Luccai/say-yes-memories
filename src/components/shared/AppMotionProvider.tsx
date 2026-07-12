@@ -2,6 +2,7 @@
 
 import { useEffect, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
+import { MotionConfig } from "motion/react";
 
 export function AppMotionProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -19,5 +20,9 @@ export function AppMotionProvider({ children }: { children: ReactNode }) {
     };
   }, [pathname]);
 
-  return children;
+  return (
+    <MotionConfig reducedMotion="user" transition={{ ease: [0.22, 1, 0.36, 1] }}>
+      {children}
+    </MotionConfig>
+  );
 }

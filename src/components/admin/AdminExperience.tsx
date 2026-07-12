@@ -9,7 +9,6 @@ import {
   useRef,
   useState,
 } from "react";
-import dynamic from "next/dynamic";
 import {
   CalendarDays,
   Check,
@@ -55,6 +54,7 @@ import {
   storeInstantMediaCache,
 } from "@/components/shared/CachedMediaImage";
 import { GuidanceDialog, HelpTriggerButton } from "@/components/shared/GuidanceDialog";
+import { Button, buttonStyles } from "@/components/shared/Button";
 import { MediaOrb } from "@/components/shared/MediaOrb";
 import { localizedError, useCopy, useLocale } from "@/lib/i18n-client";
 import { rememberMembership } from "@/lib/auth/device-hint";
@@ -77,18 +77,6 @@ import {
   localizeDemoWedding,
 } from "@/lib/demo-content";
 
-const GuestExperience = dynamic(
-  () =>
-    import("@/components/guest/GuestExperience").then(
-      (module) => module.GuestExperience,
-    ),
-  {
-    loading: () => (
-      <div className="min-h-80 animate-pulse rounded-[30px] bg-white/45" />
-    ),
-  },
-);
-
 let qrCodeModule: Promise<typeof import("qrcode")> | null = null;
 
 function loadQrCode() {
@@ -105,7 +93,7 @@ type AdminExperienceProps = {
 };
 
 type FilterKey = "all" | MediaKind;
-type AdminPanel = "memories" | "storage" | "identity" | "qr" | "guest";
+type AdminPanel = "memories" | "storage" | "identity" | "qr";
 type MemoryGridLayout = "classic" | "story" | "compact";
 type CustomerWeddingPatch = Partial<Pick<Wedding, "welcomeNote" | "uploadLocked">>;
 type AdminCopy = ReturnType<typeof useCopy>["admin"];
@@ -115,13 +103,6 @@ const PROFILE_PHOTO_MAX_BYTES = 500 * 1024;
 const PROFILE_PHOTO_MAX_DIMENSION = 1280;
 const PROFILE_PHOTO_START_QUALITY = 0.82;
 const PROFILE_PHOTO_MIN_QUALITY = 0.46;
-const ADMIN_ACTION_BUTTON_CLASS =
-  "focus-ring inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white/58 px-4 py-2.5 text-[0.78rem] font-bold text-[var(--ink)] transition hover:bg-white active:scale-[0.99] disabled:opacity-60";
-const ADMIN_DANGER_ACTION_BUTTON_CLASS =
-  "focus-ring inline-flex min-h-12 items-center justify-center rounded-full border border-[rgba(124,58,49,0.24)] bg-white/58 px-4 py-2.5 text-[0.78rem] font-bold text-[var(--rosewood)] transition hover:bg-white active:scale-[0.99] disabled:opacity-60";
-const ADMIN_STORAGE_PILL_BUTTON_CLASS =
-  "focus-ring inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white/62 px-4 text-xs font-extrabold text-[var(--ink)] transition hover:bg-white active:scale-[0.99] disabled:cursor-default disabled:opacity-55";
-
 function isDemoSessionMedia(mediaId: string) {
   return mediaId.startsWith("demo-session-");
 }
@@ -368,6 +349,7 @@ export function AdminExperience({
   const [identitySaveConfirmed, setIdentitySaveConfirmed] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [menuPosition, setMenuPosition] = useState({ top: 20, right: 16 });
+  const reduceMotion = useReducedMotion();
   const text = useCopy();
   const adminText = text.admin;
   const adminHelpCards = demoMode
@@ -823,25 +805,30 @@ export function AdminExperience({
                 onClick={() => setHelpOpen(true)}
                 mobileIconOnly
               />
-              <button
+              <Button
                 ref={menuButtonRef}
-                type="button"
                 onClick={() => setMenuOpen((current) => !current)}
-                className="focus-ring grid size-12 shrink-0 place-items-center rounded-full border border-[var(--line)] bg-white/62 text-[var(--ink)] shadow-none transition hover:bg-white sm:shadow-[0_12px_28px_rgba(58,40,25,0.1)]"
+                variant="paper"
+                size="icon"
                 aria-expanded={menuOpen}
                 aria-label={adminText.menu}
               >
                 <Menu className="size-5" />
-              </button>
+              </Button>
             </div>
           </div>
         </header>
 
+        <AnimatePresence>
         {menuOpen ? (
-          <div
+          <motion.div
             className="fixed inset-0 z-50"
             onClick={() => setMenuOpen(false)}
             role="presentation"
+            initial={reduceMotion ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: reduceMotion ? 0 : 0.16 }}
           >
             <button
               type="button"
@@ -850,8 +837,10 @@ export function AdminExperience({
               onClick={() => setMenuOpen(false)}
             />
             <motion.nav
-              initial={{ opacity: 0, y: -8, scale: 0.98 }}
+              initial={reduceMotion ? false : { opacity: 0, y: -10, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6, scale: 0.985 }}
+              transition={{ duration: reduceMotion ? 0 : 0.2, ease: [0.22, 1, 0.36, 1] }}
               className="fixed grid w-[min(calc(100vw-2rem),22rem)] gap-2 rounded-[30px] border border-white/80 bg-[rgba(255,250,243,0.92)] p-2.5 shadow-[0_18px_52px_rgba(58,40,25,0.16)] backdrop-blur-xl sm:shadow-[0_24px_70px_rgba(58,40,25,0.2)]"
               style={{ top: menuPosition.top, right: menuPosition.right }}
               aria-label={adminText.menu}
@@ -902,35 +891,29 @@ export function AdminExperience({
                   setMenuOpen(false);
                 }}
               />
-              <AdminMenuButton
-                active={activePanel === "guest"}
+              <AdminMenuLink
+                href={eventUrl}
                 icon={ExternalLink}
                 label={adminText.openPage}
-                onClick={() => {
-                  setActivePanel("guest");
-                  setMenuOpen(false);
-                }}
+                newTab
               />
               <div className="mt-1 flex justify-end border-t border-[var(--line)] pt-2">
-                <button
-                  type="button"
+                <Button
                   onClick={() => void logout()}
                   disabled={loggingOut}
-                  aria-busy={loggingOut || undefined}
-                  className="focus-ring inline-flex min-h-12 w-full items-center justify-between gap-3 rounded-full border border-[rgba(124,58,49,0.16)] bg-white/42 px-3 py-2.5 text-sm font-bold text-[var(--rosewood)] transition hover:bg-white active:scale-[0.99] disabled:opacity-60"
+                  loading={loggingOut}
+                  variant="danger"
+                  fullWidth
+                  className="justify-between px-3"
                 >
                   <span className="inline-flex min-w-0 items-center gap-2">
                     <span className="grid size-8 shrink-0 place-items-center rounded-full border border-[rgba(124,58,49,0.16)] bg-white/58">
-                      {loggingOut ? (
-                        <Loader2 className="size-3.5 animate-spin" />
-                      ) : (
-                        <LogOut className="size-3.5" />
-                      )}
+                      <LogOut className="size-3.5" />
                     </span>
                     <span className="truncate">{adminText.logout}</span>
                   </span>
                   <ChevronRight className="size-4 shrink-0 opacity-55" />
-                </button>
+                </Button>
                 {logoutError ? (
                   <p role="alert" className="mt-2 text-xs font-semibold text-[var(--rosewood)]">
                     {logoutError}
@@ -938,44 +921,28 @@ export function AdminExperience({
                 ) : null}
               </div>
             </motion.nav>
-          </div>
+          </motion.div>
         ) : null}
+        </AnimatePresence>
 
-        <section className="grid gap-5">
-          {activePanel === "identity" ? (
-            <IdentityCard
-              key={`${wedding.brideName}|${wedding.groomName}|${wedding.eventDate ?? ""}|${wedding.welcomeNote}`}
-              wedding={wedding}
-              saving={saving}
-              profileUploading={profileUploading}
-              onUploadProfileMedia={uploadProfileMedia}
-              onDirty={() => setIdentitySaveConfirmed(false)}
-              onSave={saveIdentity}
-              text={adminText}
-            />
-          ) : null}
-
-          {activePanel === "qr" ? (
-            <QrStudio wedding={wedding} eventUrl={eventUrl} text={adminText} />
-          ) : null}
-
-          {activePanel === "guest" ? (
-            <GuestPagePanel
-              wedding={wedding}
-              demoMode={demoMode}
-            />
-          ) : null}
-
-          {activePanel === "storage" ? (
-            <StorageOverview wedding={wedding} demoMode={demoMode} text={adminText} />
-          ) : null}
-
-          {activePanel === "memories" ? (
+        <div className="grid">
+          <motion.section
+            data-admin-panel="memories"
+            data-panel-motion="enter-exit"
+            aria-hidden={activePanel !== "memories"}
+            initial={false}
+            animate={
+              activePanel === "memories"
+                ? { display: "grid", opacity: 1, y: 0 }
+                : { opacity: 0, y: 8, transitionEnd: { display: "none" } }
+            }
+            transition={{ duration: reduceMotion ? 0 : 0.24, ease: [0.22, 1, 0.36, 1] }}
+            className="[grid-area:1/1] grid gap-5"
+          >
             <MemoryInbox
               filter={filter}
               gridLayout={gridLayout}
               media={filteredMedia}
-              presentationUrl={presentationUrl}
               hasMore={mediaHasMore}
               loadingMore={loadingMoreMedia}
               demoMode={demoMode}
@@ -991,8 +958,42 @@ export function AdminExperience({
               onLoadMore={() => void loadMoreMedia()}
               text={adminText}
             />
-          ) : null}
-        </section>
+          </motion.section>
+
+          <AnimatePresence mode="wait" initial={false}>
+            {activePanel !== "memories" ? (
+              <motion.section
+                key={activePanel}
+                data-admin-panel={activePanel}
+                data-panel-motion="enter-exit"
+                initial={reduceMotion ? false : { opacity: 0, y: 14, scale: 0.992 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={reduceMotion ? undefined : { opacity: 0, y: -6, scale: 0.996 }}
+                transition={{ duration: reduceMotion ? 0 : 0.24, ease: [0.22, 1, 0.36, 1] }}
+                className="[grid-area:1/1] grid gap-5"
+              >
+                {activePanel === "identity" ? (
+                  <IdentityCard
+                    key={`${wedding.brideName}|${wedding.groomName}|${wedding.eventDate ?? ""}|${wedding.welcomeNote}`}
+                    wedding={wedding}
+                    saving={saving}
+                    profileUploading={profileUploading}
+                    onUploadProfileMedia={uploadProfileMedia}
+                    onDirty={() => setIdentitySaveConfirmed(false)}
+                    onSave={saveIdentity}
+                    text={adminText}
+                  />
+                ) : null}
+                {activePanel === "qr" ? (
+                  <QrStudio wedding={wedding} eventUrl={eventUrl} text={adminText} />
+                ) : null}
+                {activePanel === "storage" ? (
+                  <StorageOverview wedding={wedding} demoMode={demoMode} text={adminText} />
+                ) : null}
+              </motion.section>
+            ) : null}
+          </AnimatePresence>
+        </div>
         {identitySaveConfirmed ? (
           <motion.p
             initial={{ opacity: 0, y: 8, x: "-50%" }}
@@ -1032,14 +1033,15 @@ function AdminMenuButton({
   onClick: () => void;
 }) {
   return (
-    <button
-      type="button"
+    <Button
       onClick={onClick}
       aria-current={active ? "page" : undefined}
-      className={`focus-ring group relative flex min-h-12 w-full items-center gap-2.5 overflow-hidden rounded-full border px-2.5 py-2 text-left text-[0.82rem] font-extrabold transition active:scale-[0.99] sm:text-[0.84rem] ${
+      variant={active ? "paper" : "quiet"}
+      fullWidth
+      className={`group justify-start gap-2.5 px-2.5 text-left text-[0.82rem] sm:text-[0.84rem] ${
         active
-          ? "border-[rgba(139,107,63,0.24)] bg-[linear-gradient(135deg,rgba(199,166,111,0.22),rgba(255,250,243,0.84))] text-[var(--ink)] shadow-[inset_0_1px_0_rgba(255,255,255,0.86),0_10px_22px_rgba(139,107,63,0.12)]"
-          : "border-transparent bg-white/44 text-[var(--ink)] hover:border-[var(--line)] hover:bg-white/72"
+          ? "!border-[rgba(139,107,63,0.34)] !bg-[rgba(239,222,193,0.62)]"
+          : "!bg-white/32 text-[var(--ink)]"
       }`}
     >
       <span
@@ -1059,7 +1061,7 @@ function AdminMenuButton({
       ) : (
         <ChevronRight className="size-4 shrink-0 text-[var(--ink-soft)] opacity-50 transition group-hover:translate-x-0.5 group-hover:opacity-80" />
       )}
-    </button>
+    </Button>
   );
 }
 
@@ -1067,15 +1069,20 @@ function AdminMenuLink({
   href,
   icon: Icon,
   label,
+  newTab = false,
 }: {
   href: string;
   icon: LucideIcon;
   label: string;
+  newTab?: boolean;
 }) {
   return (
     <a
       href={href}
-      className="focus-ring group relative flex min-h-12 w-full items-center gap-2.5 overflow-hidden rounded-full border border-transparent bg-white/44 px-2.5 py-2 text-left text-[0.82rem] font-extrabold text-[var(--ink)] transition hover:border-[var(--line)] hover:bg-white/72 sm:text-[0.84rem]"
+      target={newTab ? "_blank" : undefined}
+      rel={newTab ? "noreferrer" : undefined}
+      data-app-button="quiet"
+      className={buttonStyles({ variant: "quiet", fullWidth: true, className: "group justify-start gap-2.5 !bg-white/32 px-2.5 text-left text-[0.82rem] text-[var(--ink)] sm:text-[0.84rem]" })}
     >
       <span className="grid size-8 shrink-0 place-items-center rounded-full border border-[var(--line)] bg-white/62 text-[var(--ink-soft)] transition group-hover:text-[var(--ink)]">
         <Icon className="size-3.5" />
@@ -1134,16 +1141,23 @@ function StorageOverview({
 }) {
   const [premiumOpen, setPremiumOpen] = useState(false);
   const [coupleNameCopied, setCoupleNameCopied] = useState(false);
+  const reduceMotion = useReducedMotion();
   const premiumDialogRef = useRef<HTMLDivElement>(null);
   const premiumCloseRef = useRef<HTMLButtonElement>(null);
   const premiumUpgradeUrl = process.env.NEXT_PUBLIC_ETSY_PREMIUM_UPGRADE_URL;
   const isDemoStorage = demoMode || wedding.demo;
-  const percent = storageUsagePercent(wedding.storageUsedBytes, wedding.storageQuotaBytes);
-  const usedLabel = formatStorageBytes(wedding.storageUsedBytes);
-  const quotaLabel = formatStorageBytes(wedding.storageQuotaBytes);
-  const remainingDays = daysUntil(wedding.accessExpiresAt);
-  const status = storageStatusText(text, wedding);
-  const planLabel = wedding.plan === "premium" ? "Premium" : "Classic";
+  const displayedUsedBytes = isDemoStorage
+    ? Math.round(34.8 * 1024 * 1024 * 1024)
+    : wedding.storageUsedBytes;
+  const displayedQuotaBytes = isDemoStorage
+    ? 50 * 1024 * 1024 * 1024
+    : wedding.storageQuotaBytes;
+  const percent = storageUsagePercent(displayedUsedBytes, displayedQuotaBytes);
+  const usedLabel = formatStorageBytes(displayedUsedBytes);
+  const quotaLabel = formatStorageBytes(displayedQuotaBytes);
+  const remainingDays = isDemoStorage ? 74 : daysUntil(wedding.accessExpiresAt);
+  const status = isDemoStorage ? text.storageHealthy : storageStatusText(text, wedding);
+  const planLabel = isDemoStorage ? "Classic" : wedding.plan === "premium" ? "Premium" : "Classic";
 
   useBodyScrollLock(premiumOpen);
   useAccessibleDialog({
@@ -1208,18 +1222,17 @@ function StorageOverview({
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
+                <Button
                   onClick={copyCoupleName}
                   disabled={isDemoStorage}
                   title={isDemoStorage ? text.demoStorageNotice : undefined}
-                  className={ADMIN_STORAGE_PILL_BUTTON_CLASS}
+                  variant="paper"
+                  size="compact"
                 >
                   <Copy className="size-3.5" />
                   <span>{coupleNameCopied ? text.copied : text.copyCoupleName}</span>
-                </button>
-                <button
-                  type="button"
+                </Button>
+                <Button
                   onClick={() => {
                     if (!isDemoStorage) {
                       setPremiumOpen(true);
@@ -1227,11 +1240,12 @@ function StorageOverview({
                   }}
                   disabled={isDemoStorage}
                   title={isDemoStorage ? text.demoStorageNotice : undefined}
-                  className={`${ADMIN_STORAGE_PILL_BUTTON_CLASS} border-[rgba(124,58,49,0.22)] bg-[rgba(124,58,49,0.08)] text-[var(--rosewood)]`}
+                  variant="danger"
+                  size="compact"
                 >
                   <Crown className="size-3.5" />
                   <span>{text.premiumPill}</span>
-                </button>
+                </Button>
               </div>
               {isDemoStorage ? (
                 <p className="rounded-[18px] border border-[rgba(139,107,63,0.18)] bg-[rgba(255,250,243,0.72)] px-3 py-2 text-xs font-bold leading-5 text-[var(--ink-soft)]">
@@ -1248,8 +1262,15 @@ function StorageOverview({
         </div>
       </article>
 
+      <AnimatePresence>
       {premiumOpen && !isDemoStorage ? (
-        <div className="fixed inset-0 z-[70] grid place-items-end bg-[rgba(31,23,18,0.24)] p-3 backdrop-blur-sm sm:place-items-center">
+        <motion.div
+          className="fixed inset-0 z-[70] grid place-items-end bg-[rgba(31,23,18,0.24)] p-3 backdrop-blur-sm sm:place-items-center"
+          initial={reduceMotion ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: reduceMotion ? 0 : 0.18 }}
+        >
           <button
             type="button"
             aria-label={text.close}
@@ -1258,23 +1279,26 @@ function StorageOverview({
           />
           <motion.div
             ref={premiumDialogRef}
-            initial={{ opacity: 0, y: 18, scale: 0.98 }}
+            initial={reduceMotion ? false : { opacity: 0, y: 18, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 10, scale: 0.99 }}
+            transition={{ duration: reduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
             className="relative w-full max-w-[32rem] rounded-[30px] border border-white/80 bg-[var(--paper-soft)] p-5 shadow-[0_28px_80px_rgba(31,23,18,0.22)]"
             role="dialog"
             aria-modal="true"
             aria-labelledby="premium-extension-title"
             tabIndex={-1}
           >
-            <button
+            <Button
               ref={premiumCloseRef}
-              type="button"
               onClick={() => setPremiumOpen(false)}
-              className="focus-ring absolute right-4 top-4 grid size-10 place-items-center rounded-full border border-[var(--line)] bg-white/62 text-[var(--ink)]"
+              variant="paper"
+              size="icon"
+              className="absolute right-4 top-4 !size-10 !min-h-10"
               aria-label={text.close}
             >
               <X className="size-4" />
-            </button>
+            </Button>
             <p className="eyebrow flex items-center gap-2 text-[var(--champagne-deep)]">
               <Crown className="size-4" />
               {text.upgradePremium}
@@ -1298,14 +1322,14 @@ function StorageOverview({
                 <span className="break-words font-display text-xl font-semibold text-[var(--ink)]">
                   {wedding.coupleName}
                 </span>
-                <button
-                  type="button"
+                <Button
                   onClick={copyCoupleName}
-                  className={`${ADMIN_ACTION_BUTTON_CLASS} px-3 py-2`}
+                  variant="paper"
+                  size="compact"
                 >
                   <Copy className="size-4" />
                   {coupleNameCopied ? text.copied : text.copyCoupleName}
-                </button>
+                </Button>
               </div>
             </div>
             {premiumUpgradeUrl ? (
@@ -1313,7 +1337,8 @@ function StorageOverview({
                 href={premiumUpgradeUrl}
                 target="_blank"
                 rel="noreferrer"
-                className={`${ADMIN_ACTION_BUTTON_CLASS} mt-5 w-full bg-[var(--ink)] text-[var(--paper-soft)] hover:bg-[var(--ink)]`}
+                data-app-button="ink"
+                className={buttonStyles({ fullWidth: true, className: "mt-5" })}
               >
                 <ExternalLink className="size-4" />
                 {text.openEtsyListing}
@@ -1324,8 +1349,9 @@ function StorageOverview({
               </p>
             )}
           </motion.div>
-        </div>
+        </motion.div>
       ) : null}
+      </AnimatePresence>
     </>
   );
 }
@@ -1381,7 +1407,7 @@ function IdentityCard({
       <div className="grid gap-5 sm:grid-cols-[9rem_1fr]">
         <div className="flex flex-col items-center">
           <MediaOrb media={wedding.profileMedia} label={wedding.coupleName} className="h-44 w-36" />
-          <label className={`${ADMIN_ACTION_BUTTON_CLASS} mt-4 w-full cursor-pointer`}>
+          <label className={buttonStyles({ variant: "paper", fullWidth: true, className: "mt-4 cursor-pointer" })}>
             {profileUploading ? <Loader2 className="size-4 animate-spin" /> : <ImagePlus className="size-4" />}
             {text.upload}
             <input
@@ -1430,25 +1456,23 @@ function IdentityCard({
             />
           </label>
           <div className="grid gap-3 sm:grid-cols-2">
-            <button
-              type="button"
+            <Button
               onClick={handleSaveIdentity}
-              className={ADMIN_ACTION_BUTTON_CLASS}
+              loading={saving}
             >
               <Check className="size-3.5" />
               {text.saveIdentity}
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
               onClick={() => onSave({ uploadLocked: !wedding.uploadLocked })}
-              className={ADMIN_ACTION_BUTTON_CLASS}
+              variant="paper"
               aria-pressed={wedding.uploadLocked}
             >
               <span className="inline-flex items-center justify-center gap-2">
                 {wedding.uploadLocked ? <Lock className="size-4" /> : <Unlock className="size-4" />}
                 {wedding.uploadLocked ? text.uploadsLocked : text.uploadsOpen}
               </span>
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -1465,8 +1489,14 @@ function QrStudio({
   eventUrl: string;
   text: AdminCopy;
 }) {
+  const locale = useLocale();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [copied, setCopied] = useState(false);
+  const eventDateLabel = wedding.eventDate
+    ? new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", year: "numeric" }).format(
+        new Date(`${wedding.eventDate}T12:00:00`),
+      )
+    : "";
 
   useEffect(() => {
     if (!canvasRef.current || !eventUrl) {
@@ -1477,7 +1507,7 @@ function QrStudio({
     void loadQrCode().then((QRCode) => {
       if (!active || !canvasRef.current) return;
       return QRCode.toCanvas(canvasRef.current, eventUrl, {
-        width: 208,
+        width: 232,
         margin: 1,
         color: {
           dark: "#1f1712",
@@ -1533,7 +1563,7 @@ function QrStudio({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.05 }}
-      className="rounded-[34px] border border-white/75 bg-[var(--paper-soft)] p-6 shadow-none sm:shadow-[0_20px_58px_rgba(58,40,25,0.1)]"
+      className="overflow-hidden rounded-[36px] border border-white/80 bg-[rgba(255,250,243,0.88)] p-4 shadow-none sm:p-7 sm:shadow-[0_24px_64px_rgba(58,40,25,0.12)]"
     >
       <div className="mb-7">
         <p className="eyebrow flex items-center gap-2 text-[var(--champagne-deep)]">
@@ -1545,85 +1575,54 @@ function QrStudio({
         </h2>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[17rem_1fr]">
-        <div className="paper-grain relative overflow-hidden rounded-[30px] border border-[var(--line)] bg-[#f3eadf] p-5 text-center">
-          <p className="eyebrow relative z-10 text-[var(--champagne-deep)]">
-            {text.scan}
-          </p>
-          <div className="relative z-10 mx-auto mt-4 grid size-56 place-items-center rounded-[26px] border border-white/80 bg-[var(--paper-soft)] shadow-none sm:shadow-[0_18px_38px_rgba(58,40,25,0.12)]">
-            <canvas ref={canvasRef} className="size-52" aria-label={text.qrCode} />
+      <div className="grid gap-5 lg:grid-cols-[minmax(19rem,0.92fr)_minmax(18rem,1.08fr)] lg:items-stretch">
+        <div className="paper-grain relative isolate overflow-hidden rounded-[34px] border border-[rgba(139,107,63,0.24)] bg-[#efe1cf] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_20px_50px_rgba(58,40,25,0.12)] sm:p-4">
+          <div className="relative z-10 flex min-h-[34rem] flex-col items-center rounded-[27px] border border-[rgba(139,107,63,0.24)] bg-[rgba(255,250,243,0.9)] px-5 py-7 text-center">
+            <MediaOrb media={wedding.profileMedia} label={wedding.coupleName} className="h-20 w-16" />
+            <p className="mt-5 font-display text-3xl font-semibold leading-none text-[var(--ink)]">
+              {wedding.coupleName}
+            </p>
+            {eventDateLabel ? (
+              <p className="mt-2 text-[0.68rem] font-bold uppercase tracking-[0.2em] text-[var(--champagne-deep)]">
+                {eventDateLabel}
+              </p>
+            ) : null}
+            <div className="my-5 flex w-full items-center gap-3" aria-hidden="true">
+              <span className="h-px flex-1 bg-[rgba(139,107,63,0.24)]" />
+              <span className="font-display text-xl italic text-[var(--champagne-deep)]">&amp;</span>
+              <span className="h-px flex-1 bg-[rgba(139,107,63,0.24)]" />
+            </div>
+            <div className="grid size-64 place-items-center rounded-[28px] border border-[rgba(139,107,63,0.2)] bg-[var(--paper-soft)] p-3 shadow-[0_16px_34px_rgba(58,40,25,0.12)]">
+              <canvas ref={canvasRef} className="size-[14.5rem]" aria-label={text.qrCode} />
+            </div>
+            <p className="mt-5 text-[0.68rem] font-extrabold uppercase tracking-[0.22em] text-[var(--ink-soft)]">
+              {text.scan}
+            </p>
           </div>
         </div>
 
-        <div className="flex flex-col justify-between gap-4">
-          <div className="rounded-3xl border border-[var(--line)] bg-white/52 p-4">
-            <p className="eyebrow text-[var(--ink-soft)]">{text.guestLink}</p>
-            <p className="mt-2 break-all text-base font-semibold tracking-tight text-[var(--ink)]">
-              {eventUrl}
-            </p>
+        <div className="flex flex-col justify-center rounded-[32px] border border-[rgba(139,107,63,0.16)] bg-white/48 p-4 sm:p-6">
+          <p className="eyebrow text-[var(--champagne-deep)]">{text.guestLink}</p>
+          <p className="mt-3 font-display text-2xl font-semibold leading-tight text-[var(--ink)]">
+            {text.qrTitle}
+          </p>
+          <div className="mt-6 rounded-[24px] border border-[rgba(55,38,25,0.12)] bg-[rgba(239,225,207,0.58)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
+            <p className="break-all text-sm font-semibold leading-6 text-[var(--ink-soft)]">{eventUrl}</p>
           </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
-            <button
-              type="button"
-              onClick={copyLink}
-              className={ADMIN_ACTION_BUTTON_CLASS}
-            >
-              <span className="inline-flex items-center justify-center gap-2">
-                <Copy className="size-3.5 shrink-0" />
-                {copied ? text.copied : text.copy}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={downloadPng}
-              className={ADMIN_ACTION_BUTTON_CLASS}
-            >
-              <span className="inline-flex items-center justify-center gap-2">
-                <Download className="size-3.5 shrink-0" />
-                PNG
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={downloadSvg}
-              className={ADMIN_ACTION_BUTTON_CLASS}
-            >
-              <span className="inline-flex items-center justify-center gap-2">
-                <Download className="size-3.5 shrink-0" />
-                SVG
-              </span>
-            </button>
-            <a
-              href={eventUrl}
-              target="_blank"
-              rel="noreferrer"
-              className={ADMIN_ACTION_BUTTON_CLASS}
-            >
-              <ExternalLink className="size-3.5 shrink-0" />
-              <span className="truncate">{text.openPage}</span>
-            </a>
+          <Button fullWidth className="mt-4" onClick={copyLink}>
+            {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+            {copied ? text.copied : text.copy}
+          </Button>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <Button variant="paper" onClick={downloadPng}>
+              <Download className="size-4" />PNG
+            </Button>
+            <Button variant="paper" onClick={downloadSvg}>
+              <Download className="size-4" />SVG
+            </Button>
           </div>
         </div>
       </div>
-    </motion.article>
-  );
-}
-
-function GuestPagePanel({
-  wedding,
-  demoMode,
-}: {
-  wedding: Wedding;
-  demoMode: boolean;
-}) {
-  return (
-    <motion.article
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.05 }}
-      className="overflow-hidden rounded-[34px] border border-white/75 bg-[rgba(255,250,243,0.76)] p-4 shadow-none backdrop-blur sm:p-5 sm:shadow-[0_20px_58px_rgba(58,40,25,0.1)]"
-    >
-      <GuestExperience wedding={wedding} demoMode={demoMode} embedded />
     </motion.article>
   );
 }
@@ -1703,7 +1702,6 @@ function MemoryInbox({
   filter,
   gridLayout,
   media,
-  presentationUrl,
   hasMore,
   loadingMore,
   demoMode,
@@ -1716,7 +1714,6 @@ function MemoryInbox({
   filter: FilterKey;
   gridLayout: MemoryGridLayout;
   media: WeddingMedia[];
-  presentationUrl: string;
   hasMore: boolean;
   loadingMore: boolean;
   demoMode: boolean;
@@ -1836,7 +1833,7 @@ function MemoryInbox({
 
   return (
     <>
-      <article className="rounded-[34px] border border-white/75 bg-[var(--paper-soft)] p-4 shadow-none sm:p-6 sm:shadow-[0_20px_58px_rgba(58,40,25,0.1)]">
+      <article data-memory-inbox="true" className="rounded-[34px] border border-white/75 bg-[var(--paper-soft)] p-4 shadow-none sm:p-6 sm:shadow-[0_20px_58px_rgba(58,40,25,0.1)]">
         <div className="mb-5 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="eyebrow flex items-center gap-2 text-[var(--champagne-deep)]">
@@ -1845,42 +1842,32 @@ function MemoryInbox({
             </p>
           </div>
           <div className="flex min-w-0 shrink-0 items-center gap-2">
-            <a
-              href={presentationUrl}
-              data-prefetch="false"
-              className={`${ADMIN_ACTION_BUTTON_CLASS} max-w-[8.5rem] px-3`}
-            >
-              <MonitorPlay className="size-4 shrink-0 text-[var(--champagne-deep)]" />
-              <span className="truncate">{text.presentation}</span>
-            </a>
-            <button
-              type="button"
+            <Button
               onClick={onGridLayoutChange}
-              className={`${ADMIN_ACTION_BUTTON_CLASS} max-w-[8.5rem] shrink-0 px-3`}
+              variant="paper"
+              size="compact"
+              className="max-w-[8.5rem] shrink-0 px-3"
               aria-label={`${text.gridLayout}: ${currentGridLayoutLabel}`}
               title={`${text.gridLayout}: ${currentGridLayoutLabel}`}
             >
               <LayoutGrid className="size-4 shrink-0 text-[var(--champagne-deep)]" />
               <span className="truncate">{currentGridLayoutLabel}</span>
-            </button>
+            </Button>
           </div>
         </div>
 
-        <div className="mb-5 flex flex-wrap gap-2">
+        <div className="mb-5 grid grid-cols-2 gap-2 min-[390px]:grid-cols-4">
           {filters.map((item) => (
-            <button
+            <Button
               key={item.key}
-              type="button"
               onClick={() => onFilterChange(item.key)}
               aria-pressed={filter === item.key}
-              className={`focus-ring min-h-11 rounded-full px-3.5 py-2 text-[0.78rem] font-bold transition ${
-                filter === item.key
-                  ? "border border-[rgba(139,107,63,0.26)] bg-[rgba(199,166,111,0.16)] text-[var(--ink)]"
-                  : "border border-[var(--line)] bg-white/55 text-[var(--ink-soft)] hover:bg-white"
-              }`}
+              variant={filter === item.key ? "ink" : "paper"}
+              size="compact"
+              className="w-full px-3"
             >
               {item.label}
-            </button>
+            </Button>
           ))}
         </div>
 
@@ -2005,25 +1992,28 @@ function MemoryInbox({
             </LayoutGroup>
             {hasMore ? (
               <div className="mt-5 flex justify-center">
-                <button
-                  type="button"
+                <Button
                   onClick={onLoadMore}
-                  disabled={loadingMore}
-                  className={`${ADMIN_ACTION_BUTTON_CLASS} min-h-12 px-5`}
+                  loading={loadingMore}
+                  variant="paper"
                 >
-                  {loadingMore ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : null}
                   {text.loadMore}
-                </button>
+                </Button>
               </div>
             ) : null}
           </div>
         )}
       </article>
 
+      <AnimatePresence>
       {selectedMedia ? (
-        <div className="fixed inset-0 z-[60] grid place-items-center overflow-x-hidden bg-[rgba(31,23,18,0.62)] px-3 py-4 backdrop-blur-md sm:px-4 sm:py-6">
+        <motion.div
+          className="fixed inset-0 z-[60] grid place-items-center overflow-x-hidden bg-[rgba(31,23,18,0.62)] px-3 py-4 backdrop-blur-md sm:px-4 sm:py-6"
+          initial={reduceMotion ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: reduceMotion ? 0 : 0.18 }}
+        >
           <button
             type="button"
             className="absolute inset-0 cursor-default"
@@ -2032,8 +2022,10 @@ function MemoryInbox({
           />
           <motion.div
             ref={lightboxRef}
-            initial={{ opacity: 0, y: 10, scale: 0.98 }}
+            initial={reduceMotion ? false : { opacity: 0, y: 12, scale: 0.985 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.99 }}
+            transition={{ duration: reduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
             className="relative z-10 grid max-h-[calc(100dvh-2rem)] w-full min-w-0 max-w-[calc(100vw-1.5rem)] gap-4 overflow-y-auto overflow-x-hidden rounded-[32px] border border-white/70 bg-[var(--paper-soft)] p-4 shadow-[0_30px_90px_rgba(0,0,0,0.32)] sm:max-w-5xl sm:p-5"
             data-scroll-lock-allow="true"
             role="dialog"
@@ -2050,15 +2042,16 @@ function MemoryInbox({
                   {selectedMedia.note || text.noNote}
                 </p>
               </div>
-              <button
+              <Button
                 ref={lightboxCloseRef}
-                type="button"
                 onClick={() => setSelectedMedia(null)}
-                className="focus-ring grid size-11 shrink-0 place-items-center rounded-full border border-[var(--line)] bg-white/70 text-[var(--ink)] transition hover:bg-white"
+                variant="paper"
+                size="icon"
+                className="!size-11 !min-h-11"
                 aria-label={text.close}
               >
                 <X className="size-4" />
-              </button>
+              </Button>
             </div>
 
             <div className="relative grid min-h-[18rem] w-full min-w-0 max-w-full place-items-center overflow-hidden rounded-[26px] bg-[#eadcca]">
@@ -2090,57 +2083,71 @@ function MemoryInbox({
               </p>
               {media.length > 1 ? (
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
+                  <Button
                     onClick={showPreviousMedia}
-                    className="focus-ring grid size-11 place-items-center rounded-full border border-[rgba(139,107,63,0.24)] bg-white/72 text-[var(--ink)] shadow-[0_10px_24px_rgba(58,40,25,0.12)] transition hover:bg-white active:scale-[0.98]"
+                    variant="paper"
+                    size="icon"
+                    className="!size-11 !min-h-11"
                     aria-label={text.previousMedia}
                   >
                     <ChevronLeft className="size-5" />
-                  </button>
-                  <button
-                    type="button"
+                  </Button>
+                  <Button
                     onClick={showNextMedia}
-                    className="focus-ring grid size-11 place-items-center rounded-full border border-[rgba(139,107,63,0.24)] bg-white/72 text-[var(--ink)] shadow-[0_10px_24px_rgba(58,40,25,0.12)] transition hover:bg-white active:scale-[0.98]"
+                    variant="paper"
+                    size="icon"
+                    className="!size-11 !min-h-11"
                     aria-label={text.nextMedia}
                   >
                     <ChevronRight className="size-5" />
-                  </button>
+                  </Button>
                 </div>
               ) : null}
               <div className="ml-auto flex min-w-0 items-center gap-1.5">
                 <a
                   href={demoMode ? selectedMedia.url : `/api/media/${selectedMedia.id}/download`}
                   download={selectedMedia.fileName}
-                  className="focus-ring inline-flex min-h-11 max-w-[8.5rem] items-center justify-center gap-1.5 rounded-full border border-[var(--line)] bg-white/62 px-3 py-2 text-[0.78rem] font-bold text-[var(--ink)] transition hover:bg-white"
+                  data-app-button="paper"
+                  className={buttonStyles({ variant: "paper", size: "compact", className: "max-w-[8.5rem] gap-1.5 px-3" })}
                 >
                   <Download className="size-3.5 shrink-0" />
                   <span className="truncate">{text.download}</span>
                 </a>
-                <button
-                  type="button"
+                <Button
                   onClick={() => {
                     setDeleteTarget(selectedMedia);
                     setSelectedMedia(null);
                     setDeleteError("");
                   }}
-                  className={`${ADMIN_DANGER_ACTION_BUTTON_CLASS} max-w-[8rem] gap-1.5 px-3 py-2`}
+                  variant="danger"
+                  size="compact"
+                  className="max-w-[8rem] gap-1.5 px-3"
                 >
                   <Trash2 className="size-3.5 shrink-0" />
                   <span className="truncate">{text.deleteMemory}</span>
-                </button>
+                </Button>
               </div>
             </div>
           </motion.div>
-        </div>
+        </motion.div>
       ) : null}
+      </AnimatePresence>
 
+      <AnimatePresence>
       {deleteTarget ? (
-        <div className="fixed inset-0 z-[60] grid place-items-center bg-[rgba(31,23,18,0.38)] px-4 backdrop-blur-sm">
+        <motion.div
+          className="fixed inset-0 z-[60] grid place-items-center bg-[rgba(31,23,18,0.38)] px-4 backdrop-blur-sm"
+          initial={reduceMotion ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: reduceMotion ? 0 : 0.18 }}
+        >
           <motion.div
             ref={deleteDialogRef}
-            initial={{ opacity: 0, y: 10, scale: 0.98 }}
+            initial={reduceMotion ? false : { opacity: 0, y: 12, scale: 0.985 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.99 }}
+            transition={{ duration: reduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
             className="w-full max-w-sm rounded-[28px] border border-white/75 bg-[var(--paper-soft)] p-5 shadow-[0_28px_80px_rgba(31,23,18,0.24)]"
             role="dialog"
             aria-modal="true"
@@ -2157,30 +2164,31 @@ function MemoryInbox({
               </p>
             ) : null}
             <div className="mt-5 grid grid-cols-2 gap-3">
-              <button
+              <Button
                 ref={deleteCancelRef}
-                type="button"
                 onClick={() => {
                   setDeleteTarget(null);
                   setDeleteError("");
                 }}
                 disabled={deleting}
-                className="focus-ring rounded-full border border-[var(--line)] bg-white/65 px-4 py-3 text-sm font-bold transition hover:bg-white disabled:opacity-60"
+                variant="paper"
               >
                 {text.no}
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
                 onClick={confirmDelete}
                 disabled={deleting}
-                className="focus-ring rounded-full bg-[var(--rosewood)] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#6f332b] disabled:opacity-60"
+                loading={deleting}
+                variant="danger"
+                className="!bg-[var(--rosewood)] !text-white hover:!bg-[#6f332b]"
               >
-                {deleting ? <Loader2 className="mx-auto size-4 animate-spin" /> : text.yes}
-              </button>
+                {text.yes}
+              </Button>
             </div>
           </motion.div>
-        </div>
+        </motion.div>
       ) : null}
+      </AnimatePresence>
     </>
   );
 }

@@ -2,7 +2,9 @@
 
 import { HelpCircle, X } from "lucide-react";
 import { createPortal } from "react-dom";
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { Button } from "@/components/shared/Button";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import { useAccessibleDialog } from "@/lib/use-accessible-dialog";
 
@@ -33,11 +35,12 @@ export function HelpTriggerButton({
   mobileIconOnly?: boolean;
 }) {
   return (
-    <button
-      type="button"
+    <Button
       onClick={onClick}
       aria-label={label}
-      className="focus-ring inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-[rgba(139,107,63,0.22)] bg-white/70 px-2.5 py-2 text-[0.82rem] font-extrabold text-[var(--ink)] shadow-[0_10px_24px_rgba(58,40,25,0.1)] transition hover:bg-white active:scale-[0.99] sm:px-3.5 sm:text-sm"
+      variant="paper"
+      size="compact"
+      className={`${mobileIconOnly ? "size-12 px-0 sm:h-auto sm:w-auto sm:px-4" : ""} shrink-0`}
     >
       <span className="grid size-7 shrink-0 place-items-center rounded-full border border-[var(--line)] bg-[rgba(255,250,243,0.76)] text-[var(--champagne-deep)]">
         <HelpCircle className="size-3.5" />
@@ -45,7 +48,7 @@ export function HelpTriggerButton({
       <span className={mobileIconOnly ? "hidden sm:inline" : undefined}>
         {label}
       </span>
-    </button>
+    </Button>
   );
 }
 
@@ -62,34 +65,47 @@ export function GuidanceDialog({
 }: GuidanceDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
-  useBodyScrollLock(open);
+  const reduceMotion = useReducedMotion();
+  const [exiting, setExiting] = useState(false);
+  const dialogActive = open || exiting;
+
+  useBodyScrollLock(dialogActive);
   useAccessibleDialog({
-    open,
+    open: dialogActive,
     containerRef: dialogRef,
     initialFocusRef: closeButtonRef,
     onClose,
   });
 
-  if (!open || typeof document === "undefined") {
+  if (typeof document === "undefined") {
     return null;
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-[rgba(31,23,18,0.42)] px-4 py-6 backdrop-blur-sm">
-      <div
-        className="absolute inset-0 cursor-default"
-        aria-hidden="true"
-        onClick={onClose}
-      />
-      <div
-        ref={dialogRef}
-        className="relative z-10 w-full max-w-[34rem] overflow-hidden rounded-[30px] border border-white/75 bg-[var(--paper-soft)] shadow-[0_28px_80px_rgba(31,23,18,0.24)]"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="help-title"
-        aria-describedby="help-description"
-        tabIndex={-1}
-      >
+    <AnimatePresence onExitComplete={() => setExiting(false)}>
+      {open ? (
+        <motion.div
+          className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-[rgba(31,23,18,0.42)] px-4 py-6 backdrop-blur-sm"
+          initial={reduceMotion ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: reduceMotion ? 0 : 0.18 }}
+          onAnimationStart={() => setExiting(true)}
+        >
+          <div className="absolute inset-0 cursor-default" aria-hidden="true" onClick={onClose} />
+          <motion.div
+            ref={dialogRef}
+            className="relative z-10 w-full max-w-[34rem] overflow-hidden rounded-[30px] border border-white/75 bg-[var(--paper-soft)] shadow-[0_28px_80px_rgba(31,23,18,0.24)]"
+            initial={reduceMotion ? false : { opacity: 0, y: 16, scale: 0.985 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 10, scale: 0.99 }}
+            transition={{ duration: reduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="help-title"
+            aria-describedby="help-description"
+            tabIndex={-1}
+          >
         <div
           className="max-h-[calc(100dvh-3rem)] overflow-y-auto p-6"
           data-scroll-lock-allow="true"
@@ -104,15 +120,16 @@ export function GuidanceDialog({
                 {title}
               </h3>
             </div>
-            <button
+            <Button
               ref={closeButtonRef}
-              type="button"
               onClick={onClose}
-              className="focus-ring grid size-11 shrink-0 place-items-center rounded-full border border-[var(--line)] bg-white/66 transition hover:bg-white"
+              variant="paper"
+              size="icon"
+              className="!size-11 !min-h-11"
               aria-label={closeLabel}
             >
               <X className="size-4" />
-            </button>
+            </Button>
           </div>
 
           <p id="help-description" className="mt-5 text-sm leading-7 text-[var(--ink-soft)]">{body}</p>
@@ -151,8 +168,10 @@ export function GuidanceDialog({
             </p>
           ) : null}
         </div>
-      </div>
-    </div>,
+          </motion.div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>,
     document.body,
   );
 }
