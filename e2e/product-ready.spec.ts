@@ -18,7 +18,16 @@ test("login, studio menu and mobile grid remain usable", async ({ page }) => {
 
   await demoLink.click();
   await expect(page).toHaveURL(/\/admin\/mary-john$/);
-  await expect(page.getByRole("heading", { name: "Mary & John" })).toBeVisible();
+  const coupleHeading = page.getByRole("heading", { name: "Mary & John" });
+  const helpButton = page.getByRole("button", { name: "Help" });
+  await expect(coupleHeading).toBeVisible();
+  await expect
+    .poll(async () => {
+      const headingBox = await coupleHeading.boundingBox();
+      const helpBox = await helpButton.boundingBox();
+      return Boolean(headingBox && helpBox && headingBox.x + headingBox.width <= helpBox.x);
+    })
+    .toBe(true);
   await expectNoHorizontalOverflow(page);
 
   await page.getByRole("button", { name: "Studio menu" }).click();

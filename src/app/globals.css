@@ -184,16 +184,30 @@ textarea {
   font-weight: 600;
 }
 
-/* Admin nameplate — single line, font shrinks via container query */
+/* Admin nameplate — stays inside the space between the avatar and actions. */
 .couple-name {
   font-family: var(--font-display), Georgia, serif;
   font-weight: 600;
-  white-space: nowrap;
-  overflow: visible;
-  line-height: 1.25;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.08;
   letter-spacing: -0.018em;
-  /* fluid: 1.65 rem on tiny phones → 2.4 rem on wide containers */
-  font-size: clamp(1.65rem, 5.8cqi, 2.4rem);
+  font-size: clamp(1.35rem, 5.8cqi, 2.4rem);
+}
+
+@media (min-width: 640px) {
+  .couple-name {
+    display: block;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    line-height: 1.25;
+    font-size: clamp(1.65rem, 5.8cqi, 2.4rem);
+  }
 }
 
 /* Fluid display headings — perfect from small phones to desktop. */
