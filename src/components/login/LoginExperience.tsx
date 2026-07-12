@@ -11,7 +11,6 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
-import { motion } from "motion/react";
 import type { PublicWedding } from "@/lib/types";
 import { BrandMark } from "@/components/shared/BrandMark";
 import { Button } from "@/components/shared/Button";
@@ -20,14 +19,14 @@ import {
   HelpTriggerButton,
 } from "@/components/shared/GuidanceDialog";
 import { MediaOrb } from "@/components/shared/MediaOrb";
+import { PrivacyLink } from "@/components/shared/PrivacyLink";
 import {
   forgetRememberedMembership,
   readRememberedMembership,
   rememberMembership,
   type RememberedMembership,
 } from "@/lib/auth/device-hint";
-import { fetchCurrentWeddingSession } from "@/lib/auth/session-client";
-import { useAuthCopy, useCopy } from "@/lib/i18n";
+import { useAuthCopy, useCopy } from "@/lib/i18n-client";
 
 type LoginMode = "activate" | "token" | "recover" | "remembered";
 
@@ -79,7 +78,11 @@ function clearActivationRetryKey() {
   }
 }
 
-export function LoginExperience() {
+export function LoginExperience({
+  initialSession = null,
+}: {
+  initialSession?: PublicWedding | null;
+}) {
   const text = useCopy();
   const authText = useAuthCopy();
   const [form, setForm] = useState<AuthForm>({
@@ -91,10 +94,9 @@ export function LoginExperience() {
     eventDate: "",
     timezone: "UTC",
   });
-  const [activeSession, setActiveSession] = useState<PublicWedding | null>(null);
+  const [activeSession] = useState<PublicWedding | null>(initialSession);
   const [remembered, setRemembered] = useState<RememberedMembership | null>(null);
   const [mode, setMode] = useState<LoginMode>("activate");
-  const [loadingSession, setLoadingSession] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [helpOpen, setHelpOpen] = useState(false);
@@ -108,35 +110,23 @@ export function LoginExperience() {
       }
     });
 
-    async function loadSession() {
-      try {
-        const wedding = await fetchCurrentWeddingSession();
-        if (!active) {
-          return;
-        }
-        if (wedding) {
-          rememberMembership(wedding);
-          setActiveSession(wedding);
-          return;
-        }
-
-        const deviceHint = readRememberedMembership();
+    if (initialSession) {
+      rememberMembership(initialSession);
+    } else {
+      const deviceHint = readRememberedMembership();
+      queueMicrotask(() => {
+        if (!active) return;
         setRemembered(deviceHint);
         if (deviceHint) {
           setMode("remembered");
         }
-      } finally {
-        if (active) {
-          setLoadingSession(false);
-        }
-      }
+      });
     }
 
-    void loadSession();
     return () => {
       active = false;
     };
-  }, []);
+  }, [initialSession]);
 
   function chooseMode(nextMode: LoginMode) {
     setMode(nextMode);
@@ -229,12 +219,8 @@ export function LoginExperience() {
               <HelpTriggerButton label={text.help} onClick={() => setHelpOpen(true)} />
             </div>
 
-            {loadingSession ? (
-              <div className="min-h-[32rem] animate-pulse rounded-[30px] border border-[var(--line)] bg-white/50" />
-            ) : activeSession ? (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
+            {activeSession ? (
+              <div
                 className="rounded-[30px] border border-white/80 bg-[var(--paper-soft)] p-6 text-center shadow-[var(--shadow-soft)] sm:p-8"
               >
                 <MediaOrb
@@ -255,12 +241,10 @@ export function LoginExperience() {
                   {text.login.enterStudio}
                   <ArrowRight className="size-4" />
                 </Link>
-              </motion.div>
+              </div>
             ) : (
-              <motion.form
+              <form
                 key={mode}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
                 onSubmit={handleSubmit}
                 className="rounded-[30px] border border-white/80 bg-[var(--paper-soft)] p-5 shadow-[var(--shadow-soft)] sm:p-8"
               >
@@ -515,11 +499,13 @@ export function LoginExperience() {
                   <Sparkles className="size-4 text-[var(--champagne-deep)]" />
                   {text.login.demo}
                 </Link>
-              </motion.form>
+              </form>
             )}
           </div>
         </section>
       </div>
+
+      <PrivacyLink className="mx-auto mt-6" />
 
       <GuidanceDialog
         open={helpOpen}

@@ -1,9 +1,10 @@
 "use client";
 
 import { HelpCircle, X } from "lucide-react";
-import { motion } from "motion/react";
 import { createPortal } from "react-dom";
+import { useRef } from "react";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
+import { useAccessibleDialog } from "@/lib/use-accessible-dialog";
 
 type GuidanceCard = {
   title: string;
@@ -59,7 +60,15 @@ export function GuidanceDialog({
   cards,
   footer,
 }: GuidanceDialogProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
   useBodyScrollLock(open);
+  useAccessibleDialog({
+    open,
+    containerRef: dialogRef,
+    initialFocusRef: closeButtonRef,
+    onClose,
+  });
 
   if (!open || typeof document === "undefined") {
     return null;
@@ -67,19 +76,19 @@ export function GuidanceDialog({
 
   return createPortal(
     <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-[rgba(31,23,18,0.42)] px-4 py-6 backdrop-blur-sm">
-      <button
-        type="button"
+      <div
         className="absolute inset-0 cursor-default"
-        aria-label={closeLabel}
+        aria-hidden="true"
         onClick={onClose}
       />
-      <motion.div
-        initial={{ opacity: 0, y: 12, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
+      <div
+        ref={dialogRef}
         className="relative z-10 w-full max-w-[34rem] overflow-hidden rounded-[30px] border border-white/75 bg-[var(--paper-soft)] shadow-[0_28px_80px_rgba(31,23,18,0.24)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="help-title"
+        aria-describedby="help-description"
+        tabIndex={-1}
       >
         <div
           className="max-h-[calc(100dvh-3rem)] overflow-y-auto p-6"
@@ -96,16 +105,17 @@ export function GuidanceDialog({
               </h3>
             </div>
             <button
+              ref={closeButtonRef}
               type="button"
               onClick={onClose}
-              className="focus-ring grid size-10 shrink-0 place-items-center rounded-full border border-[var(--line)] bg-white/66 transition hover:bg-white"
+              className="focus-ring grid size-11 shrink-0 place-items-center rounded-full border border-[var(--line)] bg-white/66 transition hover:bg-white"
               aria-label={closeLabel}
             >
               <X className="size-4" />
             </button>
           </div>
 
-          <p className="mt-5 text-sm leading-7 text-[var(--ink-soft)]">{body}</p>
+          <p id="help-description" className="mt-5 text-sm leading-7 text-[var(--ink-soft)]">{body}</p>
 
           <ol className="mt-5 grid gap-3">
             {steps.map((step, index) => (
@@ -141,7 +151,7 @@ export function GuidanceDialog({
             </p>
           ) : null}
         </div>
-      </motion.div>
+      </div>
     </div>,
     document.body,
   );

@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, ArchiveX, CheckCircle2, X } from "lucide-react";
 import { Button } from "@/components/shared/Button";
+import { useAccessibleDialog } from "@/lib/use-accessible-dialog";
+import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import {
   OwnerEmptyState,
   OwnerErrorState,
@@ -27,6 +29,18 @@ export function OwnerCleanupPanel() {
   const [approving, setApproving] = useState(false);
   const [message, setMessage] = useState("");
   const operationKey = useRef<string | null>(null);
+  const dialogRef = useRef<HTMLElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useBodyScrollLock(Boolean(selected));
+  useAccessibleDialog({
+    open: Boolean(selected),
+    containerRef: dialogRef,
+    initialFocusRef: closeRef,
+    onClose: () => {
+      if (!approving) setSelected(null);
+    },
+  });
 
   async function load() {
     setError(false);
@@ -113,9 +127,9 @@ export function OwnerCleanupPanel() {
       ) : null}
 
       {selected ? (
-        <section role="dialog" aria-modal="true" aria-labelledby="cleanup-confirm-title" className="fixed inset-0 z-50 grid place-items-end bg-black/40 p-3 backdrop-blur-sm sm:place-items-center sm:p-6">
+        <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="cleanup-confirm-title" tabIndex={-1} className="fixed inset-0 z-50 grid place-items-end overflow-y-auto bg-black/40 p-3 backdrop-blur-sm sm:place-items-center sm:p-6">
           <div className="w-full max-w-xl rounded-[32px] border border-white/80 bg-[var(--paper-soft)] p-5 shadow-[0_30px_100px_rgba(0,0,0,0.28)] sm:p-7">
-            <div className="flex items-start justify-between gap-3"><div><p className="eyebrow text-[var(--rosewood)]">Geri alınamaz onay</p><h3 id="cleanup-confirm-title" className="mt-2 font-display text-3xl font-semibold">{selected.coupleName}</h3></div><Button variant="quiet" aria-label="Temizlik penceresini kapat" className="px-4" onClick={() => setSelected(null)}><X className="size-4" /></Button></div>
+            <div className="flex items-start justify-between gap-3"><div><p className="eyebrow text-[var(--rosewood)]">Geri alınamaz onay</p><h3 id="cleanup-confirm-title" className="mt-2 font-display text-3xl font-semibold">{selected.coupleName}</h3></div><Button ref={closeRef} variant="quiet" aria-label="Temizlik penceresini kapat" className="px-4" onClick={() => setSelected(null)}><X className="size-4" /></Button></div>
             <p className="mt-4 text-sm leading-6 text-[var(--ink-soft)]">Önce {selected.mediaCount} medya kaydı ve profil dosyası silme kuyruğuna girer. Bütün R2 işleri tamamlanınca tokenlar kapanır, eski linkler kaldırılır ve üyelik anonimleştirilir.</p>
             <label className="mt-5 grid gap-2 text-sm font-bold">Onay için <code className="rounded-full bg-white/65 px-2 py-1 font-mono text-xs">{selected.slug}</code> yaz<input className={ownerInputClass} value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="off" required /></label>
             <Button variant="danger" fullWidth className="mt-4" loading={approving} disabled={confirmation !== selected.slug} onClick={() => void approve()}><ArchiveX className="size-4" />Güvenli temizlik kuyruğunu başlat</Button>

@@ -56,8 +56,11 @@ Kalite komutları:
 
 - `/`: `/login` sayfasına redirect eder.
 - `/login`: Etsy token aktivasyonu, geri dönen cihazda stüdyoya giriş kartı ve Mary & John demo CTA'sı.
+- `/privacy`: müşteri veri kullanımını, saklama süresini ve Cloudflare Turnstile Privacy Addendum bağlantısını 6 dilde açıklar.
 - `/admin`: HTTP-only session cookie ile gerçek çift admin paneli.
 - `/admin/mary-john`: Mary & John demo admin paneli.
+- `/admin/presentation`: gerçek üyeliğin tam ekran Akış Modu.
+- `/admin/mary-john/presentation`: storage yazmayan demo Akış Modu.
 - `/owner`: Türkçe owner kokpiti; üyelik, token, paket, temizlik, cihaz ve sistem durumunu yönetir.
 - `/owner/upgrades`: eski uyumluluk route'udur ve `/owner` adresine yönlendirir.
 - `/{coupleSlug}`: gerçek misafir upload sayfası.
@@ -74,8 +77,13 @@ API route'ları:
 - `/api/owner/login`, `/api/owner/session`, `/api/owner/logout`: hash'li, cihaz bazlı ve kullanıldıkça 90 gün yenilenen owner oturumlarını yönetir.
 - `/api/owner/*`: çift arama/detay, token, paket/düzeltme, temizlik, hareket, cihaz, şifre ve sistem durumu API'leridir.
 - `/api/owner/upgrades/apply`: kaldırılmış eski Studio Code akışıdır ve `410` döner.
-- `/api/uploads/[slug]/prepare`: misafir dosyası için R2 presigned PUT hedefi üretir ve kota/access kontrolü yapar.
-- `/api/uploads/[slug]/complete`: signed upload sonrası DB media kaydını oluşturur.
+- `/api/uploads/[slug]`, `/prepare` ve `/complete`: kaldırılmış eski upload akışıdır ve `410` döner.
+- `POST /api/uploads/[slug]/reservations`: Turnstile doğrular, atomik kota ayırır ve küçük upload hedefini ya da multipart planını döner.
+- `GET/DELETE /api/uploads/[slug]/reservations/[reservationId]`: yarım upload durumunu döndürür veya güvenli biçimde iptal eder.
+- `POST /api/uploads/[slug]/reservations/[reservationId]/parts/[partNumber]`: eksik multipart parçasına kısa ömürlü R2 hedefi üretir.
+- `POST /api/uploads/[slug]/reservations/[reservationId]/parts/[partNumber]/complete`: parçanın ETag ve boyutunu doğrulanmış reservation'a kaydeder.
+- `POST /api/uploads/[slug]/reservations/[reservationId]/complete`: staging objesini tekil final adrese taşır ve kota/media kaydını yalnız bir kez kesinleştirir.
+- `GET /api/cron/daily-maintenance`: yalnız `CRON_SECRET` Bearer ile çalışan günlük reservation, deletion queue ve sistem sağlığı işidir.
 - `/api/weddings/current`: müşteri için yalnızca welcome note ve upload lock alanlarını günceller; isim/tarih değişikliği owner'a özeldir.
 - `/api/weddings/current/media`: admin memory inbox listesini döner.
 - `/api/weddings/current/profile-media/prepare`: admin profil fotoğrafı için R2 presigned PUT hedefi üretir.
@@ -94,6 +102,9 @@ Supabase migration dosyaları:
 - `supabase/migrations/20260711114338_product_ready_core.sql`: şifreli müşteri üyeliği, ortak slug/alias alanı, değişmez hak hareketleri, kota rezervasyonları ve güvenli silme kuyruğu.
 - `supabase/migrations/20260711180000_add_auth_rate_limits.sql`: veritabanı tabanlı giriş deneme sınırları.
 - `supabase/migrations/20260711203000_add_owner_cockpit.sql`: owner kimliği, 90 günlük cihaz oturumları, token yaşam döngüsü, kokpit sorguları ve onaylı temizlik.
+- `supabase/migrations/20260712120000_add_secure_multipart_uploads.sql`: 5 GiB upload, atomik kota reservation'ı, multipart parça durumu ve tek seferlik completion.
+- `supabase/migrations/20260712143000_add_daily_maintenance.sql`: yarım upload/R2 cleanup durumu, güvenli deletion job claim/retry ve günlük bakım RPC'leri.
+- `supabase/migrations/20260712160000_add_presentation_media_index.sql`: Akış Modu için kararlı eski-yeni medya sıralama indeksi.
 
 Ana tablolar:
 
@@ -106,6 +117,7 @@ Ana tablolar:
 - `entitlement_events`: Classic, Premium Extension, tarih değişikliği ve kayıtlı düzeltmelerin değiştirilemeyen hareket defteri.
 - `owner_credentials`, `owner_sessions`, `owner_audit_logs`: owner şifresi, cihaz oturumları ve hareket geçmişi.
 - `system_health_checks`, `media_deletion_jobs`: günlük servis kontrolü ve owner onaylı R2 silme kuyruğu.
+- `upload_reservations`, `upload_parts`: 24 saatlik kota ayırma, küçük/multipart staging, resume, iptal ve parça kayıtları.
 
 Storage bucket:
 
@@ -113,9 +125,15 @@ Storage bucket:
 - Bucket private olmalı.
 - Misafir ve profil dosyaları doğrudan Cloudflare R2'ye presigned PUT ile yüklenir.
 - Next.js API route'ları büyük dosyayı body olarak taşımamalı; Vercel serverless limitleri için bu kritik.
-- Supabase sadece medya metadata'sı, `storage_used_bytes`, kota, access süresi ve upgrade loglarını tutar.
+- Tek misafir dosyası üst sınırı 5 GiB'dir. 100 MiB ve altı tek staging PUT, daha büyük dosyalar 64 MiB multipart parçaları kullanır; mobil eşzamanlı parça sayısı en fazla 3'tür.
+- Signed hedef verilmeden önce veritabanında atomik kota ayrılır. Reservation 24 saat sonra sona erer; kota yalnız bir kez geri bırakılır.
+- Upload tamamlanınca staging obje tekil final adrese taşınır. Eski signed staging adresinin tekrar kullanılması tamamlanmış medyayı değiştiremez.
+- Supabase yalnız metadata, `storage_used_bytes`, ayrılmış kota, access süresi ve değişmez hak hareketlerini tutar.
+- Profil ve thumbnail boyutları çift kotasına girmez; `system_storage_bytes` altında ayrıca izlenir.
 - Classic paket 50 GB ve düğün tarihinden itibaren 3 ay access verir. Premium Extension +50 GB ve mevcut access bitişine +6 ay ekler.
 - Kota dolunca misafir upload hard stop olur. Access bitince upload kapanır; dosyalar 30 gün cleanup grace sonrası owner cleanup için adaydır.
+- R2 bucket private kalır. CORS production/preview originlerini açıkça izinli saymalı, `PUT` ve `Content-Type` kabul etmeli, multipart client için `ETag` başlığını expose etmelidir.
+- R2 lifecycle yalnız tamamlanmamış multipart uploadları 1 gün sonra abort eder; tamamlanmış müşteri objelerine otomatik expiry konmaz.
 
 ## Auth ve Token Akışı
 
@@ -146,6 +164,13 @@ Guest Memories:
 - Favori ve gizle butonları V1'de kaldırılmıştır; public galeri olmadığı için çifte anlamlı değer üretmiyordu.
 - İndirme `/api/media/[id]/download` üzerinden signed download ile yapılır.
 - Silme doğrudan çalışmaz; önce onay modalı açılır. Evet derse Storage ve DB tarafında silinir, Hayır derse işlem yapılmaz.
+
+Akış Modu:
+
+- Gerçek üyelik `/admin/presentation`, demo `/admin/mary-john/presentation` adresinden açılır.
+- Medyalar eskiden yeniye oynar; fotoğraf 8 saniye kalır, video/ses bitince ilerler ve liste döngüye girer.
+- Dokunma/tıklama durdurur veya sürdürür; ok tuşları önceki/sonraki medyaya geçer ve tam ekran desteklenir.
+- Video/ses oynatma hatası görünür bir aksiyonla atlanabilir. `prefers-reduced-motion` ayarı korunur.
 
 Private Storage:
 
@@ -201,7 +226,9 @@ Misafir sayfası `/{coupleSlug}` ile açılır.
 - Üstte çiftin profil fotoğrafı rozeti, çift adı, tarih ve welcome note görünür.
 - Misafir sayfasında Help butonu vardır; bu modal QR ile gelen misafire ne gönderebileceğini, yüklemenin özel kaldığını ve sorun olursa dosya seçebileceğini anlatır.
 - Misafir adını, opsiyonel notu ve foto/video/ses dosyasını gönderir.
-- Ses kaydı tarayıcı MediaRecorder ile alınır; destek yoksa kullanıcı dosya seçebilir.
+- Upload; dosya seçimi/önizleme, Turnstile, kota reservation'ı, ilerleme, iptal/yeniden dene ve başarı adımlarını izler.
+- Büyük uploadlarda eksik multipart parçaları yeniden seçilen aynı dosyayla sürdürülebilir; mobilde en fazla üç parça aynı anda gider.
+- Ses kaydı tarayıcı MediaRecorder ile alınır, 5 dakikada otomatik durur ve mikrofon track'leri her çıkışta kapatılır; destek yoksa kullanıcı dosya seçebilir.
 - Upload kapalıysa form yerine kapalı mesajı gösterilir.
 - Başarılı upload sonrası teşekkür ekranı gösterilir.
 - Misafirler diğer misafirlerin yüklediği medyaları görmez.
@@ -222,18 +249,32 @@ NEXT_PUBLIC_ETSY_PREMIUM_UPGRADE_URL=
 AUTH_PASSWORD_PEPPER=
 AUTH_RATE_LIMIT_SECRET=
 OWNER_SETUP_SECRET=
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=
+TURNSTILE_SECRET_KEY=
+TURNSTILE_EXPECTED_HOSTNAMES=
+CRON_SECRET=
 ```
 
-Vercel tarafında Production, Preview ve Development ortamları için bu değerler girilmelidir. `SUPABASE_SERVICE_ROLE_KEY` ve R2 secret değerleri kesinlikle frontend'e açılmamalı; `NEXT_PUBLIC_` prefix'i almamalıdır.
+Vercel tarafında gerekli değerler Production, Preview ve Development ortamlarına bilinçli olarak dağıtılmalıdır. `SUPABASE_SERVICE_ROLE_KEY`, R2 secret, `AUTH_*`, `OWNER_SETUP_SECRET`, `TURNSTILE_SECRET_KEY` ve `CRON_SECRET` kesinlikle frontend'e açılmamalı; `NEXT_PUBLIC_` prefix'i almamalıdır.
+
+- `AUTH_PASSWORD_PEPPER`, `AUTH_RATE_LIMIT_SECRET`, `OWNER_SETUP_SECRET` ve `CRON_SECRET` en az 32 byte olmalıdır.
+- Aynı Supabase veritabanını kullanan ortamlar aynı `AUTH_PASSWORD_PEPPER` değerini kullanır; bu değeri plansız değiştirmek mevcut şifreleri geçersiz kılar.
+- `OWNER_SETUP_SECRET` yalnız ilk owner kurulumuna kadar tutulur; owner şifresini belirledikten sonra Vercel'den kaldırılır.
+- `TURNSTILE_EXPECTED_HOSTNAMES` şemasız, virgülle ayrılmış hostname listesidir. Preview ve production için ayrı Turnstile widget/anahtarları tercih edilir.
+- Invisible Turnstile kullanımı login ve misafir sayfalarındaki `/privacy` bağlantısıyla açıklanmalı; bu route 6 dilde eşit tutulmalıdır.
+- `NEXT_PUBLIC_ETSY_PREMIUM_UPGRADE_URL` opsiyoneldir; boşsa müşteri arayüzü satın alma bağlantısını açmaz.
 
 ## Güvenlik ve Veri Notları
 
 - Service role sadece server route ve server helper içinde kullanılır.
 - R2 bucket private kalır; görüntüleme ve indirme presigned GET URL ile yapılır.
-- Upload prepare/complete iki aşamalıdır; complete aşaması storage path'in ilgili wedding/folder altında olduğunu ve `asset_` ID formatını doğrular.
+- Her guest upload önce sunucuda Turnstile doğrulamasından, sonra atomik reservation'dan geçer. Tarayıcı R2 internal path veya multipart upload ID görmez.
+- Reservation secret yalnız hash'li karşılaştırılır; completion ilgili wedding ve reservation'a bağlı tekil final path kullanır.
 - Dosya tipi image/video/audio ile sınırlıdır.
-- Dosya boyutu sınırı uygulama tarafında 100 MB'dır.
+- Tek dosya sınırı 5 GiB'dir; 100 MiB yalnız tek PUT ile multipart arasındaki teknik eşiktir, müşteri dosya sınırı değildir.
 - RLS migration'da enable edilir; uygulama server-side service role ile çalışır.
+- Günlük cron 24 saati geçen reservation'ları kapatır, yarım R2 uploadları temizler, owner onaylı deletion job'larını işler ve Supabase/R2 sağlığını owner paneline yazar.
+- Gerçek müşteri üyeliğinde, tokenında, kotasında, paketinde veya dosyasında write-test kesinlikle yapılmaz. Canlı doğrulama benzersiz geçici üyelik ve ayrı R2 prefix ile yapılır; sonra geçici kayıtlar açıkça temizlenir.
 
 ## Deploy Hazırlığı
 
@@ -255,3 +296,9 @@ Vercel kontrol listesi:
 - Production URL'de `/login`, `/admin/mary-john`, `/mary-john?demo=1` açılmalı.
 - Gerçek admin için session yoksa `/admin` -> `/login` redirect çalışmalı.
 - Supabase bucket ve migration production projesinde hazır olmalı.
+- R2 CORS `ETag` expose etmeli; tamamlanmamış multipart lifecycle süresi 1 gün olmalı.
+- Production Turnstile hostname, site key ve secret eşleşmeli.
+- `vercel.json` içindeki `/api/cron/daily-maintenance` yalnız production deploy'da kaydolur; `CRON_SECRET` olmadan route fail-closed davranır.
+- Migration'lar dosya sırasıyla ve yeni kod deploy edilmeden önce uygulanmalı; rollback eski Vercel sürümüne yapılır, eklemeli migration'lar aceleyle geri alınmaz.
+
+Ayrıntılı canlı geçiş, geçici üyelik doğrulaması ve rollback sırası `docs/production-runbook.md` dosyasındadır.

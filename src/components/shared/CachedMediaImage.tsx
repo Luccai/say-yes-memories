@@ -9,6 +9,7 @@ type CachedMediaImageProps = {
   className?: string;
   instantCache?: boolean;
   loading?: "eager" | "lazy";
+  fetchPriority?: "high" | "low" | "auto";
   onReady?: () => void;
 };
 
@@ -189,6 +190,7 @@ export function CachedMediaImage({
   className = "",
   instantCache = false,
   loading = "lazy",
+  fetchPriority = "auto",
   onReady,
 }: CachedMediaImageProps) {
   const [displaySrc, setDisplaySrc] = useState(src);
@@ -198,6 +200,14 @@ export function CachedMediaImage({
     let objectUrl = "";
 
     cleanupOldMediaCaches();
+
+    // Versioned demo WebPs are immutable static assets. Replacing them with a
+    // late-created blob URL wastes memory and can move the LCP timestamp.
+    if (src.startsWith("/demo/")) {
+      return () => {
+        cancelled = true;
+      };
+    }
 
     async function loadImage() {
       const instantSrc = instantCache ? readInstantMediaCache(cacheKey) : "";
@@ -294,6 +304,7 @@ export function CachedMediaImage({
       alt={alt}
       className={className}
       loading={loading}
+      fetchPriority={fetchPriority}
       decoding="async"
       onLoad={() => onReady?.()}
       onError={() => onReady?.()}

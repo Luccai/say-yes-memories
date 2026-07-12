@@ -137,6 +137,10 @@ function decodeAudioData(context: AudioContext, arrayBuffer: ArrayBuffer) {
 }
 
 export function shouldNormalizeAudioFile(file: File) {
+  // Decoding a large recording into raw PCM can exhaust memory on phones.
+  if (file.size > 32 * 1024 * 1024) {
+    return false;
+  }
   const type = file.type.split(";")[0]?.trim().toLowerCase() ?? "";
   const name = file.name.toLowerCase();
 

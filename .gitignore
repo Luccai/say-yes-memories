@@ -23,3 +23,7 @@ pnpm-lock.yaml
 *.tsbuildinfo
 
 .vercel
+.lighthouseci/
+.lighthouse-profile-*/
+playwright-report/
+test-results/

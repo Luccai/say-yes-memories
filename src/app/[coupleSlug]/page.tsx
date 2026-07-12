@@ -1,6 +1,7 @@
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { GuestExperience } from "@/components/guest/GuestExperience";
-import { getWeddingBySlug } from "@/lib/supabase-store";
+import { resolvePublicWeddingBySlug } from "@/lib/supabase-store";
+import { canonicalSlugRedirect } from "@/lib/weddings/slug-routing";
 import { DEMO_GUEST_SLUG, demoWedding } from "@/lib/demo-content";
 
 export default async function GuestPage({
@@ -14,11 +15,20 @@ export default async function GuestPage({
     return <GuestExperience wedding={demoWedding} demoMode />;
   }
 
-  const wedding = await getWeddingBySlug(coupleSlug);
+  const resolved = await resolvePublicWeddingBySlug(coupleSlug);
 
-  if (!wedding) {
+  if (!resolved) {
     notFound();
   }
 
-  return <GuestExperience wedding={wedding} />;
+  const redirectSlug = canonicalSlugRedirect({
+    requestedSlug: coupleSlug,
+    canonicalSlug: resolved.canonicalSlug,
+    isAlias: resolved.isAlias,
+  });
+  if (redirectSlug) {
+    permanentRedirect(`/${redirectSlug}`);
+  }
+
+  return <GuestExperience wedding={resolved.wedding} />;
 }

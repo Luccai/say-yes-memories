@@ -1,7 +1,3 @@
-"use client";
-
-import { useEffect, useState } from "react";
-
 export type Locale = "en" | "es" | "fr" | "de" | "pt" | "zh";
 
 const supportedLocales: Locale[] = ["en", "es", "fr", "de", "pt", "zh"];
@@ -21,20 +17,26 @@ export function detectLocale(language?: string): Locale {
   return "en";
 }
 
-export function useLocale() {
-  const [locale, setLocale] = useState<Locale>("en");
-
-  useEffect(() => {
-    queueMicrotask(() => setLocale(detectLocale(navigator.language)));
-  }, []);
-
-  return locale;
-}
-
 export const copy = {
   en: {
     help: "Help",
     close: "Close",
+    privacy: {
+      link: "Privacy & data",
+      back: "Back",
+      eyebrow: "Privacy notice",
+      title: "Your memories stay private.",
+      updated: "Effective 12 July 2026.",
+      intro: "Say Yes Digital Memories collects only what is needed to open the couple's private studio and deliver guest memories.",
+      sections: [
+        { title: "What we collect", body: "Guest name, optional note and selected photo, video or audio; couple names, wedding date and account security data; limited technical data used to stop abuse." },
+        { title: "Where it is kept", body: "Account and media records are kept in Supabase. Private media files are kept in Cloudflare R2 and are opened only with short-lived secure links." },
+        { title: "How long we keep it", body: "Access follows the purchased membership. After expiry, the couple has a 30-day download period. Permanent cleanup requires owner approval. Unfinished uploads are removed after 24 hours." },
+        { title: "Bot protection", body: "Cloudflare Turnstile checks uploads for abuse and may process device and network signals under Cloudflare's Turnstile Privacy Addendum." },
+        { title: "Your choices", body: "Guests never see other guests' uploads. For access or deletion requests, contact the couple or Say Yes Digital through the Etsy order conversation." },
+      ],
+      turnstileLink: "Cloudflare Turnstile Privacy Addendum",
+    },
     errors: {
       signInFailed: "Could not sign in.",
       invalidToken: "That token does not look right. Check your Etsy email and try again.",
@@ -67,7 +69,7 @@ export const copy = {
       storageOnlyMedia: "Only photo, video, or audio files are accepted.",
       storageWrongType: "This upload type is not accepted here.",
       storageEmptyFile: "The selected file is empty.",
-      storageTooLarge: "This file is too large. Please upload a file under 100 MB.",
+      storageTooLarge: "This file is too large. Files can be up to 5 GB.",
       uploadPathInvalid: "Upload path does not belong to this wedding.",
     },
     login: {
@@ -101,6 +103,8 @@ export const copy = {
       invited: "You are invited to share a memory for",
       uploadsPaused: "Uploads are paused",
       uploadsPausedBody: "The couple has temporarily closed new uploads.",
+      uploadsNotOpen: "Memories open on the wedding day",
+      uploadsNotOpenBody: "You can upload from 00:00 in the couple's local time on their wedding date.",
       thankYou: "Thank you",
       thankYouBody: "Your memory has been sent privately to the couple.",
       sendAnother: "Send another",
@@ -115,6 +119,16 @@ export const copy = {
       missingMedia: "Add a photo, video, or voice note.",
       micDenied: "Microphone permission was not granted. You can choose an audio file instead.",
       uploadFailed: "Upload could not be completed.",
+      fileTooLarge: "This file is over the 5 GB single-file limit.",
+      unsupportedFile: "Choose a supported photo, video, or audio file.",
+      uploadCancelled: "Upload cancelled. Reserved space was released.",
+      storageFull: "The couple's storage is full right now.",
+      verificationFailed: "Upload verification failed. Please try again.",
+      recordingRemaining: "{time} remaining of the 5-minute limit",
+      recordingEndingSoon: "Recording will stop automatically soon.",
+      uploadProgress: "Uploading securely",
+      cancelUpload: "Cancel upload",
+      retryUpload: "Retry upload",
       helpEyebrow: "Guest memory page",
       helpTitle: "What can I send?",
       helpBody:
@@ -210,6 +224,30 @@ export const copy = {
       videos: "Videos",
       voice: "Voice",
       noMemories: "No memories yet",
+      loadMore: "Load more memories",
+      presentation: "Flow mode",
+      presentationTitle: "Let the memories flow",
+      presentationStart: "Start flow mode",
+      presentationPause: "Pause",
+      presentationResume: "Resume",
+      presentationControls: "Flow mode controls",
+      presentationToggle: "Tap to pause or resume the presentation",
+      presentationBack: "Back to the studio",
+      presentationEmpty: "No memories to present yet",
+      presentationEmptyBody: "Guest photos, videos, and voice notes will appear here in chronological order.",
+      presentationCounter: "{current} / {total}",
+      presentationFullscreen: "Enter full screen",
+      presentationExitFullscreen: "Exit full screen",
+      presentationPlaybackFailed: "This memory could not be played.",
+      presentationSkip: "Skip to the next memory",
+      presentationLoadFailed: "More memories could not be loaded.",
+      presentationRetry: "Try again",
+      presentationFullscreenUnavailable: "Full screen is not available on this device.",
+      presentationInstructions: "Tap or click to pause. Use the arrow keys to move between memories.",
+      presentationStatus: "{current} of {total}, {kind}, from {guest}",
+      presentationKindPhoto: "photo",
+      presentationKindVideo: "video",
+      presentationKindAudio: "voice note",
       mediaPreparing: "Getting your memories ready...",
       audioPlaybackFailed: "This voice note cannot play in this browser. You can still download it.",
       downloadVoice: "Download voice note",
@@ -227,7 +265,7 @@ export const copy = {
       helpTitle: "What should I set up first?",
       helpBody:
         "This studio is the private dashboard for the couple. Set up the guest page, share the QR code, and come back here to review everything guests send.",
-      helpSteps: ["Guest Memories is where new photos, videos, voice notes, and messages arrive.", "Private Storage shows quota, access time, your couple name, and the Premium Extension flow.", "Wedding Page controls the profile photo, welcome note, and upload lock. Names and date are changed securely by the owner.", "QR + guest link gives you the link and printable QR for tables, signs, or messages.", "View Guest Page shows what guests will see after scanning the QR."],
+      helpSteps: ["Guest Memories is where new photos, videos, voice notes, and messages arrive.", "Private Storage shows quota, access time, your couple name, and the Premium Extension flow.", "Wedding Page controls the profile photo, welcome note, and upload lock. Names and date are changed securely by the owner.", "QR + guest link gives you the link and printable QR for tables, signs, or messages.", "Flow Mode plays memories from oldest to newest in a full-screen wedding presentation.", "View Guest Page shows what guests will see after scanning the QR."],
       helpCards: [
         {
           title: "Private inbox",
@@ -249,6 +287,22 @@ export const copy = {
   es: {
     help: "Ayuda",
     close: "Cerrar",
+    privacy: {
+      link: "Privacidad y datos",
+      back: "Volver",
+      eyebrow: "Aviso de privacidad",
+      title: "Tus recuerdos permanecen privados.",
+      updated: "Vigente desde el 12 de julio de 2026.",
+      intro: "Say Yes Digital Memories recopila solo lo necesario para abrir el estudio privado de la pareja y entregar los recuerdos de los invitados.",
+      sections: [
+        { title: "Qué recopilamos", body: "Nombre del invitado, nota opcional y foto, vídeo o audio elegido; nombres de la pareja, fecha de la boda y datos de seguridad de la cuenta; datos técnicos limitados para evitar abusos." },
+        { title: "Dónde se guarda", body: "Los datos de cuenta y medios se guardan en Supabase. Los archivos privados se guardan en Cloudflare R2 y solo se abren mediante enlaces seguros de corta duración." },
+        { title: "Durante cuánto tiempo", body: "El acceso sigue la membresía comprada. Tras vencer, la pareja tiene 30 días para descargar. La limpieza permanente requiere aprobación del propietario. Las cargas incompletas se eliminan tras 24 horas." },
+        { title: "Protección contra bots", body: "Cloudflare Turnstile comprueba abusos al subir archivos y puede procesar señales del dispositivo y la red conforme a su anexo de privacidad." },
+        { title: "Tus opciones", body: "Los invitados nunca ven las cargas de otros invitados. Para solicitar acceso o eliminación, contacta con la pareja o con Say Yes Digital mediante la conversación del pedido de Etsy." },
+      ],
+      turnstileLink: "Anexo de privacidad de Cloudflare Turnstile",
+    },
     errors: {
       signInFailed: "No se pudo iniciar sesión.",
       invalidToken: "Ese token no parece correcto. Revisa tu correo de Etsy e inténtalo de nuevo.",
@@ -281,7 +335,7 @@ export const copy = {
       storageOnlyMedia: "Solo se aceptan fotos, videos o audios.",
       storageWrongType: "Este tipo de carga no se acepta aquí.",
       storageEmptyFile: "El archivo seleccionado está vacío.",
-      storageTooLarge: "Este archivo es demasiado grande. Sube uno de menos de 100 MB.",
+      storageTooLarge: "Este archivo es demasiado grande. El límite es de 5 GB.",
       uploadPathInvalid: "La ruta de carga no pertenece a esta boda.",
     },
     login: {
@@ -315,6 +369,8 @@ export const copy = {
       invited: "Estás invitado a compartir un recuerdo para",
       uploadsPaused: "Las cargas están pausadas",
       uploadsPausedBody: "La pareja ha cerrado temporalmente nuevas cargas.",
+      uploadsNotOpen: "Los recuerdos se abren el día de la boda",
+      uploadsNotOpenBody: "Podrás subir desde las 00:00, hora local de la pareja, el día de su boda.",
       thankYou: "Gracias",
       thankYouBody: "Tu recuerdo se envió de forma privada a la pareja.",
       sendAnother: "Enviar otro",
@@ -329,6 +385,16 @@ export const copy = {
       missingMedia: "Agrega una foto, video o nota de voz.",
       micDenied: "No se concedió permiso de micrófono. Puedes elegir un archivo de audio.",
       uploadFailed: "No se pudo completar la carga.",
+      fileTooLarge: "Este archivo supera el límite de 5 GB por archivo.",
+      unsupportedFile: "Elige una foto, video o audio compatible.",
+      uploadCancelled: "Carga cancelada. El espacio reservado se liberó.",
+      storageFull: "El almacenamiento de la pareja está lleno ahora mismo.",
+      verificationFailed: "Falló la verificación de carga. Inténtalo de nuevo.",
+      recordingRemaining: "Quedan {time} del límite de 5 minutos",
+      recordingEndingSoon: "La grabación se detendrá automáticamente pronto.",
+      uploadProgress: "Carga segura en curso",
+      cancelUpload: "Cancelar carga",
+      retryUpload: "Reintentar carga",
       helpEyebrow: "Página de recuerdos",
       helpTitle: "¿Qué puedo enviar?",
       helpBody:
@@ -424,6 +490,30 @@ export const copy = {
       videos: "Videos",
       voice: "Voz",
       noMemories: "Aún no hay recuerdos",
+      loadMore: "Cargar más recuerdos",
+      presentation: "Modo secuencia",
+      presentationTitle: "Deja fluir los recuerdos",
+      presentationStart: "Iniciar modo secuencia",
+      presentationPause: "Pausar",
+      presentationResume: "Continuar",
+      presentationControls: "Controles del modo secuencia",
+      presentationToggle: "Toca para pausar o continuar la presentación",
+      presentationBack: "Volver al estudio",
+      presentationEmpty: "Aún no hay recuerdos para presentar",
+      presentationEmptyBody: "Las fotos, videos y audios aparecerán aquí en orden cronológico.",
+      presentationCounter: "{current} / {total}",
+      presentationFullscreen: "Abrir pantalla completa",
+      presentationExitFullscreen: "Salir de pantalla completa",
+      presentationPlaybackFailed: "No se pudo reproducir este recuerdo.",
+      presentationSkip: "Saltar al siguiente recuerdo",
+      presentationLoadFailed: "No se pudieron cargar más recuerdos.",
+      presentationRetry: "Intentar de nuevo",
+      presentationFullscreenUnavailable: "La pantalla completa no está disponible en este dispositivo.",
+      presentationInstructions: "Toca o haz clic para pausar. Usa las flechas para cambiar de recuerdo.",
+      presentationStatus: "{current} de {total}, {kind}, de {guest}",
+      presentationKindPhoto: "foto",
+      presentationKindVideo: "video",
+      presentationKindAudio: "nota de voz",
       mediaPreparing: "Preparando sus recuerdos...",
       audioPlaybackFailed: "Esta nota de voz no se puede reproducir en este navegador. Aún puedes descargarla.",
       downloadVoice: "Descargar nota de voz",
@@ -440,7 +530,7 @@ export const copy = {
       helpTitle: "¿Qué conviene configurar primero?",
       helpBody:
         "Este estudio es el panel privado de la pareja. Configuren la página de invitados, compartan el QR y vuelvan aquí para revisar todo lo que envíen los invitados.",
-      helpSteps: ["Recuerdos de invitados es donde llegan fotos, videos, audios y mensajes nuevos.", "Almacenamiento privado muestra cuota, tiempo de acceso, nombre de la pareja y el flujo Premium Extension.", "Página de la boda controla foto, mensaje y bloqueo de cargas. El owner cambia de forma segura los nombres y la fecha.", "QR + enlace entrega el link y el QR imprimible para mesas, carteles o mensajes.", "Abrir página muestra lo que verán los invitados después de escanear el QR."],
+      helpSteps: ["Recuerdos de invitados es donde llegan fotos, videos, audios y mensajes nuevos.", "Almacenamiento privado muestra cuota, tiempo de acceso, nombre de la pareja y el flujo Premium Extension.", "Página de la boda controla foto, mensaje y bloqueo de cargas. El owner cambia de forma segura los nombres y la fecha.", "QR + enlace entrega el link y el QR imprimible para mesas, carteles o mensajes.", "Modo secuencia reproduce los recuerdos del más antiguo al más nuevo en una presentación a pantalla completa.", "Abrir página muestra lo que verán los invitados después de escanear el QR."],
       helpCards: [
         {
           title: "Bandeja privada",
@@ -462,6 +552,22 @@ export const copy = {
   fr: {
     help: "Aide",
     close: "Fermer",
+    privacy: {
+      link: "Confidentialité et données",
+      back: "Retour",
+      eyebrow: "Avis de confidentialité",
+      title: "Vos souvenirs restent privés.",
+      updated: "En vigueur le 12 juillet 2026.",
+      intro: "Say Yes Digital Memories ne collecte que les éléments nécessaires pour ouvrir le studio privé du couple et transmettre les souvenirs des invités.",
+      sections: [
+        { title: "Données collectées", body: "Nom de l'invité, note facultative et photo, vidéo ou audio choisi ; noms du couple, date du mariage et données de sécurité du compte ; données techniques limitées contre les abus." },
+        { title: "Lieu de stockage", body: "Les données de compte et de médias sont conservées dans Supabase. Les fichiers privés sont stockés dans Cloudflare R2 et ne s'ouvrent qu'avec des liens sécurisés de courte durée." },
+        { title: "Durée de conservation", body: "L'accès suit l'abonnement acheté. Après expiration, le couple dispose de 30 jours pour télécharger. Le nettoyage définitif exige l'accord du propriétaire. Les envois inachevés sont supprimés après 24 heures." },
+        { title: "Protection anti-robot", body: "Cloudflare Turnstile contrôle les envois contre les abus et peut traiter des signaux d'appareil et de réseau selon son avenant de confidentialité." },
+        { title: "Vos choix", body: "Les invités ne voient jamais les envois des autres. Pour une demande d'accès ou de suppression, contactez le couple ou Say Yes Digital dans la conversation de commande Etsy." },
+      ],
+      turnstileLink: "Avenant de confidentialité Cloudflare Turnstile",
+    },
     errors: {
       signInFailed: "Connexion impossible.",
       invalidToken: "Ce token ne semble pas correct. Vérifiez votre e-mail Etsy et réessayez.",
@@ -494,7 +600,7 @@ export const copy = {
       storageOnlyMedia: "Seuls les fichiers photo, vidéo ou audio sont acceptés.",
       storageWrongType: "Ce type d'envoi n'est pas accepté ici.",
       storageEmptyFile: "Le fichier sélectionné est vide.",
-      storageTooLarge: "Ce fichier est trop volumineux. Envoyez un fichier de moins de 100 Mo.",
+      storageTooLarge: "Ce fichier est trop volumineux. La limite est de 5 Go.",
       uploadPathInvalid: "Le chemin d'envoi n'appartient pas à ce mariage.",
     },
     login: {
@@ -528,6 +634,8 @@ export const copy = {
       invited: "Vous êtes invité à partager un souvenir pour",
       uploadsPaused: "Les envois sont en pause",
       uploadsPausedBody: "Le couple a temporairement fermé les nouveaux envois.",
+      uploadsNotOpen: "Les souvenirs s'ouvrent le jour du mariage",
+      uploadsNotOpenBody: "Vous pourrez envoyer dès 00 h 00, heure locale du couple, le jour du mariage.",
       thankYou: "Merci",
       thankYouBody: "Votre souvenir a été envoyé en privé au couple.",
       sendAnother: "En envoyer un autre",
@@ -542,6 +650,16 @@ export const copy = {
       missingMedia: "Ajoutez une photo, une vidéo ou un message vocal.",
       micDenied: "L'autorisation du micro a été refusée. Vous pouvez choisir un fichier audio.",
       uploadFailed: "L'envoi n'a pas pu être terminé.",
+      fileTooLarge: "Ce fichier dépasse la limite de 5 Go par fichier.",
+      unsupportedFile: "Choisissez une photo, vidéo ou un audio compatible.",
+      uploadCancelled: "Envoi annulé. L'espace réservé a été libéré.",
+      storageFull: "L'espace de stockage du couple est actuellement plein.",
+      verificationFailed: "La vérification de l'envoi a échoué. Réessayez.",
+      recordingRemaining: "Il reste {time} sur la limite de 5 minutes",
+      recordingEndingSoon: "L'enregistrement s'arrêtera bientôt automatiquement.",
+      uploadProgress: "Envoi sécurisé en cours",
+      cancelUpload: "Annuler l'envoi",
+      retryUpload: "Réessayer l'envoi",
       helpEyebrow: "Page souvenir invité",
       helpTitle: "Que puis-je envoyer ?",
       helpBody:
@@ -637,6 +755,30 @@ export const copy = {
       videos: "Vidéos",
       voice: "Voix",
       noMemories: "Aucun souvenir pour l'instant",
+      loadMore: "Charger plus de souvenirs",
+      presentation: "Mode défilement",
+      presentationTitle: "Laissez défiler les souvenirs",
+      presentationStart: "Démarrer le défilement",
+      presentationPause: "Pause",
+      presentationResume: "Reprendre",
+      presentationControls: "Commandes du mode défilement",
+      presentationToggle: "Touchez pour mettre en pause ou reprendre",
+      presentationBack: "Retour au studio",
+      presentationEmpty: "Aucun souvenir à présenter pour l'instant",
+      presentationEmptyBody: "Les photos, vidéos et messages vocaux apparaîtront ici dans l'ordre chronologique.",
+      presentationCounter: "{current} / {total}",
+      presentationFullscreen: "Passer en plein écran",
+      presentationExitFullscreen: "Quitter le plein écran",
+      presentationPlaybackFailed: "Ce souvenir n'a pas pu être lu.",
+      presentationSkip: "Passer au souvenir suivant",
+      presentationLoadFailed: "Impossible de charger davantage de souvenirs.",
+      presentationRetry: "Réessayer",
+      presentationFullscreenUnavailable: "Le plein écran n'est pas disponible sur cet appareil.",
+      presentationInstructions: "Touchez ou cliquez pour mettre en pause. Utilisez les flèches pour changer de souvenir.",
+      presentationStatus: "{current} sur {total}, {kind}, de {guest}",
+      presentationKindPhoto: "photo",
+      presentationKindVideo: "vidéo",
+      presentationKindAudio: "message vocal",
       mediaPreparing: "Préparation de vos souvenirs...",
       audioPlaybackFailed: "Ce message vocal ne peut pas être lu dans ce navigateur. Vous pouvez le télécharger.",
       downloadVoice: "Télécharger le message vocal",
@@ -653,7 +795,7 @@ export const copy = {
       helpTitle: "Que configurer en premier ?",
       helpBody:
         "Ce studio est le tableau de bord privé du couple. Préparez la page invités, partagez le QR puis revenez ici pour consulter tout ce que les invités envoient.",
-      helpSteps: ["Souvenirs invités reçoit les nouvelles photos, vidéos, messages vocaux et notes.", "Stockage privé affiche le quota, la durée d'accès, le nom du couple et le flux Premium Extension.", "Page du mariage contrôle la photo, le message et le verrouillage des envois. Le propriétaire modifie les prénoms et la date en toute sécurité.", "QR + lien fournit le lien et le QR imprimable pour tables, affiches ou messages.", "Ouvrir la page montre ce que les invités verront après avoir scanné le QR."],
+      helpSteps: ["Souvenirs invités reçoit les nouvelles photos, vidéos, messages vocaux et notes.", "Stockage privé affiche le quota, la durée d'accès, le nom du couple et le flux Premium Extension.", "Page du mariage contrôle la photo, le message et le verrouillage des envois. Le propriétaire modifie les prénoms et la date en toute sécurité.", "QR + lien fournit le lien et le QR imprimable pour tables, affiches ou messages.", "Le mode défilement lit les souvenirs du plus ancien au plus récent dans une présentation plein écran.", "Ouvrir la page montre ce que les invités verront après avoir scanné le QR."],
       helpCards: [
         {
           title: "Boîte privée",
@@ -675,6 +817,22 @@ export const copy = {
   de: {
     help: "Hilfe",
     close: "Schließen",
+    privacy: {
+      link: "Datenschutz & Daten",
+      back: "Zurück",
+      eyebrow: "Datenschutzhinweis",
+      title: "Eure Erinnerungen bleiben privat.",
+      updated: "Gültig ab 12. Juli 2026.",
+      intro: "Say Yes Digital Memories erhebt nur Daten, die für das private Studio des Paars und die Zustellung der Gästebeiträge nötig sind.",
+      sections: [
+        { title: "Was wir erfassen", body: "Name des Gasts, optionale Nachricht und ausgewähltes Foto, Video oder Audio; Namen des Paars, Hochzeitsdatum und Kontosicherheitsdaten; begrenzte technische Daten zur Missbrauchsabwehr." },
+        { title: "Wo Daten liegen", body: "Konto- und Mediendaten liegen in Supabase. Private Dateien liegen in Cloudflare R2 und werden nur über kurzlebige sichere Links geöffnet." },
+        { title: "Speicherdauer", body: "Der Zugriff folgt der gekauften Mitgliedschaft. Nach Ablauf hat das Paar 30 Tage zum Herunterladen. Dauerhafte Bereinigung braucht die Freigabe des Owners. Unfertige Uploads werden nach 24 Stunden entfernt." },
+        { title: "Bot-Schutz", body: "Cloudflare Turnstile prüft Uploads auf Missbrauch und kann Geräte- und Netzwerksignale gemäß dem Turnstile-Datenschutzzusatz verarbeiten." },
+        { title: "Eure Rechte", body: "Gäste sehen niemals Uploads anderer Gäste. Für Auskunft oder Löschung kontaktiert das Paar oder Say Yes Digital über die Etsy-Bestellnachricht." },
+      ],
+      turnstileLink: "Cloudflare Turnstile Datenschutzzusatz",
+    },
     errors: {
       signInFailed: "Anmeldung fehlgeschlagen.",
       invalidToken: "Dieser Token sieht nicht richtig aus. Prüfe deine Etsy-E-Mail und versuche es erneut.",
@@ -707,7 +865,7 @@ export const copy = {
       storageOnlyMedia: "Nur Foto-, Video- oder Audiodateien werden akzeptiert.",
       storageWrongType: "Dieser Upload-Typ wird hier nicht akzeptiert.",
       storageEmptyFile: "Die ausgewählte Datei ist leer.",
-      storageTooLarge: "Diese Datei ist zu groß. Bitte lade eine Datei unter 100 MB hoch.",
+      storageTooLarge: "Diese Datei ist zu groß. Das Limit beträgt 5 GB.",
       uploadPathInvalid: "Der Upload-Pfad gehört nicht zu dieser Hochzeit.",
     },
     login: {
@@ -741,6 +899,8 @@ export const copy = {
       invited: "Teile eine Erinnerung für",
       uploadsPaused: "Uploads sind pausiert",
       uploadsPausedBody: "Das Paar hat neue Uploads vorübergehend geschlossen.",
+      uploadsNotOpen: "Erinnerungen öffnen am Hochzeitstag",
+      uploadsNotOpenBody: "Am Hochzeitstag kannst du ab 00:00 Uhr in der Ortszeit des Paars hochladen.",
       thankYou: "Danke",
       thankYouBody: "Deine Erinnerung wurde privat an das Paar gesendet.",
       sendAnother: "Weitere senden",
@@ -755,6 +915,16 @@ export const copy = {
       missingMedia: "Füge ein Foto, Video oder eine Sprachnachricht hinzu.",
       micDenied: "Mikrofonzugriff wurde nicht erlaubt. Du kannst stattdessen eine Audiodatei wählen.",
       uploadFailed: "Der Upload konnte nicht abgeschlossen werden.",
+      fileTooLarge: "Diese Datei überschreitet das Limit von 5 GB pro Datei.",
+      unsupportedFile: "Wähle ein unterstütztes Foto, Video oder Audio aus.",
+      uploadCancelled: "Upload abgebrochen. Der reservierte Speicher wurde freigegeben.",
+      storageFull: "Der Speicher des Paars ist momentan voll.",
+      verificationFailed: "Die Upload-Prüfung ist fehlgeschlagen. Bitte versuche es erneut.",
+      recordingRemaining: "Noch {time} vom 5-Minuten-Limit",
+      recordingEndingSoon: "Die Aufnahme endet in Kürze automatisch.",
+      uploadProgress: "Sicherer Upload läuft",
+      cancelUpload: "Upload abbrechen",
+      retryUpload: "Upload erneut versuchen",
       helpEyebrow: "Gäste-Erinnerungsseite",
       helpTitle: "Was kann ich senden?",
       helpBody:
@@ -850,6 +1020,30 @@ export const copy = {
       videos: "Videos",
       voice: "Audio",
       noMemories: "Noch keine Erinnerungen",
+      loadMore: "Weitere Erinnerungen laden",
+      presentation: "Ablaufmodus",
+      presentationTitle: "Erinnerungen im Fluss",
+      presentationStart: "Ablaufmodus starten",
+      presentationPause: "Pausieren",
+      presentationResume: "Fortsetzen",
+      presentationControls: "Steuerung des Ablaufmodus",
+      presentationToggle: "Tippen zum Pausieren oder Fortsetzen",
+      presentationBack: "Zurück zum Studio",
+      presentationEmpty: "Noch keine Erinnerungen zum Abspielen",
+      presentationEmptyBody: "Fotos, Videos und Sprachnachrichten erscheinen hier chronologisch.",
+      presentationCounter: "{current} / {total}",
+      presentationFullscreen: "Vollbild öffnen",
+      presentationExitFullscreen: "Vollbild verlassen",
+      presentationPlaybackFailed: "Diese Erinnerung konnte nicht abgespielt werden.",
+      presentationSkip: "Zur nächsten Erinnerung",
+      presentationLoadFailed: "Weitere Erinnerungen konnten nicht geladen werden.",
+      presentationRetry: "Erneut versuchen",
+      presentationFullscreenUnavailable: "Vollbild ist auf diesem Gerät nicht verfügbar.",
+      presentationInstructions: "Tippe oder klicke zum Pausieren. Nutze die Pfeiltasten zum Wechseln.",
+      presentationStatus: "{current} von {total}, {kind}, von {guest}",
+      presentationKindPhoto: "Foto",
+      presentationKindVideo: "Video",
+      presentationKindAudio: "Sprachnachricht",
       mediaPreparing: "Eure Erinnerungen werden vorbereitet...",
       audioPlaybackFailed: "Diese Sprachnachricht kann in diesem Browser nicht abgespielt werden. Du kannst sie herunterladen.",
       downloadVoice: "Sprachnachricht herunterladen",
@@ -866,7 +1060,7 @@ export const copy = {
       helpTitle: "Was sollte zuerst eingerichtet werden?",
       helpBody:
         "Dieses Studio ist das private Dashboard des Paars. Richtet die Gästeseite ein, teilt den QR-Code und kommt zurück, um alles zu prüfen, was Gäste senden.",
-      helpSteps: ["Gäste-Erinnerungen zeigt neue Fotos, Videos, Sprachnachrichten und Nachrichten.", "Privater Speicher zeigt Kontingent, Zugangszeit, Paarnamen und den Premium-Extension-Ablauf.", "Hochzeitsseite steuert Profilfoto, Begrüßung und Upload-Sperre. Namen und Datum ändert der Owner sicher.", "QR + Link liefert den Link und druckbaren QR für Tische, Schilder oder Nachrichten.", "Seite öffnen zeigt, was Gäste nach dem Scannen des QR sehen."],
+      helpSteps: ["Gäste-Erinnerungen zeigt neue Fotos, Videos, Sprachnachrichten und Nachrichten.", "Privater Speicher zeigt Kontingent, Zugangszeit, Paarnamen und den Premium-Extension-Ablauf.", "Hochzeitsseite steuert Profilfoto, Begrüßung und Upload-Sperre. Namen und Datum ändert der Owner sicher.", "QR + Link liefert den Link und druckbaren QR für Tische, Schilder oder Nachrichten.", "Der Ablaufmodus spielt Erinnerungen im Vollbild von alt nach neu ab.", "Seite öffnen zeigt, was Gäste nach dem Scannen des QR sehen."],
       helpCards: [
         {
           title: "Privater Eingang",
@@ -888,6 +1082,22 @@ export const copy = {
   pt: {
     help: "Ajuda",
     close: "Fechar",
+    privacy: {
+      link: "Privacidade e dados",
+      back: "Voltar",
+      eyebrow: "Aviso de privacidade",
+      title: "Suas memórias permanecem privadas.",
+      updated: "Em vigor desde 12 de julho de 2026.",
+      intro: "Say Yes Digital Memories coleta apenas o necessário para abrir o estúdio privado do casal e entregar as memórias dos convidados.",
+      sections: [
+        { title: "O que coletamos", body: "Nome do convidado, recado opcional e foto, vídeo ou áudio escolhido; nomes do casal, data do casamento e dados de segurança da conta; dados técnicos limitados para impedir abuso." },
+        { title: "Onde fica", body: "Registros de conta e mídia ficam no Supabase. Arquivos privados ficam no Cloudflare R2 e são abertos apenas com links seguros de curta duração." },
+        { title: "Por quanto tempo", body: "O acesso segue a assinatura comprada. Após o fim, o casal tem 30 dias para baixar. A limpeza definitiva exige aprovação do proprietário. Envios incompletos são removidos após 24 horas." },
+        { title: "Proteção contra bots", body: "O Cloudflare Turnstile verifica abusos nos envios e pode processar sinais do dispositivo e da rede conforme o adendo de privacidade do Turnstile." },
+        { title: "Suas escolhas", body: "Convidados nunca veem envios de outros convidados. Para acesso ou exclusão, fale com o casal ou com a Say Yes Digital pela conversa do pedido na Etsy." },
+      ],
+      turnstileLink: "Adendo de privacidade do Cloudflare Turnstile",
+    },
     errors: {
       signInFailed: "Não foi possível entrar.",
       invalidToken: "Esse token não parece correto. Verifique o e-mail da Etsy e tente de novo.",
@@ -920,7 +1130,7 @@ export const copy = {
       storageOnlyMedia: "Só são aceitos arquivos de foto, vídeo ou áudio.",
       storageWrongType: "Este tipo de envio não é aceito aqui.",
       storageEmptyFile: "O arquivo selecionado está vazio.",
-      storageTooLarge: "Este arquivo é grande demais. Envie um arquivo com menos de 100 MB.",
+      storageTooLarge: "Este arquivo é grande demais. O limite é de 5 GB.",
       uploadPathInvalid: "O caminho do envio não pertence a este casamento.",
     },
     login: {
@@ -954,6 +1164,8 @@ export const copy = {
       invited: "Você foi convidado a enviar uma memória para",
       uploadsPaused: "Envios pausados",
       uploadsPausedBody: "O casal fechou temporariamente novos envios.",
+      uploadsNotOpen: "As memórias abrem no dia do casamento",
+      uploadsNotOpenBody: "Você poderá enviar a partir de 00:00, no horário local do casal, no dia do casamento.",
       thankYou: "Obrigado",
       thankYouBody: "Sua memória foi enviada em privado para o casal.",
       sendAnother: "Enviar outra",
@@ -968,6 +1180,16 @@ export const copy = {
       missingMedia: "Adicione uma foto, vídeo ou áudio.",
       micDenied: "Permissão de microfone negada. Você pode escolher um arquivo de áudio.",
       uploadFailed: "Não foi possível concluir o envio.",
+      fileTooLarge: "Este arquivo ultrapassa o limite de 5 GB por arquivo.",
+      unsupportedFile: "Escolha uma foto, vídeo ou áudio compatível.",
+      uploadCancelled: "Envio cancelado. O espaço reservado foi liberado.",
+      storageFull: "O armazenamento do casal está cheio no momento.",
+      verificationFailed: "A verificação do envio falhou. Tente novamente.",
+      recordingRemaining: "Restam {time} do limite de 5 minutos",
+      recordingEndingSoon: "A gravação será encerrada automaticamente em breve.",
+      uploadProgress: "Envio seguro em andamento",
+      cancelUpload: "Cancelar envio",
+      retryUpload: "Tentar envio novamente",
       helpEyebrow: "Página de memórias",
       helpTitle: "O que posso enviar?",
       helpBody:
@@ -1063,6 +1285,30 @@ export const copy = {
       videos: "Vídeos",
       voice: "Voz",
       noMemories: "Ainda não há memórias",
+      loadMore: "Carregar mais memórias",
+      presentation: "Modo sequência",
+      presentationTitle: "Deixe as memórias fluírem",
+      presentationStart: "Iniciar modo sequência",
+      presentationPause: "Pausar",
+      presentationResume: "Continuar",
+      presentationControls: "Controles do modo sequência",
+      presentationToggle: "Toque para pausar ou continuar",
+      presentationBack: "Voltar ao estúdio",
+      presentationEmpty: "Ainda não há memórias para apresentar",
+      presentationEmptyBody: "Fotos, vídeos e áudios aparecerão aqui em ordem cronológica.",
+      presentationCounter: "{current} / {total}",
+      presentationFullscreen: "Abrir tela cheia",
+      presentationExitFullscreen: "Sair da tela cheia",
+      presentationPlaybackFailed: "Não foi possível reproduzir esta memória.",
+      presentationSkip: "Ir para a próxima memória",
+      presentationLoadFailed: "Não foi possível carregar mais memórias.",
+      presentationRetry: "Tentar novamente",
+      presentationFullscreenUnavailable: "A tela cheia não está disponível neste dispositivo.",
+      presentationInstructions: "Toque ou clique para pausar. Use as setas para mudar de memória.",
+      presentationStatus: "{current} de {total}, {kind}, de {guest}",
+      presentationKindPhoto: "foto",
+      presentationKindVideo: "vídeo",
+      presentationKindAudio: "mensagem de voz",
       mediaPreparing: "Preparando as memórias...",
       audioPlaybackFailed: "Este áudio não pode ser reproduzido neste navegador. Ainda dá para baixar.",
       downloadVoice: "Baixar áudio",
@@ -1079,7 +1325,7 @@ export const copy = {
       helpTitle: "O que configurar primeiro?",
       helpBody:
         "Este estúdio é o painel privado do casal. Configurem a página dos convidados, compartilhem o QR e voltem aqui para revisar tudo que os convidados enviarem.",
-      helpSteps: ["Memórias dos convidados é onde chegam novas fotos, vídeos, áudios e mensagens.", "Armazenamento privado mostra cota, tempo de acesso, nome do casal e fluxo Premium Extension.", "Página do casamento controla foto, mensagem e bloqueio de envios. O owner altera nomes e data com segurança.", "QR + link oferece o link e o QR imprimível para mesas, placas ou mensagens.", "Abrir página mostra o que os convidados verão depois de escanear o QR."],
+      helpSteps: ["Memórias dos convidados é onde chegam novas fotos, vídeos, áudios e mensagens.", "Armazenamento privado mostra cota, tempo de acesso, nome do casal e fluxo Premium Extension.", "Página do casamento controla foto, mensagem e bloqueio de envios. O owner altera nomes e data com segurança.", "QR + link oferece o link e o QR imprimível para mesas, placas ou mensagens.", "O modo sequência reproduz as memórias da mais antiga à mais nova em tela cheia.", "Abrir página mostra o que os convidados verão depois de escanear o QR."],
       helpCards: [
         {
           title: "Caixa privada",
@@ -1101,6 +1347,22 @@ export const copy = {
   zh: {
     help: "帮助",
     close: "关闭",
+    privacy: {
+      link: "隐私与数据",
+      back: "返回",
+      eyebrow: "隐私说明",
+      title: "你的珍贵回忆会保持私密。",
+      updated: "自 2026 年 7 月 12 日起生效。",
+      intro: "Say Yes Digital Memories 仅收集开通新人的私密工作室和传递宾客回忆所必需的信息。",
+      sections: [
+        { title: "我们收集什么", body: "宾客姓名、可选留言及所选照片、视频或音频；新人姓名、婚礼日期及账户安全数据；用于防止滥用的有限技术数据。" },
+        { title: "数据存放位置", body: "账户和媒体记录保存在 Supabase。私密文件保存在 Cloudflare R2，且只能通过短时有效的安全链接打开。" },
+        { title: "保留多久", body: "访问期限以已购会员为准。到期后新人有 30 天下载期。永久清理必须由所有者确认。未完成的上传会在 24 小时后移除。" },
+        { title: "机器人防护", body: "Cloudflare Turnstile 会检查上传滥用行为，并可能依照其隐私附录处理设备和网络信号。" },
+        { title: "你的选择", body: "宾客无法看到其他宾客的上传。如需访问或删除数据，请通过 Etsy 订单对话联系新人或 Say Yes Digital。" },
+      ],
+      turnstileLink: "Cloudflare Turnstile 隐私附录",
+    },
     errors: {
       signInFailed: "无法登录。",
       invalidToken: "这个令牌看起来不正确。请检查你的 Etsy 邮件后重试。",
@@ -1133,7 +1395,7 @@ export const copy = {
       storageOnlyMedia: "只接受照片、视频或音频文件。",
       storageWrongType: "此处不接受这种上传类型。",
       storageEmptyFile: "所选文件为空。",
-      storageTooLarge: "这个文件太大。请上传小于 100 MB 的文件。",
+      storageTooLarge: "这个文件太大。单个文件上限为 5 GB。",
       uploadPathInvalid: "上传路径不属于这场婚礼。",
     },
     login: {
@@ -1167,6 +1429,8 @@ export const copy = {
       invited: "邀请你为他们分享一段回忆",
       uploadsPaused: "上传已暂停",
       uploadsPausedBody: "新人暂时关闭了新的上传。",
+      uploadsNotOpen: "婚礼当天开放回忆上传",
+      uploadsNotOpenBody: "婚礼当天按新人当地时间 00:00 起可以上传。",
       thankYou: "谢谢",
       thankYouBody: "你的回忆已私密发送给新人。",
       sendAnother: "再发送一个",
@@ -1181,6 +1445,16 @@ export const copy = {
       missingMedia: "请添加照片、视频或语音。",
       micDenied: "未获得麦克风权限。你也可以选择音频文件。",
       uploadFailed: "上传未能完成。",
+      fileTooLarge: "此文件超过单个文件 5 GB 的限制。",
+      unsupportedFile: "请选择支持的照片、视频或音频文件。",
+      uploadCancelled: "上传已取消，预留空间已释放。",
+      storageFull: "新人的存储空间目前已满。",
+      verificationFailed: "上传验证失败，请重试。",
+      recordingRemaining: "5 分钟上限还剩 {time}",
+      recordingEndingSoon: "录音即将自动停止。",
+      uploadProgress: "正在安全上传",
+      cancelUpload: "取消上传",
+      retryUpload: "重试上传",
       helpEyebrow: "宾客回忆页面",
       helpTitle: "我可以发送什么？",
       helpBody:
@@ -1276,6 +1550,30 @@ export const copy = {
       videos: "视频",
       voice: "语音",
       noMemories: "还没有回忆",
+      loadMore: "加载更多回忆",
+      presentation: "回忆播放模式",
+      presentationTitle: "让回忆依次流动",
+      presentationStart: "开始播放",
+      presentationPause: "暂停",
+      presentationResume: "继续",
+      presentationControls: "回忆播放控制",
+      presentationToggle: "轻触可暂停或继续播放",
+      presentationBack: "返回工作室",
+      presentationEmpty: "暂时没有可播放的回忆",
+      presentationEmptyBody: "宾客的照片、视频和语音会按时间顺序显示在这里。",
+      presentationCounter: "{current} / {total}",
+      presentationFullscreen: "进入全屏",
+      presentationExitFullscreen: "退出全屏",
+      presentationPlaybackFailed: "无法播放这段回忆。",
+      presentationSkip: "跳到下一段回忆",
+      presentationLoadFailed: "无法加载更多回忆。",
+      presentationRetry: "重试",
+      presentationFullscreenUnavailable: "此设备不支持全屏。",
+      presentationInstructions: "轻触或点击可暂停，使用方向键切换回忆。",
+      presentationStatus: "第 {current}/{total} 条，{kind}，来自 {guest}",
+      presentationKindPhoto: "照片",
+      presentationKindVideo: "视频",
+      presentationKindAudio: "语音",
       mediaPreparing: "正在准备你们的回忆...",
       audioPlaybackFailed: "这个语音无法在当前浏览器播放。你仍然可以下载。",
       downloadVoice: "下载语音",
@@ -1292,7 +1590,7 @@ export const copy = {
       helpTitle: "应该先设置什么？",
       helpBody:
         "这个工作室是新人的私密后台。你们可以设置宾客页面、分享二维码，并回来查看宾客发送的所有内容。",
-      helpSteps: ["宾客回忆会显示新收到的照片、视频、语音和留言。", "私人存储显示额度、访问时间、新人姓名和 Premium Extension 流程。", "婚礼页面用于管理头像、欢迎语和上传开关。姓名和日期由 owner 安全修改。", "二维码 + 链接提供可打印的二维码和宾客链接，用于桌卡、标牌或消息。", "打开页面可以查看宾客扫码后看到的内容。"],
+      helpSteps: ["宾客回忆会显示新收到的照片、视频、语音和留言。", "私人存储显示额度、访问时间、新人姓名和 Premium Extension 流程。", "婚礼页面用于管理头像、欢迎语和上传开关。姓名和日期由 owner 安全修改。", "二维码 + 链接提供可打印的二维码和宾客链接，用于桌卡、标牌或消息。", "回忆播放模式会按从旧到新的顺序全屏播放。", "打开页面可以查看宾客扫码后看到的内容。"],
       helpCards: [
         {
           title: "私密收件箱",
@@ -1527,6 +1825,7 @@ const knownErrorMessages: Record<string, ErrorKey> = {
   "This upload type is not accepted here.": "storageWrongType",
   "The selected file is empty.": "storageEmptyFile",
   "This file is too large. Please upload a file under 100 MB.": "storageTooLarge",
+  "Files can be up to 5 GiB.": "storageTooLarge",
   "Upload path does not belong to this wedding.": "uploadPathInvalid",
 };
 
@@ -1544,10 +1843,13 @@ export function localizedError(
   return key ? errors[key] : fallback;
 }
 
-export function useCopy() {
-  return copy[useLocale()];
-}
+type WidenCopy<T> = T extends string
+  ? string
+  : T extends readonly (infer Item)[]
+    ? readonly WidenCopy<Item>[]
+    : T extends object
+      ? { [Key in keyof T]: WidenCopy<T[Key]> }
+      : T;
 
-export function useAuthCopy() {
-  return authCopy[useLocale()];
-}
+export type CustomerCopy = WidenCopy<typeof copy.en>;
+export type AuthenticationCopy = WidenCopy<typeof authCopy.en>;

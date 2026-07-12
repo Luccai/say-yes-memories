@@ -27,6 +27,7 @@ export function toPublicWedding(wedding: Wedding): PublicWedding {
     accessAnchorDate: wedding.accessAnchorDate,
     accessExpiresAt: wedding.accessExpiresAt,
     cleanupAfter: wedding.cleanupAfter,
+    uploadsOpenAt: wedding.uploadsOpenAt,
     brideName: wedding.brideName,
     groomName: wedding.groomName,
     coupleName: wedding.coupleName,

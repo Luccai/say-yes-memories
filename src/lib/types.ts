@@ -34,6 +34,7 @@ export type Wedding = {
   accessAnchorDate?: string;
   accessExpiresAt?: string;
   cleanupAfter?: string;
+  uploadsOpenAt?: string;
   brideName: string;
   groomName: string;
   coupleName: string;
@@ -74,6 +75,7 @@ export type PublicWedding = Pick<
   | "accessAnchorDate"
   | "accessExpiresAt"
   | "cleanupAfter"
+  | "uploadsOpenAt"
   | "brideName"
   | "groomName"
   | "coupleName"

@@ -50,11 +50,25 @@ export function isAccessExpired(
 }
 
 export function canAcceptGuestUpload(
-  wedding: Pick<Wedding, "accessExpiresAt" | "storageQuotaBytes" | "storageUsedBytes" | "uploadLocked">,
+  wedding: Pick<
+    Wedding,
+    | "accessExpiresAt"
+    | "uploadsOpenAt"
+    | "storageQuotaBytes"
+    | "storageUsedBytes"
+    | "uploadLocked"
+  >,
   incomingBytes = 0,
   now = new Date(),
 ) {
   if (wedding.uploadLocked || isAccessExpired(wedding, now)) {
+    return false;
+  }
+
+  if (
+    wedding.uploadsOpenAt &&
+    new Date(wedding.uploadsOpenAt).getTime() > now.getTime()
+  ) {
     return false;
   }
 

@@ -1,17 +1,27 @@
 import type { MediaKind, StoredMediaObject } from "@/lib/types";
 import {
+  AbortMultipartUploadCommand,
+  CompleteMultipartUploadCommand,
+  CopyObjectCommand,
+  CreateMultipartUploadCommand,
   DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
+  UploadPartCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createId } from "@/lib/security";
 import { getR2Client, R2_BUCKET } from "@/lib/storage/r2-client";
+import {
+  MAX_GUEST_UPLOAD_BYTES,
+  MAX_THUMBNAIL_UPLOAD_BYTES,
+  supportedMediaKind,
+} from "@/lib/uploads/domain";
 
-export const MAX_MEDIA_UPLOAD_BYTES = 100 * 1024 * 1024;
-export const MAX_THUMBNAIL_UPLOAD_BYTES = 1024 * 1024;
-const ALLOWED_MEDIA_PREFIXES = ["image/", "video/", "audio/"];
+export const MAX_MEDIA_UPLOAD_BYTES = MAX_GUEST_UPLOAD_BYTES;
+export { MAX_THUMBNAIL_UPLOAD_BYTES };
 type StorageFolder = "profile" | "guest" | "guest-thumbnail";
 
 export type PendingStoredMediaObject = Omit<StoredMediaObject, "url"> & {
@@ -26,15 +36,7 @@ export type SignedUploadTarget = {
 };
 
 export function inferMediaKind(mimeType: string): MediaKind {
-  if (mimeType.startsWith("video/")) {
-    return "video";
-  }
-
-  if (mimeType.startsWith("audio/")) {
-    return "audio";
-  }
-
-  return "image";
+  return supportedMediaKind(mimeType) ?? "image";
 }
 
 function normalizeMimeType(mimeType: string) {
@@ -62,11 +64,11 @@ export function validateMediaUpload(input: {
   maxBytes?: number;
 }) {
   const mimeType = normalizeMimeType(input.mimeType || "application/octet-stream");
-  const kind = inferMediaKind(mimeType);
+  const kind = supportedMediaKind(mimeType);
   const maxBytes = input.maxBytes ?? MAX_MEDIA_UPLOAD_BYTES;
 
-  if (!ALLOWED_MEDIA_PREFIXES.some((prefix) => mimeType.startsWith(prefix))) {
-    throw new Error("Only photo, video, or audio files are accepted.");
+  if (!kind) {
+    throw new Error("Only supported photo, video, or audio files are accepted.");
   }
 
   if (input.allowedKinds && !input.allowedKinds.includes(kind)) {
@@ -80,12 +82,202 @@ export function validateMediaUpload(input: {
   if (input.byteSize > maxBytes) {
     throw new Error(
       maxBytes === MAX_MEDIA_UPLOAD_BYTES
-        ? "This file is too large. Please upload a file under 100 MB."
+        ? "Files can be up to 5 GiB."
         : "This thumbnail is too large. Please try a smaller preview.",
     );
   }
 
   return { kind, mimeType };
+}
+
+export type ReservationSignedTarget = {
+  uploadUrl: string;
+  method: "PUT";
+  headers: Record<string, string>;
+};
+
+export async function createReservationSignedTarget(input: {
+  storagePath: string;
+  mimeType: string;
+  byteSize: number;
+  maxBytes?: number;
+  allowedKinds?: MediaKind[];
+}) {
+  const { mimeType } = validateMediaUpload({
+    mimeType: input.mimeType,
+    byteSize: input.byteSize,
+    maxBytes: input.maxBytes,
+    allowedKinds: input.allowedKinds,
+  });
+  const headers = { "Content-Type": mimeType };
+  const uploadUrl = await getSignedUrl(
+    getR2Client(),
+    new PutObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: input.storagePath,
+      ContentType: mimeType,
+    }),
+    { expiresIn: 15 * 60 },
+  );
+  return { uploadUrl, method: "PUT" as const, headers };
+}
+
+export async function createMultipartR2Upload(input: {
+  storagePath: string;
+  mimeType: string;
+}) {
+  const response = await getR2Client().send(
+    new CreateMultipartUploadCommand({
+      Bucket: R2_BUCKET,
+      Key: input.storagePath,
+      ContentType: normalizeMimeType(input.mimeType),
+    }),
+  );
+  if (!response.UploadId) {
+    throw new Error("Multipart upload could not be created.");
+  }
+  return response.UploadId;
+}
+
+export async function createSignedMultipartPart(input: {
+  storagePath: string;
+  uploadId: string;
+  partNumber: number;
+}) {
+  const uploadUrl = await getSignedUrl(
+    getR2Client(),
+    new UploadPartCommand({
+      Bucket: R2_BUCKET,
+      Key: input.storagePath,
+      UploadId: input.uploadId,
+      PartNumber: input.partNumber,
+    }),
+    { expiresIn: 15 * 60 },
+  );
+  return { uploadUrl, method: "PUT" as const, headers: {} };
+}
+
+export async function completeMultipartR2Upload(input: {
+  storagePath: string;
+  uploadId: string;
+  parts: Array<{ partNumber: number; etag: string }>;
+}) {
+  await getR2Client().send(
+    new CompleteMultipartUploadCommand({
+      Bucket: R2_BUCKET,
+      Key: input.storagePath,
+      UploadId: input.uploadId,
+      MultipartUpload: {
+        Parts: input.parts.map((part) => ({
+          PartNumber: part.partNumber,
+          ETag: part.etag,
+        })),
+      },
+    }),
+  );
+}
+
+export async function abortMultipartR2Upload(input: {
+  storagePath: string;
+  uploadId: string;
+}) {
+  await getR2Client().send(
+    new AbortMultipartUploadCommand({
+      Bucket: R2_BUCKET,
+      Key: input.storagePath,
+      UploadId: input.uploadId,
+    }),
+  );
+}
+
+export function isNoSuchMultipartUpload(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as { name?: string; Code?: string; code?: string };
+  return (
+    candidate.name === "NoSuchUpload" ||
+    candidate.Code === "NoSuchUpload" ||
+    candidate.code === "NoSuchUpload"
+  );
+}
+
+export async function checkR2Connection() {
+  const startedAt = performance.now();
+  await getR2Client().send(
+    new ListObjectsV2Command({ Bucket: R2_BUCKET, MaxKeys: 1 }),
+  );
+  return Math.max(Math.round(performance.now() - startedAt), 0);
+}
+
+function isNotFound(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as {
+    name?: string;
+    $metadata?: { httpStatusCode?: number };
+  };
+  return (
+    candidate.name === "NotFound" ||
+    candidate.name === "NoSuchKey" ||
+    candidate.$metadata?.httpStatusCode === 404
+  );
+}
+
+export async function headR2Object(storagePath: string) {
+  try {
+    const response = await getR2Client().send(
+      new HeadObjectCommand({ Bucket: R2_BUCKET, Key: storagePath }),
+    );
+    return {
+      exists: true as const,
+      byteSize: Number(response.ContentLength ?? 0),
+      etag: response.ETag ?? null,
+      mimeType: response.ContentType ?? null,
+    };
+  } catch (error) {
+    if (isNotFound(error)) return { exists: false as const };
+    throw error;
+  }
+}
+
+function copySource(storagePath: string) {
+  const encodedPath = storagePath
+    .split("/")
+    .map((part) => encodeURIComponent(part))
+    .join("/");
+  return `${R2_BUCKET}/${encodedPath}`;
+}
+
+export async function promoteStagedObject(input: {
+  stagingPath: string;
+  finalPath: string;
+  expectedByteSize: number;
+  mimeType: string;
+}) {
+  const finalObject = await headR2Object(input.finalPath);
+  if (finalObject.exists) {
+    if (finalObject.byteSize !== input.expectedByteSize) {
+      throw new Error("Final upload size does not match its reservation.");
+    }
+    return;
+  }
+
+  const stagedObject = await headR2Object(input.stagingPath);
+  if (!stagedObject.exists || stagedObject.byteSize !== input.expectedByteSize) {
+    throw new Error("Uploaded file size does not match its reservation.");
+  }
+  await getR2Client().send(
+    new CopyObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: input.finalPath,
+      CopySource: copySource(input.stagingPath),
+      ContentType: normalizeMimeType(input.mimeType),
+      MetadataDirective: "REPLACE",
+    }),
+  );
+  const copied = await headR2Object(input.finalPath);
+  if (!copied.exists || copied.byteSize !== input.expectedByteSize) {
+    throw new Error("Final upload could not be verified.");
+  }
+  await deleteStoredFile(input.stagingPath);
 }
 
 export async function createSignedStorageUrl(

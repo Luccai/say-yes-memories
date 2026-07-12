@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
-import { DeleteObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
+import { HeadObjectCommand } from "@aws-sdk/client-s3";
 
 const PROFILE_STORAGE_PATH = "weddings/wed_test/profile/asset_profile-couple.jpg";
 const MEDIA_STORAGE_PATH = "weddings/wed_test/guest/asset_media-memory.jpg";
@@ -167,42 +167,16 @@ mock.module("@/lib/supabase/realtime", () => ({
   },
 }));
 
-const { POST: completeUpload } = await import(
+const { POST: legacyCompleteUpload } = await import(
   "../src/app/api/uploads/[slug]/complete/route"
+);
+const { POST: legacyPrepareUpload } = await import(
+  "../src/app/api/uploads/[slug]/prepare/route"
 );
 const { PATCH: patchMedia } = await import("../src/app/api/media/[id]/route");
 const { getWeddingBySlug, getWeddingRecordBySlug } = await import(
   "../src/lib/supabase-store"
 );
-
-function pendingObject(
-  storagePath: string,
-  id = "asset_aaaaaaaaaaaaaaaaaaaaaaaa",
-) {
-  return {
-    id,
-    storagePath,
-    kind: "image" as const,
-    mimeType: "image/jpeg",
-    fileName: "memory.jpg",
-    byteSize: 1024,
-    createdAt: "2026-07-01T12:00:00.000Z",
-  };
-}
-
-function completeRequest(storagePath: string, thumbnailStoragePath?: string) {
-  return new Request("http://localhost/api/uploads/alice-bob/complete", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      guestName: "Guest",
-      object: pendingObject(storagePath),
-      thumbnail: thumbnailStoragePath
-        ? pendingObject(thumbnailStoragePath, "asset_bbbbbbbbbbbbbbbbbbbbbbbb")
-        : undefined,
-    }),
-  });
-}
 
 beforeEach(() => {
   storageCommands.length = 0;
@@ -211,50 +185,16 @@ beforeEach(() => {
   broadcastError = null;
 });
 
-describe("upload complete cleanup boundary", () => {
-  test("client-controlled object and thumbnail paths cannot trigger an R2 delete", async () => {
-    const response = await completeUpload(
-      completeRequest(
-        "weddings/another-wedding/guest/asset_aaaaaaaaaaaaaaaaaaaaaaaa-memory.jpg",
-        "weddings/another-wedding/guest-thumbnail/asset_bbbbbbbbbbbbbbbbbbbbbbbb-memory.jpg",
-      ),
-      { params: Promise.resolve({ slug: weddingRow.slug }) },
-    );
+describe("retired direct upload boundary", () => {
+  test("old prepare and complete routes cannot issue or finalize direct object writes", async () => {
+    const prepareResponse = await legacyPrepareUpload();
+    const completeResponse = await legacyCompleteUpload();
 
-    expect(response.status).toBe(400);
-    expect(
-      storageCommands.filter((command) => command instanceof DeleteObjectCommand),
-    ).toHaveLength(0);
-  });
-
-  test("replayed completion failure leaves the already stored object untouched", async () => {
-    addMediaError = "duplicate key value violates unique constraint";
-    const storagePath = `weddings/${weddingRow.id}/guest/asset_aaaaaaaaaaaaaaaaaaaaaaaa-memory.jpg`;
-
-    const response = await completeUpload(completeRequest(storagePath), {
-      params: Promise.resolve({ slug: weddingRow.slug }),
-    });
-
-    expect(response.status).toBe(400);
-    expect(storageCommands.some((command) => command instanceof HeadObjectCommand)).toBe(true);
-    expect(
-      storageCommands.filter((command) => command instanceof DeleteObjectCommand),
-    ).toHaveLength(0);
-  });
-
-  test("Realtime failure does not turn an already persisted upload into a failure", async () => {
-    broadcastError = new Error("Realtime network unavailable");
-    const storagePath = `weddings/${weddingRow.id}/guest/asset_aaaaaaaaaaaaaaaaaaaaaaaa-memory.jpg`;
-
-    const response = await completeUpload(completeRequest(storagePath), {
-      params: Promise.resolve({ slug: weddingRow.slug }),
-    });
-
-    expect(response.status).toBe(200);
-    expect((await response.json()).media.id).toBe(mediaRow.id);
-    expect(
-      storageCommands.filter((command) => command instanceof DeleteObjectCommand),
-    ).toHaveLength(0);
+    expect(prepareResponse.status).toBe(410);
+    expect(completeResponse.status).toBe(410);
+    expect((await prepareResponse.json()).code).toBe("UPLOAD_API_RETIRED");
+    expect((await completeResponse.json()).code).toBe("UPLOAD_API_RETIRED");
+    expect(storageCommands).toHaveLength(0);
   });
 });
 

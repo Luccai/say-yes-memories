@@ -3,6 +3,8 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { Check, Copy, KeyRound, RefreshCw, ShieldX, X } from "lucide-react";
 import { Button } from "@/components/shared/Button";
+import { useAccessibleDialog } from "@/lib/use-accessible-dialog";
+import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import {
   OwnerEmptyState,
   OwnerErrorState,
@@ -46,6 +48,8 @@ export function OwnerTokensPanel() {
   const [label, setLabel] = useState("");
   const [creating, setCreating] = useState(false);
   const [revealed, setRevealed] = useState<RevealedToken | null>(null);
+  const revealedDialogRef = useRef<HTMLElement>(null);
+  const revealedCloseRef = useRef<HTMLButtonElement>(null);
   const [copied, setCopied] = useState(false);
   const [actionToken, setActionToken] = useState<TokenItem | null>(null);
   const [action, setAction] = useState<"rotate" | "revoke" | null>(null);
@@ -55,6 +59,14 @@ export function OwnerTokensPanel() {
   const [message, setMessage] = useState("");
   const createKey = useRef<string | null>(null);
   const actionKey = useRef<string | null>(null);
+
+  useBodyScrollLock(Boolean(revealed));
+  useAccessibleDialog({
+    open: Boolean(revealed),
+    containerRef: revealedDialogRef,
+    initialFocusRef: revealedCloseRef,
+    onClose: () => setRevealed(null),
+  });
 
   const load = useCallback(async (nextOffset: number) => {
     setError(false);
@@ -211,9 +223,9 @@ export function OwnerTokensPanel() {
       ) : null}
 
       {revealed ? (
-        <section role="dialog" aria-modal="true" aria-labelledby="revealed-token-title" className="fixed inset-0 z-50 grid place-items-end bg-black/35 p-3 backdrop-blur-sm sm:place-items-center sm:p-6">
+        <section ref={revealedDialogRef} role="dialog" aria-modal="true" aria-labelledby="revealed-token-title" tabIndex={-1} className="fixed inset-0 z-50 grid place-items-end overflow-y-auto bg-black/35 p-3 backdrop-blur-sm sm:place-items-center sm:p-6">
           <div className="w-full max-w-lg rounded-[32px] border border-white/80 bg-[var(--paper-soft)] p-5 shadow-[0_30px_100px_rgba(0,0,0,0.26)] sm:p-7">
-            <div className="flex items-start justify-between gap-3"><div><p className="eyebrow text-[var(--champagne-deep)]">Yalnızca bir kez gösterilir</p><h3 id="revealed-token-title" className="mt-2 font-display text-3xl font-semibold">Tokenı şimdi kopyala.</h3></div><Button variant="quiet" aria-label="Token penceresini kapat" className="px-4" onClick={() => setRevealed(null)}><X className="size-4" /></Button></div>
+            <div className="flex items-start justify-between gap-3"><div><p className="eyebrow text-[var(--champagne-deep)]">Yalnızca bir kez gösterilir</p><h3 id="revealed-token-title" className="mt-2 font-display text-3xl font-semibold">Tokenı şimdi kopyala.</h3></div><Button ref={revealedCloseRef} variant="quiet" aria-label="Token penceresini kapat" className="px-4" onClick={() => setRevealed(null)}><X className="size-4" /></Button></div>
             <p className="mt-3 text-sm leading-6 text-[var(--ink-soft)]">Bu pencere kapandıktan sonra ham token geri getirilemez; gerekirse listedeki kaydı güvenle yenile.</p>
             <code className="mt-5 block break-all rounded-[22px] border border-[var(--line)] bg-white/70 p-4 text-center text-base font-extrabold tracking-[0.08em]">{revealed.rawToken}</code>
             <Button fullWidth className="mt-4" onClick={() => void copyToken()}>{copied ? <Check className="size-4" /> : <Copy className="size-4" />}{copied ? "Kopyalandı" : "Tokenı kopyala"}</Button>

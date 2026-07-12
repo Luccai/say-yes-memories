@@ -1,34 +1,29 @@
 "use client";
 
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Loader2, Mic, Pause, UploadCloud } from "lucide-react";
-import { motion } from "motion/react";
+import { Check, Mic, Pause, RotateCcw, UploadCloud, X } from "lucide-react";
+import Image from "next/image";
 import type { MediaKind, PublicWedding } from "@/lib/types";
+import { Button } from "@/components/shared/Button";
 import { GuidanceDialog, HelpTriggerButton } from "@/components/shared/GuidanceDialog";
 import { MediaOrb } from "@/components/shared/MediaOrb";
-import { localizedError, useCopy, useLocale } from "@/lib/i18n";
+import { PrivacyLink } from "@/components/shared/PrivacyLink";
+import {
+  TurnstileGate,
+  type TurnstileGateHandle,
+} from "@/components/guest/TurnstileGate";
+import { localizedError, useCopy, useLocale } from "@/lib/i18n-client";
 import {
   ensureFreshDemoLocalState,
   getDemoGuestNote,
   localizeDemoGuestNote,
   localizeDemoWedding,
 } from "@/lib/demo-content";
-import {
-  addDemoSessionMedia,
-  createDemoSessionMediaId,
-} from "@/lib/demo-session-media";
-import {
-  createCompatibleAudioContext,
-  createMp3BlobFromChunks,
-  normalizeAudioFileToMp3,
-  shouldNormalizeAudioFile,
-} from "@/lib/audio-encoding";
-import { createMediaThumbnail } from "@/lib/media-thumbnails";
-import {
-  type ClientSignedUploadTarget,
-  uploadToSignedTarget,
-} from "@/lib/storage/client-upload";
 import { canAcceptGuestUpload } from "@/lib/storage/quota";
+import {
+  MAX_GUEST_UPLOAD_BYTES,
+  supportedMediaKind,
+} from "@/lib/uploads/domain";
 
 type GuestExperienceProps = {
   wedding: PublicWedding;
@@ -36,21 +31,16 @@ type GuestExperienceProps = {
   embedded?: boolean;
 };
 
-type SignedUploadResponse = {
-  upload: ClientSignedUploadTarget;
-  thumbnailUpload?: ClientSignedUploadTarget;
-};
-
 type VoiceRecorder = {
-  context: AudioContext;
-  chunks: Float32Array[];
-  processor: ScriptProcessorNode;
-  source: MediaStreamAudioSourceNode;
+  recorder: MediaRecorder;
+  chunks: Blob[];
   stream: MediaStream;
+  intervalId: number;
+  timeoutId: number;
 };
 
-const GUEST_ACTION_BUTTON_CLASS =
-  "focus-ring inline-flex items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white/58 px-4 py-2.5 text-[0.78rem] font-bold text-[var(--ink)] transition hover:bg-white active:scale-[0.99] disabled:opacity-60";
+const MAX_RECORDING_SECONDS = 5 * 60;
+const RECORDING_WARNING_SECONDS = 30;
 
 function cleanMimeType(mimeType: string) {
   return mimeType.split(";")[0]?.trim() || mimeType || "application/octet-stream";
@@ -79,19 +69,36 @@ function audioExtensionFor(mimeType: string) {
 }
 
 function mediaKindFor(file: File): MediaKind | null {
-  if (file.type.startsWith("image/")) {
-    return "image";
-  }
+  return supportedMediaKind(file.type);
+}
 
-  if (file.type.startsWith("video/")) {
-    return "video";
-  }
+function needsAudioNormalization(file: File) {
+  if (file.size > 32 * 1024 * 1024) return false;
+  const type = cleanMimeType(file.type).toLowerCase();
+  const name = file.name.toLowerCase();
+  return (
+    type === "audio/webm" ||
+    type === "audio/ogg" ||
+    type === "audio/opus" ||
+    name.endsWith(".webm") ||
+    name.endsWith(".ogg") ||
+    name.endsWith(".opus")
+  );
+}
 
-  if (file.type.startsWith("audio/")) {
-    return "audio";
-  }
+function recorderMimeType() {
+  if (typeof MediaRecorder === "undefined") return "";
+  return [
+    "audio/webm;codecs=opus",
+    "audio/mp4",
+    "audio/ogg;codecs=opus",
+    "audio/webm",
+  ].find((mimeType) => MediaRecorder.isTypeSupported(mimeType)) ?? "";
+}
 
-  return null;
+function formatRecordingTime(seconds: number) {
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
 export function GuestExperience({ wedding, demoMode = false, embedded = false }: GuestExperienceProps) {
@@ -106,15 +113,32 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
     [demoHydrated, demoMode, locale, rawNote],
   );
   const [file, setFile] = useState<File | null>(null);
+  const [filePreviewUrl, setFilePreviewUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
   const [helpOpen, setHelpOpen] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [recordedUrl, setRecordedUrl] = useState("");
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadFailed, setUploadFailed] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const turnstileRef = useRef<TurnstileGateHandle | null>(null);
   const recorderRef = useRef<VoiceRecorder | null>(null);
+  const successHeadingRef = useRef<HTMLParagraphElement | null>(null);
+  const uploadsNotStarted = Boolean(
+    displayWedding.uploadsOpenAt &&
+      Date.parse(displayWedding.uploadsOpenAt) > Date.now(),
+  );
   const uploadsPaused = displayWedding.uploadLocked || !canAcceptGuestUpload(displayWedding);
+
+  useEffect(() => {
+    if (submitted) {
+      successHeadingRef.current?.focus();
+    }
+  }, [submitted]);
 
   useEffect(() => {
     if (!demoMode) {
@@ -149,19 +173,55 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
       const recorder = recorderRef.current;
 
       if (!recorder) {
+        abortControllerRef.current?.abort();
         return;
       }
 
-      recorder.processor.disconnect();
-      recorder.source.disconnect();
+      window.clearInterval(recorder.intervalId);
+      window.clearTimeout(recorder.timeoutId);
+      recorder.recorder.ondataavailable = null;
+      recorder.recorder.onstop = null;
+      if (recorder.recorder.state !== "inactive") recorder.recorder.stop();
       recorder.stream.getTracks().forEach((track) => track.stop());
-      void recorder.context.close();
+      abortControllerRef.current?.abort();
     };
   }, []);
 
+  useEffect(
+    () => () => {
+      if (recordedUrl) URL.revokeObjectURL(recordedUrl);
+    },
+    [recordedUrl],
+  );
+
+  useEffect(
+    () => () => {
+      if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
+    },
+    [filePreviewUrl],
+  );
+
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const selectedFile = event.target.files?.[0] ?? null;
+    setError("");
+    setUploadFailed(false);
+    setUploadProgress(0);
+    if (selectedFile && selectedFile.size > MAX_GUEST_UPLOAD_BYTES) {
+      setFile(null);
+      setFilePreviewUrl("");
+      setError(text.guest.fileTooLarge);
+      event.target.value = "";
+      return;
+    }
+    if (selectedFile && !mediaKindFor(selectedFile)) {
+      setFile(null);
+      setFilePreviewUrl("");
+      setError(text.guest.unsupportedFile);
+      event.target.value = "";
+      return;
+    }
     setFile(selectedFile);
+    setFilePreviewUrl(selectedFile ? URL.createObjectURL(selectedFile) : "");
     setRecordedBlob(null);
 
     if (recordedUrl) {
@@ -174,28 +234,54 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
     setError("");
 
     try {
+      if (typeof MediaRecorder === "undefined") {
+        throw new Error("MediaRecorder is unavailable.");
+      }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const context = createCompatibleAudioContext();
-      await context.resume();
-
-      const source = context.createMediaStreamSource(stream);
-      const processor = context.createScriptProcessor(4096, 1, 1);
-      const chunks: Float32Array[] = [];
-
-      processor.onaudioprocess = (event) => {
-        const input = event.inputBuffer.getChannelData(0);
-        chunks.push(new Float32Array(input));
-
-        for (let channel = 0; channel < event.outputBuffer.numberOfChannels; channel += 1) {
-          event.outputBuffer.getChannelData(channel).fill(0);
-        }
+      const mimeType = recorderMimeType();
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
+      const chunks: Blob[] = [];
+      recorder.ondataavailable = (event) => {
+        if (event.data.size) chunks.push(event.data);
       };
-
-      source.connect(processor);
-      processor.connect(context.destination);
-      recorderRef.current = { context, chunks, processor, source, stream };
+      recorder.onstop = () => {
+        if (!chunks.length) {
+          setError(text.guest.uploadFailed);
+          return;
+        }
+        const blob = new Blob(chunks, {
+          type: cleanMimeType(recorder.mimeType || mimeType || "audio/webm"),
+        });
+        const url = URL.createObjectURL(blob);
+        setRecordedBlob(blob);
+        setRecordedUrl((current) => {
+          if (current) URL.revokeObjectURL(current);
+          return url;
+        });
+      };
+      const startedAt = Date.now();
+      const intervalId = window.setInterval(() => {
+        setRecordingSeconds(
+          Math.min(Math.floor((Date.now() - startedAt) / 1000), MAX_RECORDING_SECONDS),
+        );
+      }, 250);
+      const timeoutId = window.setTimeout(() => {
+        setRecordingSeconds(MAX_RECORDING_SECONDS);
+        stopRecording();
+      }, MAX_RECORDING_SECONDS * 1000);
+      recorderRef.current = { recorder, chunks, stream, intervalId, timeoutId };
+      recorder.start(1000);
 
       setFile(null);
+      setFilePreviewUrl("");
+      setRecordedBlob(null);
+      setRecordedUrl((current) => {
+        if (current) URL.revokeObjectURL(current);
+        return "";
+      });
+      setRecordingSeconds(0);
       setRecording(true);
     } catch {
       setError(text.guest.micDenied);
@@ -211,27 +297,19 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
 
     recorderRef.current = null;
     setRecording(false);
-    recorder.processor.disconnect();
-    recorder.source.disconnect();
+    window.clearInterval(recorder.intervalId);
+    window.clearTimeout(recorder.timeoutId);
+    setRecordingSeconds((current) => Math.min(current, MAX_RECORDING_SECONDS));
+    if (recorder.recorder.state !== "inactive") recorder.recorder.stop();
     recorder.stream.getTracks().forEach((track) => track.stop());
-
-    if (recorder.chunks.length === 0) {
-      void recorder.context.close();
-      setError(text.guest.uploadFailed);
-      return;
-    }
-
-    const blob = createMp3BlobFromChunks(recorder.chunks, recorder.context.sampleRate);
-    const url = URL.createObjectURL(blob);
-    setRecordedBlob(blob);
-    setRecordedUrl(url);
-    void recorder.context.close();
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true);
     setError("");
+    setUploadFailed(false);
+    setUploadProgress(0);
 
     try {
       let uploadFile =
@@ -260,10 +338,14 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
           return;
         }
 
+        const [{ createMediaThumbnail }, demoSession] = await Promise.all([
+          import("@/lib/media-thumbnails"),
+          import("@/lib/demo-session-media"),
+        ]);
         const thumbnailFile = await createMediaThumbnail(uploadFile);
         const createdAt = new Date().toISOString();
-        const id = createDemoSessionMediaId();
-        const stored = await addDemoSessionMedia({
+        const id = demoSession.createDemoSessionMediaId();
+        const stored = await demoSession.addDemoSessionMedia({
           id,
           weddingId: wedding.id,
           file: uploadFile,
@@ -300,6 +382,7 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
         setGuestName("");
         setRawNote("");
         setFile(null);
+        setFilePreviewUrl("");
         setRecordedBlob(null);
         return;
       }
@@ -309,83 +392,89 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
         return;
       }
 
-      if (shouldNormalizeAudioFile(uploadFile)) {
+      if (!mediaKindFor(uploadFile)) {
+        setError(text.guest.unsupportedFile);
+        return;
+      }
+      if (uploadFile.size > MAX_GUEST_UPLOAD_BYTES) {
+        setError(text.guest.fileTooLarge);
+        return;
+      }
+
+      if (!recordedBlob && needsAudioNormalization(uploadFile)) {
+        const { normalizeAudioFileToMp3 } = await import("@/lib/audio-encoding");
         uploadFile = await normalizeAudioFileToMp3(uploadFile);
       }
 
+      const { createMediaThumbnail } = await import("@/lib/media-thumbnails");
       const thumbnailFile = await createMediaThumbnail(uploadFile);
-      const prepareResponse = await fetch(`/api/uploads/${wedding.slug}/prepare`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          guestName,
-          fileName: uploadFile.name,
-          mimeType: uploadFile.type || "application/octet-stream",
-          byteSize: uploadFile.size,
-          thumbnail: thumbnailFile
-            ? {
-                fileName: thumbnailFile.name,
-                mimeType: thumbnailFile.type,
-                byteSize: thumbnailFile.size,
-              }
-            : undefined,
-        }),
+      const turnstileToken = await turnstileRef.current?.execute();
+      if (!turnstileToken) throw new Error("UPLOAD_VERIFICATION_UNAVAILABLE");
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      const { uploadGuestMemory } = await import("@/lib/uploads/client");
+      await uploadGuestMemory({
+        slug: wedding.slug,
+        file: uploadFile,
+        thumbnail: thumbnailFile,
+        guestName,
+        note,
+        turnstileToken,
+        signal: controller.signal,
+        onProgress: ({ percent }) => setUploadProgress(percent),
       });
-      const preparePayload = (await prepareResponse.json()) as SignedUploadResponse & {
-        message?: string;
-      };
-
-      if (!prepareResponse.ok) {
-        setError(localizedError(preparePayload.message, text.errors, text.guest.uploadFailed));
-        return;
-      }
-
-      await uploadToSignedTarget(preparePayload.upload, uploadFile);
-
-      let thumbnailObject: ClientSignedUploadTarget["object"] | undefined;
-
-      if (thumbnailFile && preparePayload.thumbnailUpload) {
-        try {
-          await uploadToSignedTarget(preparePayload.thumbnailUpload, thumbnailFile);
-          thumbnailObject = preparePayload.thumbnailUpload.object;
-        } catch {
-          thumbnailObject = undefined;
-        }
-      }
-
-      const completeResponse = await fetch(`/api/uploads/${wedding.slug}/complete`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          guestName,
-          note,
-          object: preparePayload.upload.object,
-          thumbnail: thumbnailObject,
-        }),
-      });
-      const completePayload = (await completeResponse.json()) as { message?: string };
-
-      if (!completeResponse.ok) {
-        setError(localizedError(completePayload.message, text.errors, text.guest.uploadFailed));
-        return;
-      }
 
       setSubmitted(true);
       setGuestName("");
       setRawNote("");
       setFile(null);
+      setFilePreviewUrl("");
       setRecordedBlob(null);
+      if (recordedUrl) {
+        URL.revokeObjectURL(recordedUrl);
+        setRecordedUrl("");
+      }
     } catch (error) {
-      setError(localizedError(error instanceof Error ? error.message : undefined, text.errors, text.guest.uploadFailed));
+      if (error instanceof DOMException && error.name === "AbortError") {
+        setError(text.guest.uploadCancelled);
+      } else {
+        const code =
+          error && typeof error === "object" && "code" in error
+            ? String(error.code)
+            : undefined;
+        setError(
+          code === "STORAGE_QUOTA_FULL"
+            ? text.guest.storageFull
+            : code === "UPLOADS_UNAVAILABLE"
+              ? text.guest.uploadsPausedBody
+              : code?.startsWith("UPLOAD_VERIFICATION")
+                ? text.guest.verificationFailed
+                : localizedError(
+                    error instanceof Error ? error.message : undefined,
+                    text.errors,
+                    text.guest.uploadFailed,
+                  ),
+        );
+      }
+      setUploadFailed(true);
     } finally {
+      abortControllerRef.current = null;
       setSubmitting(false);
     }
+  }
+
+  function cancelUpload() {
+    abortControllerRef.current?.abort();
   }
 
   const Shell: "div" | "main" = embedded ? "div" : "main";
   const guestHelpCards = demoMode
     ? [...text.guest.helpCards, text.guest.demoHelpCard]
     : text.guest.helpCards;
+  const recordingRemaining = Math.max(
+    MAX_RECORDING_SECONDS - recordingSeconds,
+    0,
+  );
 
   return (
     <>
@@ -397,9 +486,7 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
         }
       >
         <div className="mx-auto max-w-[34rem] min-w-0 overflow-x-clip">
-          <motion.section
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
+          <section
             className="paper-grain overflow-hidden rounded-[36px] border border-white/75 bg-[var(--paper-soft)] p-6 text-center shadow-none sm:shadow-[var(--shadow-soft)]"
           >
             <div className="relative z-10">
@@ -426,17 +513,25 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
                 {displayWedding.welcomeNote}
               </p>
             </div>
-          </motion.section>
+          </section>
 
         <section className="mt-5 rounded-[34px] border border-white/75 bg-[rgba(255,250,243,0.82)] p-5 shadow-none backdrop-blur sm:shadow-[0_18px_48px_rgba(58,40,25,0.1)]">
           {uploadsPaused ? (
-            <div className="grid min-h-[18rem] place-items-center text-center">
+            <div
+              className="grid min-h-[18rem] place-items-center text-center"
+              role="status"
+              aria-live="polite"
+            >
               <div>
                 <p className="font-display text-fluid-heading font-semibold text-[var(--ink)]">
-                  {text.guest.uploadsPaused}
+                  {uploadsNotStarted
+                    ? text.guest.uploadsNotOpen
+                    : text.guest.uploadsPaused}
                 </p>
                 <p className="mt-3 text-sm leading-relaxed text-[var(--ink-soft)]">
-                  {text.guest.uploadsPausedBody}
+                  {uploadsNotStarted
+                    ? text.guest.uploadsNotOpenBody
+                    : text.guest.uploadsPausedBody}
                 </p>
               </div>
             </div>
@@ -446,19 +541,23 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
                 <div className="mx-auto grid size-16 place-items-center rounded-full bg-[var(--ink)] text-[var(--paper-soft)]">
                   <Check className="size-7" />
                 </div>
-                <p className="mt-6 font-display text-fluid-heading font-semibold text-[var(--ink)]">
+                <p
+                  ref={successHeadingRef}
+                  tabIndex={-1}
+                  className="focus-ring mt-6 font-display text-fluid-heading font-semibold text-[var(--ink)] outline-none"
+                >
                   {text.guest.thankYou}
                 </p>
                 <p className="mt-3 text-sm leading-relaxed text-[var(--ink-soft)]">
                   {text.guest.thankYouBody}
                 </p>
-                <button
-                  type="button"
+                <Button
                   onClick={() => setSubmitted(false)}
-                  className={`${GUEST_ACTION_BUTTON_CLASS} mt-6`}
+                  variant="paper"
+                  className="mt-6"
                 >
                   {text.guest.sendAnother}
-                </button>
+                </Button>
               </div>
             </div>
           ) : (
@@ -469,6 +568,7 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
                   value={guestName}
                   onChange={(event) => setGuestName(event.target.value)}
                   required
+                  disabled={submitting}
                   className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-4 !text-[16px] outline-none"
                   placeholder={text.guest.name}
                 />
@@ -480,6 +580,7 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
                   value={note}
                   onChange={(event) => setRawNote(event.target.value)}
                   rows={4}
+                  disabled={submitting}
                   className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-4 !text-[16px] leading-7 outline-none"
                   placeholder={text.guest.notePlaceholder}
                 />
@@ -499,19 +600,71 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
                     accept="image/*,video/*,audio/*"
                     className="sr-only"
                     onChange={handleFileChange}
+                    disabled={submitting || recording}
                   />
                 </label>
 
-                <button
-                  type="button"
+                {file && filePreviewUrl ? (
+                  <div className="overflow-hidden rounded-[24px] border border-[var(--line)] bg-black/5">
+                    {mediaKindFor(file) === "image" ? (
+                      <div className="relative aspect-[4/3]">
+                        <Image
+                          src={filePreviewUrl}
+                          alt={file.name}
+                          fill
+                          unoptimized
+                          sizes="(max-width: 544px) 100vw, 480px"
+                          className="object-contain"
+                        />
+                      </div>
+                    ) : mediaKindFor(file) === "video" ? (
+                      <video
+                        src={filePreviewUrl}
+                        controls
+                        preload="metadata"
+                        className="max-h-72 w-full bg-black object-contain"
+                      />
+                    ) : (
+                      <div className="p-4">
+                        <audio src={filePreviewUrl} controls className="w-full" />
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+
+                <Button
                   onClick={recording ? stopRecording : startRecording}
-                  className={GUEST_ACTION_BUTTON_CLASS}
+                  variant="paper"
+                  fullWidth
+                  disabled={submitting}
                 >
                   <span className="inline-flex items-center justify-center gap-2">
                     {recording ? <Pause className="size-4" /> : <Mic className="size-4" />}
                     {recording ? text.guest.stop : text.guest.record}
                   </span>
-                </button>
+                </Button>
+
+                {recording ? (
+                  <div
+                    role="timer"
+                    aria-live="polite"
+                    className={`rounded-2xl border px-4 py-3 text-center text-sm font-bold tabular-nums ${
+                      recordingRemaining <= RECORDING_WARNING_SECONDS
+                        ? "border-amber-300 bg-amber-50 text-amber-900"
+                        : "border-[var(--line)] bg-white/58 text-[var(--ink-soft)]"
+                    }`}
+                  >
+                    {text.guest.recordingRemaining.replace(
+                      "{time}",
+                      formatRecordingTime(recordingRemaining),
+                    )}
+                    {recordingRemaining <= RECORDING_WARNING_SECONDS ? (
+                      <span className="mt-1 block text-xs">
+                        {text.guest.recordingEndingSoon}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
 
                 {recordedUrl ? (
                   <audio src={recordedUrl} controls className="w-full" />
@@ -519,25 +672,63 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
               </div>
 
               {error ? (
-                <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                <p
+                  role="alert"
+                  aria-live="assertive"
+                  className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700"
+                >
                   {error}
                 </p>
               ) : null}
 
-              <button
-                type="submit"
-                disabled={submitting}
-                className={GUEST_ACTION_BUTTON_CLASS}
-              >
-                <span className="inline-flex items-center justify-center gap-2">
-                  {submitting ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
-                  {text.guest.send}
-                </span>
-              </button>
+              {submitting ? (
+                <div className="grid gap-3" aria-live="polite">
+                  <div
+                    role="progressbar"
+                    aria-label={text.guest.uploadProgress}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={uploadProgress}
+                    className="h-2.5 overflow-hidden rounded-full bg-black/10"
+                  >
+                    <div
+                      className="h-full rounded-full bg-[var(--ink)]"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-3 text-xs font-bold text-[var(--ink-soft)]">
+                    <span>{text.guest.uploadProgress}</span>
+                    <span className="tabular-nums">{uploadProgress}%</span>
+                  </div>
+                  <Button
+                    variant="danger"
+                    fullWidth
+                    onClick={cancelUpload}
+                  >
+                    <X aria-hidden="true" className="size-4" />
+                    {text.guest.cancelUpload}
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  type="submit"
+                  fullWidth
+                  disabled={recording}
+                >
+                  {uploadFailed ? (
+                    <RotateCcw aria-hidden="true" className="size-4" />
+                  ) : (
+                    <Check aria-hidden="true" className="size-4" />
+                  )}
+                  {uploadFailed ? text.guest.retryUpload : text.guest.send}
+                </Button>
+              )}
+              {!demoMode ? <TurnstileGate ref={turnstileRef} /> : null}
             </form>
           )}
           </section>
         </div>
+        <PrivacyLink className="mx-auto mt-6" />
       </Shell>
       <GuidanceDialog
         open={helpOpen}

@@ -21,7 +21,19 @@ export function MediaOrb({ media, label, className = "" }: MediaOrbProps) {
     <div
       className={`relative isolate overflow-hidden rounded-[999px] border border-white/70 bg-[var(--paper-soft)] shadow-none [container-type:inline-size] sm:shadow-[0_18px_45px_rgba(58,40,25,0.18)] ${className}`}
     >
-      {media?.kind === "image" ? (
+      {media?.kind === "image" && media.url.startsWith("/demo/") ? (
+        // Static demo art is already a tiny WebP; direct loading avoids a
+        // client-side Cache API/blob round trip on the first paint.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={media.url}
+          alt={label}
+          className="h-full w-full object-cover"
+          loading="eager"
+          decoding="async"
+          fetchPriority="high"
+        />
+      ) : media?.kind === "image" ? (
         <CachedMediaImage
           src={media.url}
           cacheKey={media.storagePath ?? media.id}

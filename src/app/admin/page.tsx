@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { AdminExperience } from "@/components/admin/AdminExperience";
 import { getCurrentWeddingFromCookie } from "@/lib/auth";
-import { listWeddingMedia } from "@/lib/supabase-store";
+import { listWeddingMediaPage } from "@/lib/supabase-store";
 
 export default async function AdminPage() {
   const current = await getCurrentWeddingFromCookie();
@@ -10,6 +10,13 @@ export default async function AdminPage() {
     redirect("/login");
   }
 
-  const media = await listWeddingMedia(current.wedding.id);
-  return <AdminExperience initialWedding={current.wedding} initialMedia={media} />;
+  const page = await listWeddingMediaPage(current.wedding.id);
+  return (
+    <AdminExperience
+      initialWedding={current.wedding}
+      initialMedia={page.media}
+      initialMediaHasMore={page.hasMore}
+      initialMediaNextOffset={page.nextOffset}
+    />
+  );
 }

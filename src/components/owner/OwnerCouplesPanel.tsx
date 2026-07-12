@@ -320,7 +320,15 @@ export function OwnerCouplesPanel() {
     setDetailLoading(true);
     try {
       setDetail(await ownerApi<OwnerWeddingDetail>(`/api/owner/couples/${id}`));
-      requestAnimationFrame(() => detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+      requestAnimationFrame(() => {
+        const reduceMotion = window.matchMedia(
+          "(prefers-reduced-motion: reduce)",
+        ).matches;
+        detailRef.current?.scrollIntoView({
+          behavior: reduceMotion ? "auto" : "smooth",
+          block: "start",
+        });
+      });
     } finally {
       setDetailLoading(false);
     }

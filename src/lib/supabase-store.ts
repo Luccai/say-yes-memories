@@ -1,4 +1,5 @@
 import type {
+  MediaKind,
   PublicWedding,
   SessionRecord,
   StoredMediaObject,
@@ -27,6 +28,7 @@ type WeddingRow = {
   access_anchor_date: string | null;
   access_expires_at: string | null;
   cleanup_after: string | null;
+  uploads_open_at: string | null;
   bride_name: string;
   groom_name: string;
   couple_name: string;
@@ -130,6 +132,7 @@ async function weddingFromRow(row: WeddingRow): Promise<Wedding> {
     accessAnchorDate: row.access_anchor_date ?? undefined,
     accessExpiresAt: row.access_expires_at ?? undefined,
     cleanupAfter: row.cleanup_after ?? undefined,
+    uploadsOpenAt: row.uploads_open_at ?? undefined,
     brideName: row.bride_name,
     groomName: row.groom_name,
     coupleName: row.couple_name,
@@ -478,6 +481,57 @@ export async function getWeddingBySlug(slug: string): Promise<PublicWedding | nu
   return wedding ? toPublicWedding(wedding) : null;
 }
 
+export async function resolveWeddingRecordBySlug(slug: string): Promise<{
+  wedding: Wedding;
+  canonicalSlug: string;
+  isAlias: boolean;
+} | null> {
+  const normalizedSlug = slug.trim().toLowerCase();
+  if (!normalizedSlug) {
+    return null;
+  }
+
+  const { data, error } = await getSupabaseAdmin().rpc(
+    "resolve_wedding_slug_v2",
+    { p_slug: normalizedSlug },
+  );
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) {
+    return null;
+  }
+
+  const resolved = row as {
+    result_wedding_id: string;
+    result_canonical_slug: string;
+    result_is_alias: boolean;
+  };
+  const wedding = await getWeddingById(resolved.result_wedding_id);
+  if (!wedding) {
+    return null;
+  }
+
+  return {
+    wedding,
+    canonicalSlug: resolved.result_canonical_slug,
+    isAlias: resolved.result_is_alias || normalizedSlug !== resolved.result_canonical_slug,
+  };
+}
+
+export async function resolvePublicWeddingBySlug(slug: string): Promise<{
+  wedding: PublicWedding;
+  canonicalSlug: string;
+  isAlias: boolean;
+} | null> {
+  const resolved = await resolveWeddingRecordBySlug(slug);
+  return resolved
+    ? { ...resolved, wedding: toPublicWedding(resolved.wedding) }
+    : null;
+}
+
 export async function getWeddingRecordBySlug(slug: string) {
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
@@ -563,6 +617,45 @@ export async function listWeddingMedia(weddingId: string) {
   }
 
   return Promise.all((data ?? []).map((row) => mediaFromRow(row)));
+}
+
+export async function listWeddingMediaPage(
+  weddingId: string,
+  options: {
+    offset?: number;
+    limit?: number;
+    order?: "newest" | "oldest";
+    kind?: MediaKind;
+  } = {},
+) {
+  const offset = Math.max(Math.trunc(options.offset ?? 0), 0);
+  const limit = Math.min(Math.max(Math.trunc(options.limit ?? 48), 1), 60);
+  let query = getSupabaseAdmin()
+    .from("wedding_media")
+    .select("*", { count: "exact" })
+    .eq("wedding_id", weddingId);
+
+  if (options.kind) {
+    query = query.eq("kind", options.kind);
+  }
+
+  const { data, error, count } = await query
+    .order("created_at", { ascending: options.order === "oldest" })
+    .order("id", { ascending: options.order === "oldest" })
+    .range(offset, offset + limit - 1);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+  const media = await Promise.all((data ?? []).map((row) => mediaFromRow(row)));
+  const nextOffset = offset + media.length;
+  const total = count ?? nextOffset;
+  return {
+    media,
+    total,
+    nextOffset,
+    hasMore: nextOffset < total,
+  };
 }
 
 export async function getWeddingMediaById(mediaId: string, weddingId: string) {

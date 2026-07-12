@@ -7,6 +7,9 @@
 }
 
 :root {
+  --font-body: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-display: Georgia, "Times New Roman", serif;
+  --font-tech: "Segoe UI", system-ui, -apple-system, sans-serif;
   --paper: #f1e6d8;
   --paper-soft: #fffaf3;
   --app-canvas-color: #f1e6d8;
@@ -44,6 +47,14 @@ html {
   color-scheme: light;
   overflow-x: hidden;
   scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html,
+  body,
+  * {
+    scroll-behavior: auto !important;
+  }
 }
 
 body {

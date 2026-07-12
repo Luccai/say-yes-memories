@@ -1,24 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Cormorant_Garamond, Manrope, Space_Grotesk } from "next/font/google";
+import { headers } from "next/headers";
+import { AppMotionProvider } from "@/components/shared/AppMotionProvider";
+import { I18nProvider } from "@/lib/i18n-client";
+import { authCopy, copy, detectLocale } from "@/lib/i18n";
 import "./globals.css";
-
-const display = Cormorant_Garamond({
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
-  variable: "--font-display",
-});
-
-const body = Manrope({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-body",
-});
-
-const tech = Space_Grotesk({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-tech",
-});
 
 export const metadata: Metadata = {
   title: "Say Yes Digital Memories",
@@ -38,18 +23,23 @@ export const viewport: Viewport = {
   colorScheme: "light",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const requestHeaders = await headers();
+  const locale = detectLocale(requestHeaders.get("accept-language") ?? undefined);
+
   return (
-    <html lang="en" className="bg-[var(--paper)]" suppressHydrationWarning>
+    <html lang={locale} className="bg-[var(--paper)]" suppressHydrationWarning>
       <body
-        className={`${display.variable} ${body.variable} ${tech.variable} font-sans antialiased`}
+        className="font-sans antialiased"
         suppressHydrationWarning
       >
-        {children}
+        <I18nProvider locale={locale} text={copy[locale]} authText={authCopy[locale]}>
+          <AppMotionProvider>{children}</AppMotionProvider>
+        </I18nProvider>
       </body>
     </html>
   );

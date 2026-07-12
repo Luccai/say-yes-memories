@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
-import QRCode from "qrcode";
+import dynamic from "next/dynamic";
 import {
   CalendarDays,
   Check,
@@ -29,6 +29,7 @@ import {
   LogOut,
   Menu,
   Mic,
+  MonitorPlay,
   Play,
   QrCode,
   Settings2,
@@ -37,19 +38,28 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { motion } from "motion/react";
-import { GuestExperience } from "@/components/guest/GuestExperience";
-import type { MediaKind, Wedding, WeddingMedia } from "@/lib/types";
+import {
+  AnimatePresence,
+  LayoutGroup,
+  motion,
+  useReducedMotion,
+} from "motion/react";
+import type {
+  MediaKind,
+  StoredMediaObject,
+  Wedding,
+  WeddingMedia,
+} from "@/lib/types";
 import {
   CachedMediaImage,
   storeInstantMediaCache,
 } from "@/components/shared/CachedMediaImage";
 import { GuidanceDialog, HelpTriggerButton } from "@/components/shared/GuidanceDialog";
 import { MediaOrb } from "@/components/shared/MediaOrb";
-import { getSupabaseBrowser } from "@/lib/supabase/browser";
-import { localizedError, useCopy, useLocale } from "@/lib/i18n";
+import { localizedError, useCopy, useLocale } from "@/lib/i18n-client";
 import { rememberMembership } from "@/lib/auth/device-hint";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
+import { useAccessibleDialog } from "@/lib/use-accessible-dialog";
 import {
   type ClientSignedUploadTarget,
   uploadToSignedTarget,
@@ -66,16 +76,31 @@ import {
   localizeDemoMedia,
   localizeDemoWedding,
 } from "@/lib/demo-content";
-import {
-  getDemoSessionMedia,
-  isDemoSessionMedia,
-  removeDemoSessionMedia,
-  subscribeDemoSessionMedia,
-} from "@/lib/demo-session-media";
+
+const GuestExperience = dynamic(
+  () =>
+    import("@/components/guest/GuestExperience").then(
+      (module) => module.GuestExperience,
+    ),
+  {
+    loading: () => (
+      <div className="min-h-80 animate-pulse rounded-[30px] bg-white/45" />
+    ),
+  },
+);
+
+let qrCodeModule: Promise<typeof import("qrcode")> | null = null;
+
+function loadQrCode() {
+  qrCodeModule ??= import("qrcode");
+  return qrCodeModule;
+}
 
 type AdminExperienceProps = {
   initialWedding: Wedding;
   initialMedia: WeddingMedia[];
+  initialMediaHasMore?: boolean;
+  initialMediaNextOffset?: number;
   demoMode?: boolean;
 };
 
@@ -91,11 +116,15 @@ const PROFILE_PHOTO_MAX_DIMENSION = 1280;
 const PROFILE_PHOTO_START_QUALITY = 0.82;
 const PROFILE_PHOTO_MIN_QUALITY = 0.46;
 const ADMIN_ACTION_BUTTON_CLASS =
-  "focus-ring inline-flex items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white/58 px-4 py-2.5 text-[0.78rem] font-bold text-[var(--ink)] transition hover:bg-white active:scale-[0.99] disabled:opacity-60";
+  "focus-ring inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white/58 px-4 py-2.5 text-[0.78rem] font-bold text-[var(--ink)] transition hover:bg-white active:scale-[0.99] disabled:opacity-60";
 const ADMIN_DANGER_ACTION_BUTTON_CLASS =
-  "focus-ring inline-flex items-center justify-center rounded-full border border-[rgba(124,58,49,0.24)] bg-white/58 px-4 py-2.5 text-[0.78rem] font-bold text-[var(--rosewood)] transition hover:bg-white active:scale-[0.99] disabled:opacity-60";
+  "focus-ring inline-flex min-h-12 items-center justify-center rounded-full border border-[rgba(124,58,49,0.24)] bg-white/58 px-4 py-2.5 text-[0.78rem] font-bold text-[var(--rosewood)] transition hover:bg-white active:scale-[0.99] disabled:opacity-60";
 const ADMIN_STORAGE_PILL_BUTTON_CLASS =
   "focus-ring inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white/62 px-4 text-xs font-extrabold text-[var(--ink)] transition hover:bg-white active:scale-[0.99] disabled:cursor-default disabled:opacity-55";
+
+function isDemoSessionMedia(mediaId: string) {
+  return mediaId.startsWith("demo-session-");
+}
 
 function mergeDemoMedia(baseMedia: WeddingMedia[], sessionMedia: WeddingMedia[]) {
   const sessionIds = new Set(sessionMedia.map((item) => item.id));
@@ -151,6 +180,57 @@ function memoryGridLayoutLabel(text: AdminCopy, layout: MemoryGridLayout) {
   };
 
   return labels[layout];
+}
+
+function GalleryThumbnailImage({
+  thumbnail,
+  alt,
+  priority,
+  delayMs,
+}: {
+  thumbnail: StoredMediaObject;
+  alt: string;
+  priority: boolean;
+  delayMs: number;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(priority);
+
+  useEffect(() => {
+    if (visible || !containerRef.current) return;
+    let timer: number | null = null;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          timer = window.setTimeout(() => setVisible(true), delayMs);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "80px 0px" },
+    );
+    observer.observe(containerRef.current);
+    return () => {
+      observer.disconnect();
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [delayMs, visible]);
+
+  return (
+    <div ref={containerRef} className="h-full w-full">
+      {visible ? (
+        <CachedMediaImage
+          src={thumbnail.url}
+          cacheKey={thumbnail.storagePath ?? thumbnail.id}
+          alt={alt}
+          className="h-full w-full object-cover"
+          loading={priority ? "eager" : "lazy"}
+          fetchPriority={priority ? "high" : "auto"}
+        />
+      ) : (
+        <div className="h-full w-full bg-[radial-gradient(circle_at_30%_18%,#fffaf3,#eadcca)]" />
+      )}
+    </div>
+  );
 }
 
 type SignedUploadResponse = {
@@ -261,11 +341,18 @@ async function compressProfilePhoto(file: File) {
 export function AdminExperience({
   initialWedding,
   initialMedia,
+  initialMediaHasMore = false,
+  initialMediaNextOffset = initialMedia.length,
   demoMode = false,
 }: AdminExperienceProps) {
   const locale = useLocale();
   const [wedding, setWedding] = useState(initialWedding);
   const [media, setMedia] = useState(initialMedia);
+  const [mediaHasMore, setMediaHasMore] = useState(initialMediaHasMore);
+  const [mediaNextOffset, setMediaNextOffset] = useState(
+    initialMediaNextOffset,
+  );
+  const [loadingMoreMedia, setLoadingMoreMedia] = useState(false);
   const [origin, setOrigin] = useState("");
   const [filter, setFilter] = useState<FilterKey>("all");
   const [gridLayout, setGridLayout] = useState<MemoryGridLayout>("classic");
@@ -289,6 +376,9 @@ export function AdminExperience({
 
   const eventSlug = demoMode ? demoWedding.slug : wedding.slug;
   const eventUrl = `${origin || "https://your-domain.com"}/${eventSlug}`;
+  const presentationUrl = demoMode
+    ? `/admin/${wedding.slug}/presentation`
+    : "/admin/presentation";
 
   useBodyScrollLock(menuOpen);
 
@@ -373,8 +463,11 @@ export function AdminExperience({
     }
 
     let active = true;
+    let subscribed = false;
+    let unsubscribe: () => void = () => undefined;
 
     async function hydrateDemoState() {
+      const demoSession = await import("@/lib/demo-session-media");
       ensureFreshDemoLocalState();
 
       const savedWedding = window.localStorage.getItem("sayyes.demo.wedding");
@@ -383,7 +476,7 @@ export function AdminExperience({
       const sourceMedia = savedMedia
         ? (JSON.parse(savedMedia) as WeddingMedia[]).filter((item) => !isDemoSessionMedia(item.id))
         : initialMedia;
-      const sessionMedia = await getDemoSessionMedia();
+      const sessionMedia = await demoSession.getDemoSessionMedia();
 
       if (!active) {
         return;
@@ -396,12 +489,21 @@ export function AdminExperience({
       setMedia(nextMedia);
       persistDemoLocalState(nextWedding, nextMedia);
       demoHydratedRef.current = true;
+
+      if (!subscribed) {
+        subscribed = true;
+        unsubscribe = demoSession.subscribeDemoSessionMedia(() => {
+          void hydrateDemoState();
+        });
+      }
     }
 
-    void hydrateDemoState();
+    const timeoutId = window.setTimeout(() => void hydrateDemoState(), 5_000);
 
     return () => {
       active = false;
+      unsubscribe();
+      window.clearTimeout(timeoutId);
     };
   }, [demoMode, initialMedia, initialWedding, locale]);
 
@@ -414,52 +516,30 @@ export function AdminExperience({
   }, [demoMode, media, wedding]);
 
   useEffect(() => {
-    if (!demoMode) {
-      return;
-    }
-
-    let active = true;
-
-    async function syncSessionMedia() {
-      const sessionMedia = await getDemoSessionMedia();
-
-      if (!active) {
-        return;
-      }
-
-      setMedia((current) =>
-        mergeDemoMedia(
-          current.filter((item) => !isDemoSessionMedia(item.id)),
-          sessionMedia,
-        ),
-      );
-    }
-
-    const unsubscribe = subscribeDemoSessionMedia(() => {
-      void syncSessionMedia();
-    });
-
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, [demoMode]);
-
-  useEffect(() => {
     if (demoMode) {
       return;
     }
 
     let active = true;
     const syncMedia = async () => {
-      const response = await fetch("/api/weddings/current/media", { cache: "no-store" });
+      const kindQuery = filter === "all" ? "" : `?kind=${filter}`;
+      const response = await fetch(`/api/weddings/current/media${kindQuery}`, {
+        cache: "no-store",
+      });
 
       if (!response.ok || !active) {
         return;
       }
 
-      const payload = (await response.json()) as { media: WeddingMedia[]; wedding?: Wedding };
+      const payload = (await response.json()) as {
+        media: WeddingMedia[];
+        wedding?: Wedding;
+        hasMore?: boolean;
+        nextOffset?: number;
+      };
       setMedia(payload.media ?? []);
+      setMediaHasMore(Boolean(payload.hasMore));
+      setMediaNextOffset(payload.nextOffset ?? payload.media?.length ?? 0);
 
       if (payload.wedding) {
         setWedding(payload.wedding);
@@ -470,19 +550,27 @@ export function AdminExperience({
         void syncMedia();
       }
     };
-    const supabase = getSupabaseBrowser();
-    const realtimeChannel = wedding.realtimeTopic
-      ? supabase
-          .channel(`wedding:${wedding.realtimeTopic}`)
-          .on("broadcast", { event: "media_changed" }, syncIfVisible)
-          .subscribe((status) => {
-            if (status === "SUBSCRIBED") {
-              void syncMedia();
-            }
-          })
-      : null;
+    let removeRealtimeChannel: (() => void) | null = null;
+    async function connectRealtime() {
+      if (!wedding.realtimeTopic) return;
+      const { getSupabaseBrowser } = await import("@/lib/supabase/browser");
+      if (!active) return;
+      const supabase = getSupabaseBrowser();
+      const realtimeChannel = supabase
+        .channel(`wedding:${wedding.realtimeTopic}`)
+        .on("broadcast", { event: "media_changed" }, syncIfVisible)
+        .subscribe((status) => {
+          if (status === "SUBSCRIBED") {
+            void syncMedia();
+          }
+        });
+      removeRealtimeChannel = () => {
+        void supabase.removeChannel(realtimeChannel);
+      };
+    }
 
     void syncMedia();
+    void connectRealtime();
     const interval = window.setInterval(syncIfVisible, 30000);
     window.addEventListener("focus", syncIfVisible);
     document.addEventListener("visibilitychange", syncIfVisible);
@@ -492,11 +580,36 @@ export function AdminExperience({
       window.clearInterval(interval);
       window.removeEventListener("focus", syncIfVisible);
       document.removeEventListener("visibilitychange", syncIfVisible);
-      if (realtimeChannel) {
-        void supabase.removeChannel(realtimeChannel);
-      }
+      removeRealtimeChannel?.();
     };
-  }, [demoMode, wedding.realtimeTopic]);
+  }, [demoMode, filter, wedding.realtimeTopic]);
+
+  async function loadMoreMedia() {
+    if (demoMode || loadingMoreMedia || !mediaHasMore) return;
+    setLoadingMoreMedia(true);
+    try {
+      const response = await fetch(
+        `/api/weddings/current/media?offset=${mediaNextOffset}&limit=48${
+          filter === "all" ? "" : `&kind=${filter}`
+        }`,
+        { cache: "no-store" },
+      );
+      if (!response.ok) return;
+      const payload = (await response.json()) as {
+        media: WeddingMedia[];
+        hasMore: boolean;
+        nextOffset: number;
+      };
+      setMedia((current) => {
+        const known = new Set(current.map((item) => item.id));
+        return [...current, ...payload.media.filter((item) => !known.has(item.id))];
+      });
+      setMediaHasMore(payload.hasMore);
+      setMediaNextOffset(payload.nextOffset);
+    } finally {
+      setLoadingMoreMedia(false);
+    }
+  }
 
   const filteredMedia = useMemo(() => {
     if (filter === "all") {
@@ -644,10 +757,12 @@ export function AdminExperience({
   async function removeMedia(mediaId: string) {
     if (demoMode) {
       if (isDemoSessionMedia(mediaId)) {
+        const { removeDemoSessionMedia } = await import("@/lib/demo-session-media");
         await removeDemoSessionMedia(mediaId);
       }
 
       setMedia((current) => current.filter((item) => item.id !== mediaId));
+      setMediaNextOffset((current) => Math.max(current - 1, 0));
       return;
     }
 
@@ -659,6 +774,7 @@ export function AdminExperience({
     }
 
     setMedia((current) => current.filter((item) => item.id !== mediaId));
+    setMediaNextOffset((current) => Math.max(current - 1, 0));
   }
 
   async function logout() {
@@ -754,6 +870,11 @@ export function AdminExperience({
                   setMenuOpen(false);
                 }}
               />
+              <AdminMenuLink
+                href={presentationUrl}
+                icon={MonitorPlay}
+                label={adminText.presentation}
+              />
               <AdminMenuButton
                 active={activePanel === "storage"}
                 icon={HardDrive}
@@ -796,7 +917,7 @@ export function AdminExperience({
                   onClick={() => void logout()}
                   disabled={loggingOut}
                   aria-busy={loggingOut || undefined}
-                  className="focus-ring inline-flex w-full items-center justify-between gap-3 rounded-[18px] border border-[rgba(124,58,49,0.16)] bg-white/42 px-3 py-2.5 text-sm font-bold text-[var(--rosewood)] transition hover:bg-white active:scale-[0.99] disabled:opacity-60"
+                  className="focus-ring inline-flex min-h-12 w-full items-center justify-between gap-3 rounded-full border border-[rgba(124,58,49,0.16)] bg-white/42 px-3 py-2.5 text-sm font-bold text-[var(--rosewood)] transition hover:bg-white active:scale-[0.99] disabled:opacity-60"
                 >
                   <span className="inline-flex min-w-0 items-center gap-2">
                     <span className="grid size-8 shrink-0 place-items-center rounded-full border border-[rgba(124,58,49,0.16)] bg-white/58">
@@ -854,6 +975,9 @@ export function AdminExperience({
               filter={filter}
               gridLayout={gridLayout}
               media={filteredMedia}
+              presentationUrl={presentationUrl}
+              hasMore={mediaHasMore}
+              loadingMore={loadingMoreMedia}
               demoMode={demoMode}
               onFilterChange={setFilter}
               onGridLayoutChange={() =>
@@ -864,6 +988,7 @@ export function AdminExperience({
                 })
               }
               onRemoveMedia={removeMedia}
+              onLoadMore={() => void loadMoreMedia()}
               text={adminText}
             />
           ) : null}
@@ -911,7 +1036,7 @@ function AdminMenuButton({
       type="button"
       onClick={onClick}
       aria-current={active ? "page" : undefined}
-      className={`focus-ring group relative flex min-h-11 w-full items-center gap-2.5 overflow-hidden rounded-[18px] border px-2.5 py-2 text-left text-[0.82rem] font-extrabold transition active:scale-[0.99] sm:text-[0.84rem] ${
+      className={`focus-ring group relative flex min-h-12 w-full items-center gap-2.5 overflow-hidden rounded-full border px-2.5 py-2 text-left text-[0.82rem] font-extrabold transition active:scale-[0.99] sm:text-[0.84rem] ${
         active
           ? "border-[rgba(139,107,63,0.24)] bg-[linear-gradient(135deg,rgba(199,166,111,0.22),rgba(255,250,243,0.84))] text-[var(--ink)] shadow-[inset_0_1px_0_rgba(255,255,255,0.86),0_10px_22px_rgba(139,107,63,0.12)]"
           : "border-transparent bg-white/44 text-[var(--ink)] hover:border-[var(--line)] hover:bg-white/72"
@@ -935,6 +1060,29 @@ function AdminMenuButton({
         <ChevronRight className="size-4 shrink-0 text-[var(--ink-soft)] opacity-50 transition group-hover:translate-x-0.5 group-hover:opacity-80" />
       )}
     </button>
+  );
+}
+
+function AdminMenuLink({
+  href,
+  icon: Icon,
+  label,
+}: {
+  href: string;
+  icon: LucideIcon;
+  label: string;
+}) {
+  return (
+    <a
+      href={href}
+      className="focus-ring group relative flex min-h-12 w-full items-center gap-2.5 overflow-hidden rounded-full border border-transparent bg-white/44 px-2.5 py-2 text-left text-[0.82rem] font-extrabold text-[var(--ink)] transition hover:border-[var(--line)] hover:bg-white/72 sm:text-[0.84rem]"
+    >
+      <span className="grid size-8 shrink-0 place-items-center rounded-full border border-[var(--line)] bg-white/62 text-[var(--ink-soft)] transition group-hover:text-[var(--ink)]">
+        <Icon className="size-3.5" />
+      </span>
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      <ChevronRight className="size-4 shrink-0 text-[var(--ink-soft)] opacity-50 transition group-hover:translate-x-0.5 group-hover:opacity-80" />
+    </a>
   );
 }
 
@@ -986,6 +1134,8 @@ function StorageOverview({
 }) {
   const [premiumOpen, setPremiumOpen] = useState(false);
   const [coupleNameCopied, setCoupleNameCopied] = useState(false);
+  const premiumDialogRef = useRef<HTMLDivElement>(null);
+  const premiumCloseRef = useRef<HTMLButtonElement>(null);
   const premiumUpgradeUrl = process.env.NEXT_PUBLIC_ETSY_PREMIUM_UPGRADE_URL;
   const isDemoStorage = demoMode || wedding.demo;
   const percent = storageUsagePercent(wedding.storageUsedBytes, wedding.storageQuotaBytes);
@@ -996,6 +1146,12 @@ function StorageOverview({
   const planLabel = wedding.plan === "premium" ? "Premium" : "Classic";
 
   useBodyScrollLock(premiumOpen);
+  useAccessibleDialog({
+    open: premiumOpen,
+    containerRef: premiumDialogRef,
+    initialFocusRef: premiumCloseRef,
+    onClose: () => setPremiumOpen(false),
+  });
 
   async function copyCoupleName() {
     if (isDemoStorage) {
@@ -1101,11 +1257,17 @@ function StorageOverview({
             onClick={() => setPremiumOpen(false)}
           />
           <motion.div
+            ref={premiumDialogRef}
             initial={{ opacity: 0, y: 18, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             className="relative w-full max-w-[32rem] rounded-[30px] border border-white/80 bg-[var(--paper-soft)] p-5 shadow-[0_28px_80px_rgba(31,23,18,0.22)]"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="premium-extension-title"
+            tabIndex={-1}
           >
             <button
+              ref={premiumCloseRef}
               type="button"
               onClick={() => setPremiumOpen(false)}
               className="focus-ring absolute right-4 top-4 grid size-10 place-items-center rounded-full border border-[var(--line)] bg-white/62 text-[var(--ink)]"
@@ -1117,7 +1279,7 @@ function StorageOverview({
               <Crown className="size-4" />
               {text.upgradePremium}
             </p>
-            <h2 className="mt-3 pr-10 font-display text-2xl font-semibold text-[var(--ink)]">
+            <h2 id="premium-extension-title" className="mt-3 pr-10 font-display text-2xl font-semibold text-[var(--ink)]">
               {text.premiumModalTitle}
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-[var(--ink-soft)]">
@@ -1280,6 +1442,7 @@ function IdentityCard({
               type="button"
               onClick={() => onSave({ uploadLocked: !wedding.uploadLocked })}
               className={ADMIN_ACTION_BUTTON_CLASS}
+              aria-pressed={wedding.uploadLocked}
             >
               <span className="inline-flex items-center justify-center gap-2">
                 {wedding.uploadLocked ? <Lock className="size-4" /> : <Unlock className="size-4" />}
@@ -1310,14 +1473,21 @@ function QrStudio({
       return;
     }
 
-    void QRCode.toCanvas(canvasRef.current, eventUrl, {
-      width: 208,
-      margin: 1,
-      color: {
-        dark: "#1f1712",
-        light: "#fffaf3",
-      },
+    let active = true;
+    void loadQrCode().then((QRCode) => {
+      if (!active || !canvasRef.current) return;
+      return QRCode.toCanvas(canvasRef.current, eventUrl, {
+        width: 208,
+        margin: 1,
+        color: {
+          dark: "#1f1712",
+          light: "#fffaf3",
+        },
+      });
     });
+    return () => {
+      active = false;
+    };
   }, [eventUrl]);
 
   async function copyLink() {
@@ -1340,6 +1510,7 @@ function QrStudio({
   }
 
   async function downloadSvg() {
+    const QRCode = await loadQrCode();
     const svg = await QRCode.toString(eventUrl, {
       type: "svg",
       width: 720,
@@ -1391,7 +1562,7 @@ function QrStudio({
               {eventUrl}
             </p>
           </div>
-          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
             <button
               type="button"
               onClick={copyLink}
@@ -1422,6 +1593,15 @@ function QrStudio({
                 SVG
               </span>
             </button>
+            <a
+              href={eventUrl}
+              target="_blank"
+              rel="noreferrer"
+              className={ADMIN_ACTION_BUTTON_CLASS}
+            >
+              <ExternalLink className="size-3.5 shrink-0" />
+              <span className="truncate">{text.openPage}</span>
+            </a>
           </div>
         </div>
       </div>
@@ -1523,18 +1703,26 @@ function MemoryInbox({
   filter,
   gridLayout,
   media,
+  presentationUrl,
+  hasMore,
+  loadingMore,
   demoMode,
   onFilterChange,
   onGridLayoutChange,
+  onLoadMore,
   onRemoveMedia,
   text,
 }: {
   filter: FilterKey;
   gridLayout: MemoryGridLayout;
   media: WeddingMedia[];
+  presentationUrl: string;
+  hasMore: boolean;
+  loadingMore: boolean;
   demoMode: boolean;
   onFilterChange: (filter: FilterKey) => void;
   onGridLayoutChange: () => void;
+  onLoadMore: () => void;
   onRemoveMedia: (mediaId: string) => Promise<void>;
   text: AdminCopy;
 }) {
@@ -1548,12 +1736,37 @@ function MemoryInbox({
     { key: "audio", label: text.voice },
   ];
   const [selectedMedia, setSelectedMedia] = useState<WeddingMedia | null>(null);
+  const lightboxRef = useRef<HTMLDivElement>(null);
+  const lightboxCloseRef = useRef<HTMLButtonElement>(null);
+  const deleteDialogRef = useRef<HTMLDivElement>(null);
+  const deleteCancelRef = useRef<HTMLButtonElement>(null);
+  const reduceMotion = useReducedMotion();
+  const layoutTransition = reduceMotion
+    ? { duration: 0 }
+    : { duration: 0.28, ease: [0.22, 1, 0.36, 1] as const };
   const selectedMediaIndex = selectedMedia
     ? media.findIndex((item) => item.id === selectedMedia.id)
     : -1;
   const currentGridLayoutLabel = memoryGridLayoutLabel(text, gridLayout);
 
   useBodyScrollLock(Boolean(selectedMedia || deleteTarget));
+  useAccessibleDialog({
+    open: Boolean(selectedMedia),
+    containerRef: lightboxRef,
+    initialFocusRef: lightboxCloseRef,
+    onClose: () => setSelectedMedia(null),
+  });
+  useAccessibleDialog({
+    open: Boolean(deleteTarget),
+    containerRef: deleteDialogRef,
+    initialFocusRef: deleteCancelRef,
+    onClose: () => {
+      if (!deleting) {
+        setDeleteTarget(null);
+        setDeleteError("");
+      }
+    },
+  });
 
   const showPreviousMedia = useCallback(() => {
     setSelectedMedia((current) => {
@@ -1631,16 +1844,26 @@ function MemoryInbox({
               {text.inbox}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onGridLayoutChange}
-            className={`${ADMIN_ACTION_BUTTON_CLASS} h-10 max-w-[8.5rem] shrink-0 px-3`}
-            aria-label={`${text.gridLayout}: ${currentGridLayoutLabel}`}
-            title={`${text.gridLayout}: ${currentGridLayoutLabel}`}
-          >
-            <LayoutGrid className="size-4 shrink-0 text-[var(--champagne-deep)]" />
-            <span className="truncate">{currentGridLayoutLabel}</span>
-          </button>
+          <div className="flex min-w-0 shrink-0 items-center gap-2">
+            <a
+              href={presentationUrl}
+              data-prefetch="false"
+              className={`${ADMIN_ACTION_BUTTON_CLASS} max-w-[8.5rem] px-3`}
+            >
+              <MonitorPlay className="size-4 shrink-0 text-[var(--champagne-deep)]" />
+              <span className="truncate">{text.presentation}</span>
+            </a>
+            <button
+              type="button"
+              onClick={onGridLayoutChange}
+              className={`${ADMIN_ACTION_BUTTON_CLASS} max-w-[8.5rem] shrink-0 px-3`}
+              aria-label={`${text.gridLayout}: ${currentGridLayoutLabel}`}
+              title={`${text.gridLayout}: ${currentGridLayoutLabel}`}
+            >
+              <LayoutGrid className="size-4 shrink-0 text-[var(--champagne-deep)]" />
+              <span className="truncate">{currentGridLayoutLabel}</span>
+            </button>
+          </div>
         </div>
 
         <div className="mb-5 flex flex-wrap gap-2">
@@ -1649,7 +1872,8 @@ function MemoryInbox({
               key={item.key}
               type="button"
               onClick={() => onFilterChange(item.key)}
-              className={`focus-ring rounded-full px-3.5 py-2 text-[0.78rem] font-bold transition ${
+              aria-pressed={filter === item.key}
+              className={`focus-ring min-h-11 rounded-full px-3.5 py-2 text-[0.78rem] font-bold transition ${
                 filter === item.key
                   ? "border border-[rgba(139,107,63,0.26)] bg-[rgba(199,166,111,0.16)] text-[var(--ink)]"
                   : "border border-[var(--line)] bg-white/55 text-[var(--ink-soft)] hover:bg-white"
@@ -1673,35 +1897,39 @@ function MemoryInbox({
           </div>
         ) : (
           <div className="relative">
-            <motion.div
-              layout
-              className={memoryGridClasses[gridLayout]}
-              transition={{ layout: { duration: 0.42, ease: [0.16, 1, 0.3, 1] } }}
-            >
+            <LayoutGroup id="memory-grid-layout">
+              <motion.div
+                layout
+                className={memoryGridClasses[gridLayout]}
+                transition={{ layout: layoutTransition }}
+              >
               {media.map((item, index) => {
                 const thumbnail = galleryThumbnailFor(item);
 
                 return (
                   <motion.button
-                    layout="position"
-                    transition={{ layout: { duration: 0.42, ease: [0.16, 1, 0.3, 1] } }}
+                    layout
+                    transition={{ layout: layoutTransition }}
+                    whileHover={reduceMotion ? undefined : { y: -2 }}
+                    whileTap={reduceMotion ? undefined : { scale: 0.985 }}
                     type="button"
                     key={item.id}
                     aria-label={`${item.guestName}. ${item.note || text.noNote}`}
                     onClick={() => setSelectedMedia(item)}
-                    className={`focus-ring group min-w-0 max-w-full overflow-hidden border border-[var(--line)] bg-white/60 text-left transition duration-200 hover:bg-white sm:hover:-translate-y-0.5 ${memoryCardClasses[gridLayout]}`}
+                    className={`focus-ring group min-w-0 max-w-full overflow-hidden border border-[var(--line)] bg-white/60 text-left hover:bg-white ${memoryCardClasses[gridLayout]}`}
                   >
-                    <div
+                    <motion.div
+                      layout
+                      transition={{ layout: layoutTransition }}
                       className={`relative w-full min-w-0 max-w-full overflow-hidden bg-[#ede1d3] ${memoryMediaFrameClasses[gridLayout]}`}
                     >
                       {item.kind === "image" || item.kind === "video" ? (
                         thumbnail ? (
-                          <CachedMediaImage
-                            src={thumbnail.url}
-                            cacheKey={thumbnail.storagePath ?? thumbnail.id}
+                          <GalleryThumbnailImage
+                            thumbnail={thumbnail}
                             alt={item.note ?? item.fileName}
-                            className="h-full w-full object-cover"
-                            loading={index < 12 ? "eager" : "lazy"}
+                            priority={index === 0}
+                            delayMs={450 + index * 90}
                           />
                         ) : item.kind === "video" ? (
                           <video
@@ -1745,9 +1973,18 @@ function MemoryInbox({
                           <Mic className={gridLayout === "compact" ? "size-3" : "size-3.5"} />
                         )}
                       </div>
-                    </div>
-                    {gridLayout !== "compact" ? (
-                      <div className="px-1 pb-1 pt-2">
+                    </motion.div>
+                    <AnimatePresence initial={false}>
+                      {gridLayout !== "compact" ? (
+                      <motion.div
+                        key="memory-caption"
+                        layout
+                        initial={reduceMotion ? false : { opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={reduceMotion ? undefined : { opacity: 0, height: 0 }}
+                        transition={layoutTransition}
+                        className="overflow-hidden px-1 pb-1 pt-2"
+                      >
                         <p
                           className={`block max-w-full truncate font-bold text-[var(--ink)] ${
                             gridLayout === "story" ? "text-sm" : "text-xs"
@@ -1764,12 +2001,29 @@ function MemoryInbox({
                         >
                           {item.note || text.noNote}
                         </p>
-                      </div>
-                    ) : null}
+                      </motion.div>
+                      ) : null}
+                    </AnimatePresence>
                   </motion.button>
                 );
               })}
-            </motion.div>
+              </motion.div>
+            </LayoutGroup>
+            {hasMore ? (
+              <div className="mt-5 flex justify-center">
+                <button
+                  type="button"
+                  onClick={onLoadMore}
+                  disabled={loadingMore}
+                  className={`${ADMIN_ACTION_BUTTON_CLASS} min-h-12 px-5`}
+                >
+                  {loadingMore ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : null}
+                  {text.loadMore}
+                </button>
+              </div>
+            ) : null}
           </div>
         )}
       </article>
@@ -1783,16 +2037,19 @@ function MemoryInbox({
             onClick={() => setSelectedMedia(null)}
           />
           <motion.div
+            ref={lightboxRef}
             initial={{ opacity: 0, y: 10, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             className="relative z-10 grid max-h-[calc(100dvh-2rem)] w-full min-w-0 max-w-[calc(100vw-1.5rem)] gap-4 overflow-y-auto overflow-x-hidden rounded-[32px] border border-white/70 bg-[var(--paper-soft)] p-4 shadow-[0_30px_90px_rgba(0,0,0,0.32)] sm:max-w-5xl sm:p-5"
             data-scroll-lock-allow="true"
             role="dialog"
             aria-modal="true"
+            aria-labelledby="memory-lightbox-title"
+            tabIndex={-1}
           >
             <div className="flex min-w-0 items-start justify-between gap-3">
               <div className="min-w-0 flex-1 pr-1">
-                <p className="block max-w-full whitespace-pre-wrap text-sm font-bold leading-snug text-[var(--ink)] [overflow-wrap:anywhere]">
+                <p id="memory-lightbox-title" className="block max-w-full whitespace-pre-wrap text-sm font-bold leading-snug text-[var(--ink)] [overflow-wrap:anywhere]">
                   {selectedMedia.guestName}
                 </p>
                 <p className="mt-1 block max-w-full whitespace-pre-wrap text-xs leading-relaxed text-[var(--ink-soft)] [overflow-wrap:anywhere]">
@@ -1800,9 +2057,10 @@ function MemoryInbox({
                 </p>
               </div>
               <button
+                ref={lightboxCloseRef}
                 type="button"
                 onClick={() => setSelectedMedia(null)}
-                className="focus-ring grid size-10 shrink-0 place-items-center rounded-full border border-[var(--line)] bg-white/70 text-[var(--ink)] transition hover:bg-white"
+                className="focus-ring grid size-11 shrink-0 place-items-center rounded-full border border-[var(--line)] bg-white/70 text-[var(--ink)] transition hover:bg-white"
                 aria-label={text.close}
               >
                 <X className="size-4" />
@@ -1830,26 +2088,6 @@ function MemoryInbox({
                 <AdminAudioPlayer media={selectedMedia} text={text} />
               )}
 
-              {media.length > 1 ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={showPreviousMedia}
-                    className="focus-ring absolute left-3 top-1/2 hidden size-9 -translate-y-1/2 place-items-center rounded-full border border-white/60 bg-[rgba(255,250,243,0.74)] text-[var(--ink-soft)] shadow-[0_10px_26px_rgba(31,23,18,0.14)] backdrop-blur transition hover:bg-white hover:text-[var(--ink)] sm:grid"
-                    aria-label={text.previousMedia}
-                  >
-                    <ChevronLeft className="size-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={showNextMedia}
-                    className="focus-ring absolute right-3 top-1/2 hidden size-9 -translate-y-1/2 place-items-center rounded-full border border-white/60 bg-[rgba(255,250,243,0.74)] text-[var(--ink-soft)] shadow-[0_10px_26px_rgba(31,23,18,0.14)] backdrop-blur transition hover:bg-white hover:text-[var(--ink)] sm:grid"
-                    aria-label={text.nextMedia}
-                  >
-                    <ChevronRight className="size-4" />
-                  </button>
-                </>
-              ) : null}
             </div>
 
             <div className="flex flex-wrap items-center gap-2 rounded-[22px] border border-white/70 bg-white/48 p-2 shadow-[0_12px_32px_rgba(58,40,25,0.08)]">
@@ -1861,7 +2099,7 @@ function MemoryInbox({
                   <button
                     type="button"
                     onClick={showPreviousMedia}
-                    className="focus-ring grid size-10 place-items-center rounded-full border border-[rgba(139,107,63,0.24)] bg-white/72 text-[var(--ink)] shadow-[0_10px_24px_rgba(58,40,25,0.12)] transition hover:bg-white active:scale-[0.98]"
+                    className="focus-ring grid size-11 place-items-center rounded-full border border-[rgba(139,107,63,0.24)] bg-white/72 text-[var(--ink)] shadow-[0_10px_24px_rgba(58,40,25,0.12)] transition hover:bg-white active:scale-[0.98]"
                     aria-label={text.previousMedia}
                   >
                     <ChevronLeft className="size-5" />
@@ -1869,7 +2107,7 @@ function MemoryInbox({
                   <button
                     type="button"
                     onClick={showNextMedia}
-                    className="focus-ring grid size-10 place-items-center rounded-full border border-[rgba(139,107,63,0.24)] bg-white/72 text-[var(--ink)] shadow-[0_10px_24px_rgba(58,40,25,0.12)] transition hover:bg-white active:scale-[0.98]"
+                    className="focus-ring grid size-11 place-items-center rounded-full border border-[rgba(139,107,63,0.24)] bg-white/72 text-[var(--ink)] shadow-[0_10px_24px_rgba(58,40,25,0.12)] transition hover:bg-white active:scale-[0.98]"
                     aria-label={text.nextMedia}
                   >
                     <ChevronRight className="size-5" />
@@ -1880,7 +2118,7 @@ function MemoryInbox({
                 <a
                   href={demoMode ? selectedMedia.url : `/api/media/${selectedMedia.id}/download`}
                   download={selectedMedia.fileName}
-                  className="focus-ring inline-flex max-w-[8.5rem] items-center justify-center gap-1.5 rounded-full border border-[var(--line)] bg-white/62 px-3 py-2 text-[0.78rem] font-bold text-[var(--ink)] transition hover:bg-white"
+                  className="focus-ring inline-flex min-h-11 max-w-[8.5rem] items-center justify-center gap-1.5 rounded-full border border-[var(--line)] bg-white/62 px-3 py-2 text-[0.78rem] font-bold text-[var(--ink)] transition hover:bg-white"
                 >
                   <Download className="size-3.5 shrink-0" />
                   <span className="truncate">{text.download}</span>
@@ -1906,13 +2144,16 @@ function MemoryInbox({
       {deleteTarget ? (
         <div className="fixed inset-0 z-[60] grid place-items-center bg-[rgba(31,23,18,0.38)] px-4 backdrop-blur-sm">
           <motion.div
+            ref={deleteDialogRef}
             initial={{ opacity: 0, y: 10, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             className="w-full max-w-sm rounded-[28px] border border-white/75 bg-[var(--paper-soft)] p-5 shadow-[0_28px_80px_rgba(31,23,18,0.24)]"
             role="dialog"
             aria-modal="true"
+            aria-labelledby="delete-memory-title"
+            tabIndex={-1}
           >
-            <p className="font-display text-fluid-subheading font-semibold text-[var(--ink)]">
+            <p id="delete-memory-title" className="font-display text-fluid-subheading font-semibold text-[var(--ink)]">
               {text.deleteTitle}
             </p>
             <p className="mt-2 text-sm leading-relaxed text-[var(--ink-soft)]">{text.deleteBody}</p>
@@ -1923,6 +2164,7 @@ function MemoryInbox({
             ) : null}
             <div className="mt-5 grid grid-cols-2 gap-3">
               <button
+                ref={deleteCancelRef}
                 type="button"
                 onClick={() => {
                   setDeleteTarget(null);
