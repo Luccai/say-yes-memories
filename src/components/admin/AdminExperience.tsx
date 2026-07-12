@@ -1743,7 +1743,7 @@ function MemoryInbox({
   const reduceMotion = useReducedMotion();
   const layoutTransition = reduceMotion
     ? { duration: 0 }
-    : { duration: 0.28, ease: [0.22, 1, 0.36, 1] as const };
+    : { duration: 0.22, ease: [0.22, 1, 0.36, 1] as const };
   const selectedMediaIndex = selectedMedia
     ? media.findIndex((item) => item.id === selectedMedia.id)
     : -1;
@@ -1898,17 +1898,13 @@ function MemoryInbox({
         ) : (
           <div className="relative">
             <LayoutGroup id="memory-grid-layout">
-              <motion.div
-                layout
-                className={memoryGridClasses[gridLayout]}
-                transition={{ layout: layoutTransition }}
-              >
+              <div className={memoryGridClasses[gridLayout]}>
               {media.map((item, index) => {
                 const thumbnail = galleryThumbnailFor(item);
 
                 return (
                   <motion.button
-                    layout
+                    layout="position"
                     transition={{ layout: layoutTransition }}
                     whileHover={reduceMotion ? undefined : { y: -2 }}
                     whileTap={reduceMotion ? undefined : { scale: 0.985 }}
@@ -1918,9 +1914,7 @@ function MemoryInbox({
                     onClick={() => setSelectedMedia(item)}
                     className={`focus-ring group min-w-0 max-w-full overflow-hidden border border-[var(--line)] bg-white/60 text-left hover:bg-white ${memoryCardClasses[gridLayout]}`}
                   >
-                    <motion.div
-                      layout
-                      transition={{ layout: layoutTransition }}
+                    <div
                       className={`relative w-full min-w-0 max-w-full overflow-hidden bg-[#ede1d3] ${memoryMediaFrameClasses[gridLayout]}`}
                     >
                       {item.kind === "image" || item.kind === "video" ? (
@@ -1973,7 +1967,7 @@ function MemoryInbox({
                           <Mic className={gridLayout === "compact" ? "size-3" : "size-3.5"} />
                         )}
                       </div>
-                    </motion.div>
+                    </div>
                     <AnimatePresence initial={false}>
                       {gridLayout !== "compact" ? (
                       <motion.div
@@ -2007,7 +2001,7 @@ function MemoryInbox({
                   </motion.button>
                 );
               })}
-              </motion.div>
+              </div>
             </LayoutGroup>
             {hasMore ? (
               <div className="mt-5 flex justify-center">
