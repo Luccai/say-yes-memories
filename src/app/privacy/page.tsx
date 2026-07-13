@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ExternalLink, ShieldCheck } from "lucide-react";
+import { buttonStyles } from "@/components/shared/Button";
 import { useCopy } from "@/lib/i18n-client";
 
 export default function PrivacyPage() {
@@ -45,13 +46,22 @@ export default function PrivacyPage() {
             href="https://www.cloudflare.com/en-gb/turnstile-privacy-policy/"
             target="_blank"
             rel="noreferrer"
-            className="focus-ring inline-flex min-h-12 items-center justify-center rounded-full border border-[var(--line)] bg-white/72 px-5 py-3 text-center text-sm font-extrabold transition hover:bg-white"
+            aria-label={privacy.turnstileLink}
+            className={buttonStyles({
+              variant: "paper",
+              size: "compact",
+              className: "w-fit max-w-full justify-self-start text-left",
+            })}
           >
-            {privacy.turnstileLink}
+            <ExternalLink aria-hidden="true" className="size-3.5" />
+            {privacy.turnstileButton}
           </a>
           <Link
             href="/login"
-            className="focus-ring inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[var(--ink)] px-5 py-3 text-sm font-extrabold text-[var(--paper-soft)] transition hover:bg-black motion-safe:active:scale-[0.985]"
+            className={buttonStyles({
+              size: "compact",
+              className: "w-fit justify-self-start",
+            })}
           >
             <ArrowLeft aria-hidden="true" className="size-4" />
             {privacy.back}

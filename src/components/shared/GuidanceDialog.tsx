@@ -1,6 +1,6 @@
 "use client";
 
-import { HelpCircle, X } from "lucide-react";
+import { ExternalLink, HelpCircle, type LucideIcon, X } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -23,15 +23,22 @@ type GuidanceDialogProps = {
   steps: readonly string[];
   cards?: readonly GuidanceCard[];
   footer?: string;
+  action?: {
+    href: string;
+    label: string;
+    ariaLabel?: string;
+  };
 };
 
-export function HelpTriggerButton({
+export function GuidanceTriggerButton({
   label,
   onClick,
+  icon: Icon,
   mobileIconOnly = false,
 }: {
   label: string;
   onClick: () => void;
+  icon: LucideIcon;
   mobileIconOnly?: boolean;
 }) {
   return (
@@ -43,13 +50,17 @@ export function HelpTriggerButton({
       className={`${mobileIconOnly ? "size-12 px-0 sm:h-auto sm:w-auto sm:px-4" : ""} shrink-0`}
     >
       <span className="grid size-7 shrink-0 place-items-center rounded-full border border-[var(--line)] bg-[rgba(255,250,243,0.76)] text-[var(--champagne-deep)]">
-        <HelpCircle className="size-3.5" />
+        <Icon className="size-3.5" />
       </span>
       <span className={mobileIconOnly ? "hidden sm:inline" : undefined}>
         {label}
       </span>
     </Button>
   );
+}
+
+export function HelpTriggerButton(props: Omit<Parameters<typeof GuidanceTriggerButton>[0], "icon">) {
+  return <GuidanceTriggerButton {...props} icon={HelpCircle} />;
 }
 
 export function GuidanceDialog({
@@ -62,6 +73,7 @@ export function GuidanceDialog({
   steps,
   cards,
   footer,
+  action,
 }: GuidanceDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -134,19 +146,21 @@ export function GuidanceDialog({
 
           <p id="help-description" className="mt-5 text-sm leading-7 text-[var(--ink-soft)]">{body}</p>
 
-          <ol className="mt-5 grid gap-3">
-            {steps.map((step, index) => (
-              <li
-                key={step}
-                className="grid grid-cols-[2rem_1fr] gap-3 rounded-2xl border border-[var(--line)] bg-white/54 p-3 text-sm font-semibold"
-              >
-                <span className="grid size-8 place-items-center rounded-full bg-[var(--ink)] text-xs text-[var(--paper-soft)]">
-                  {index + 1}
-                </span>
-                <span className="self-center leading-snug">{step}</span>
-              </li>
-            ))}
-          </ol>
+          {steps.length > 0 ? (
+            <ol className="mt-5 grid gap-3">
+              {steps.map((step, index) => (
+                <li
+                  key={step}
+                  className="grid grid-cols-[2rem_1fr] gap-3 rounded-2xl border border-[var(--line)] bg-white/54 p-3 text-sm font-semibold"
+                >
+                  <span className="grid size-8 place-items-center rounded-full bg-[var(--ink)] text-xs text-[var(--paper-soft)]">
+                    {index + 1}
+                  </span>
+                  <span className="self-center leading-snug">{step}</span>
+                </li>
+              ))}
+            </ol>
+          ) : null}
 
           {cards && cards.length > 0 ? (
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -166,6 +180,19 @@ export function GuidanceDialog({
             <p className="mt-5 rounded-2xl border border-[var(--line)] bg-white/50 px-3 py-2 text-xs font-bold leading-5 text-[var(--ink-soft)]">
               {footer}
             </p>
+          ) : null}
+
+          {action ? (
+            <a
+              href={action.href}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={action.ariaLabel}
+              className="focus-ring mt-5 inline-flex min-h-11 w-fit max-w-full items-center justify-center gap-2 rounded-full border border-[rgba(139,107,63,0.22)] bg-[rgba(255,250,243,0.86)] px-4 py-2.5 text-[0.78rem] font-extrabold tracking-[0.01em] text-[var(--ink)] shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_10px_24px_rgba(58,40,25,0.09)] transition hover:border-[rgba(139,107,63,0.4)] hover:bg-[var(--paper-soft)] motion-safe:hover:-translate-y-0.5 motion-safe:active:scale-[0.975]"
+            >
+              <ExternalLink className="size-3.5 shrink-0" />
+              {action.label}
+            </a>
           ) : null}
         </div>
           </motion.div>

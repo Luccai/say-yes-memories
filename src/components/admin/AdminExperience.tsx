@@ -1338,7 +1338,7 @@ function StorageOverview({
                 target="_blank"
                 rel="noreferrer"
                 data-app-button="ink"
-                className={buttonStyles({ fullWidth: true, className: "mt-5" })}
+                className={buttonStyles({ className: "mt-5 w-fit" })}
               >
                 <ExternalLink className="size-4" />
                 {text.openEtsyListing}
@@ -1407,7 +1407,7 @@ function IdentityCard({
       <div className="grid gap-5 sm:grid-cols-[9rem_1fr]">
         <div className="flex flex-col items-center">
           <MediaOrb media={wedding.profileMedia} label={wedding.coupleName} className="h-44 w-36" />
-          <label className={buttonStyles({ variant: "paper", fullWidth: true, className: "mt-4 cursor-pointer" })}>
+          <label className={buttonStyles({ variant: "paper", className: "mt-4 w-fit cursor-pointer" })}>
             {profileUploading ? <Loader2 className="size-4 animate-spin" /> : <ImagePlus className="size-4" />}
             {text.upload}
             <input
@@ -1455,10 +1455,11 @@ function IdentityCard({
               className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-3 !text-[16px] leading-7 outline-none"
             />
           </label>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="flex flex-wrap gap-3">
             <Button
               onClick={handleSaveIdentity}
               loading={saving}
+              className="w-fit"
             >
               <Check className="size-3.5" />
               {text.saveIdentity}
@@ -1467,6 +1468,7 @@ function IdentityCard({
               onClick={() => onSave({ uploadLocked: !wedding.uploadLocked })}
               variant="paper"
               aria-pressed={wedding.uploadLocked}
+              className="w-fit"
             >
               <span className="inline-flex items-center justify-center gap-2">
                 {wedding.uploadLocked ? <Lock className="size-4" /> : <Unlock className="size-4" />}
@@ -1609,7 +1611,7 @@ function QrStudio({
           <div className="mt-6 rounded-[24px] border border-[rgba(55,38,25,0.12)] bg-[rgba(239,225,207,0.58)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
             <p className="break-all text-sm font-semibold leading-6 text-[var(--ink-soft)]">{eventUrl}</p>
           </div>
-          <Button fullWidth className="mt-4" onClick={copyLink}>
+          <Button className="mt-4 w-fit" onClick={copyLink}>
             {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
             {copied ? text.copied : text.copy}
           </Button>

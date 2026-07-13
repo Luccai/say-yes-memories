@@ -16,10 +16,10 @@ import { BrandMark } from "@/components/shared/BrandMark";
 import { Button } from "@/components/shared/Button";
 import {
   GuidanceDialog,
+  GuidanceTriggerButton,
   HelpTriggerButton,
 } from "@/components/shared/GuidanceDialog";
 import { MediaOrb } from "@/components/shared/MediaOrb";
-import { PrivacyLink } from "@/components/shared/PrivacyLink";
 import {
   forgetRememberedMembership,
   readRememberedMembership,
@@ -100,6 +100,7 @@ export function LoginExperience({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [helpOpen, setHelpOpen] = useState(false);
+  const [privacyOpen, setPrivacyOpen] = useState(false);
 
   useEffect(() => {
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -216,7 +217,19 @@ export function LoginExperience({
           <div className="mx-auto w-full max-w-[34rem]">
             <div className="mb-6 flex items-start justify-between gap-3 sm:mb-8 sm:items-center">
               <BrandMark />
-              <HelpTriggerButton label={text.help} onClick={() => setHelpOpen(true)} />
+              <div className="flex shrink-0 items-center gap-2">
+                <HelpTriggerButton
+                  label={text.help}
+                  onClick={() => setHelpOpen(true)}
+                  mobileIconOnly
+                />
+                <GuidanceTriggerButton
+                  label={text.privacy.link}
+                  onClick={() => setPrivacyOpen(true)}
+                  icon={ShieldCheck}
+                  mobileIconOnly
+                />
+              </div>
             </div>
 
             {activeSession ? (
@@ -505,8 +518,6 @@ export function LoginExperience({
         </section>
       </div>
 
-      <PrivacyLink className="mx-auto mt-6" />
-
       <GuidanceDialog
         open={helpOpen}
         onClose={() => setHelpOpen(false)}
@@ -517,6 +528,22 @@ export function LoginExperience({
         steps={text.login.steps}
         cards={text.login.helpCards}
         footer={text.login.helpFooter}
+      />
+      <GuidanceDialog
+        open={privacyOpen}
+        onClose={() => setPrivacyOpen(false)}
+        closeLabel={text.close}
+        eyebrow={text.privacy.eyebrow}
+        title={text.privacy.title}
+        body={text.privacy.intro}
+        steps={[]}
+        cards={text.privacy.sections}
+        footer={text.privacy.updated}
+        action={{
+          href: "https://www.cloudflare.com/en-gb/turnstile-privacy-policy/",
+          label: text.privacy.turnstileButton,
+          ariaLabel: text.privacy.turnstileLink,
+        }}
       />
     </main>
   );

@@ -158,17 +158,54 @@ test("help dialog traps focus and restores it on close", async ({ page }) => {
   await expect(helpButton).toBeFocused();
 });
 
-test("privacy notice is reachable and mobile-safe", async ({ page }) => {
+test("privacy opens beside login help, stays out of demo, and keeps its controls compact", async ({ page }) => {
   await page.goto("/login");
-  await page.getByRole("link", { name: "Privacy & data" }).click();
-  await expect(page).toHaveURL(/\/privacy$/);
+  const privacyButton = page.getByRole("button", { name: "Privacy & data" });
+  await expect(privacyButton).toBeVisible();
+  await expect(page.getByRole("link", { name: "Privacy & data" })).toHaveCount(0);
+  await privacyButton.click();
+
+  const privacyDialog = page.getByRole("dialog");
+  await expect(privacyDialog).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Your memories stay private." }),
+    privacyDialog.getByRole("heading", { name: "Your memories stay private." }),
   ).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "Cloudflare Turnstile Privacy Addendum" }),
+    privacyDialog.getByRole("link", { name: "Turnstile privacy" }),
   ).toBeVisible();
+  await expect(page).toHaveURL(/\/login$/);
+  await page.keyboard.press("Escape");
+
+  await page.goto("/privacy");
+  const turnstileLink = page.getByRole("link", { name: "Turnstile privacy" });
+  const backLink = page.getByRole("link", { name: "Back" });
+  await expect(turnstileLink).toHaveClass(/w-fit/);
+  await expect(backLink).toHaveClass(/w-fit/);
+  await expect(turnstileLink).toBeVisible();
+  await expect(backLink).toBeVisible();
   await expectNoHorizontalOverflow(page);
+
+  await page.goto("/admin/mary-john");
+  await expect(page.getByRole("button", { name: "Privacy & data" })).toHaveCount(0);
+
+  await page.goto("/mary-john?demo=1");
+  await expect(page.getByRole("link", { name: "Privacy & data" })).toHaveCount(0);
+});
+
+test("studio and guest action buttons fit their content", async ({ page }) => {
+  await page.goto("/admin/mary-john");
+  await page.getByRole("button", { name: "Studio menu" }).click();
+  await page
+    .getByRole("navigation", { name: "Studio menu" })
+    .getByRole("button", { name: "Wedding Page" })
+    .click();
+
+  const uploadToggle = page.getByRole("button", { name: "Guests can upload" });
+  await expect(uploadToggle).toHaveClass(/w-fit/);
+  await expect(page.getByRole("button", { name: "Save the page" })).toHaveClass(/w-fit/);
+
+  await page.goto("/mary-john?demo=1");
+  await expect(page.getByRole("button", { name: "Send memory" })).toHaveClass(/justify-self-start/);
 });
 
 test("flow mode supports touch and keyboard playback controls", async ({ page }) => {

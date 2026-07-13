@@ -36,6 +36,7 @@ export const copy = {
         { title: "Your choices", body: "Guests never see other guests' uploads. For access or deletion requests, contact the couple or Say Yes Digital through the Etsy order conversation." },
       ],
       turnstileLink: "Cloudflare Turnstile Privacy Addendum",
+      turnstileButton: "Turnstile privacy",
     },
     errors: {
       signInFailed: "Could not sign in.",
@@ -302,6 +303,7 @@ export const copy = {
         { title: "Tus opciones", body: "Los invitados nunca ven las cargas de otros invitados. Para solicitar acceso o eliminación, contacta con la pareja o con Say Yes Digital mediante la conversación del pedido de Etsy." },
       ],
       turnstileLink: "Anexo de privacidad de Cloudflare Turnstile",
+      turnstileButton: "Privacidad de Turnstile",
     },
     errors: {
       signInFailed: "No se pudo iniciar sesión.",
@@ -567,6 +569,7 @@ export const copy = {
         { title: "Vos choix", body: "Les invités ne voient jamais les envois des autres. Pour une demande d'accès ou de suppression, contactez le couple ou Say Yes Digital dans la conversation de commande Etsy." },
       ],
       turnstileLink: "Avenant de confidentialité Cloudflare Turnstile",
+      turnstileButton: "Confidentialité Turnstile",
     },
     errors: {
       signInFailed: "Connexion impossible.",
@@ -832,6 +835,7 @@ export const copy = {
         { title: "Eure Rechte", body: "Gäste sehen niemals Uploads anderer Gäste. Für Auskunft oder Löschung kontaktiert das Paar oder Say Yes Digital über die Etsy-Bestellnachricht." },
       ],
       turnstileLink: "Cloudflare Turnstile Datenschutzzusatz",
+      turnstileButton: "Turnstile-Datenschutz",
     },
     errors: {
       signInFailed: "Anmeldung fehlgeschlagen.",
@@ -1097,6 +1101,7 @@ export const copy = {
         { title: "Suas escolhas", body: "Convidados nunca veem envios de outros convidados. Para acesso ou exclusão, fale com o casal ou com a Say Yes Digital pela conversa do pedido na Etsy." },
       ],
       turnstileLink: "Adendo de privacidade do Cloudflare Turnstile",
+      turnstileButton: "Privacidade do Turnstile",
     },
     errors: {
       signInFailed: "Não foi possível entrar.",
@@ -1362,6 +1367,7 @@ export const copy = {
         { title: "你的选择", body: "宾客无法看到其他宾客的上传。如需访问或删除数据，请通过 Etsy 订单对话联系新人或 Say Yes Digital。" },
       ],
       turnstileLink: "Cloudflare Turnstile 隐私附录",
+      turnstileButton: "Turnstile 隐私",
     },
     errors: {
       signInFailed: "无法登录。",

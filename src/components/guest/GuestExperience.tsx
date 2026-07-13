@@ -635,8 +635,8 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
                 <Button
                   onClick={recording ? stopRecording : startRecording}
                   variant="paper"
-                  fullWidth
                   disabled={submitting}
+                  className="justify-self-start"
                 >
                   <span className="inline-flex items-center justify-center gap-2">
                     {recording ? <Pause className="size-4" /> : <Mic className="size-4" />}
@@ -702,8 +702,8 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
                   </div>
                   <Button
                     variant="danger"
-                    fullWidth
                     onClick={cancelUpload}
+                    className="justify-self-start"
                   >
                     <X aria-hidden="true" className="size-4" />
                     {text.guest.cancelUpload}
@@ -712,8 +712,8 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
               ) : (
                 <Button
                   type="submit"
-                  fullWidth
                   disabled={recording}
+                  className="justify-self-start"
                 >
                   {uploadFailed ? (
                     <RotateCcw aria-hidden="true" className="size-4" />
@@ -728,7 +728,7 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
           )}
           </section>
         </div>
-        <PrivacyLink className="mx-auto mt-6" />
+        {!demoMode ? <PrivacyLink className="mx-auto mt-6" /> : null}
       </Shell>
       <GuidanceDialog
         open={helpOpen}
