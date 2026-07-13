@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
+import { mediaCacheIdentity, mediaSourceFingerprint } from "@/lib/media-cache";
 
 type CachedMediaImageProps = {
   src: string;
@@ -20,21 +21,6 @@ const OLD_INSTANT_CACHE_PREFIXES = ["sayyes.media.instant."];
 const INSTANT_CACHE_MAX_BYTES = 650 * 1024;
 const INSTANT_CACHE_MAX_DIMENSION = 760;
 let oldMediaCacheCleanupStarted = false;
-
-function mediaSourceFingerprint(src: string) {
-  if (src.startsWith("data:")) {
-    return src.slice(0, 96);
-  }
-
-  try {
-    const url = new URL(src, window.location.origin);
-    const explicitVersion = url.searchParams.get("v");
-
-    return explicitVersion ? `${url.pathname}?v=${explicitVersion}` : url.pathname;
-  } catch {
-    return src.slice(0, 96);
-  }
-}
 
 function mediaCacheRequest(cacheKey: string, src: string) {
   return new Request(
@@ -194,16 +180,19 @@ export function CachedMediaImage({
   onReady,
 }: CachedMediaImageProps) {
   const [displaySrc, setDisplaySrc] = useState(src);
+  const cacheIdentity = mediaCacheIdentity(cacheKey, src);
+  const getLatestSource = useEffectEvent(() => src);
 
   useEffect(() => {
     let cancelled = false;
     let objectUrl = "";
+    const source = getLatestSource();
 
     cleanupOldMediaCaches();
 
     // Versioned demo WebPs are immutable static assets. Replacing them with a
     // late-created blob URL wastes memory and can move the LCP timestamp.
-    if (src.startsWith("/demo/")) {
+    if (source.startsWith("/demo/")) {
       return () => {
         cancelled = true;
       };
@@ -217,20 +206,20 @@ export function CachedMediaImage({
         return;
       }
 
-      setDisplaySrc(src);
+      setDisplaySrc(source);
 
-      if (!src) {
+      if (!source) {
         return;
       }
 
       if (!cacheKey || typeof window === "undefined" || !("caches" in window)) {
-        setDisplaySrc(src);
+        setDisplaySrc(source);
         return;
       }
 
       try {
         const cache = await caches.open(MEDIA_CACHE_NAME);
-        const request = mediaCacheRequest(cacheKey, src);
+        const request = mediaCacheRequest(cacheKey, source);
         const cached = await cache.match(request);
 
         if (cached) {
@@ -249,7 +238,7 @@ export function CachedMediaImage({
           return;
         }
 
-        const response = await fetch(src, { cache: "force-cache" });
+        const response = await fetch(source, { cache: "force-cache" });
 
         if (!response.ok) {
           throw new Error("Media could not be cached.");
@@ -270,7 +259,7 @@ export function CachedMediaImage({
         }
       } catch {
         if (!cancelled) {
-          setDisplaySrc(src);
+          setDisplaySrc(source);
         }
       }
     }
@@ -284,7 +273,7 @@ export function CachedMediaImage({
         URL.revokeObjectURL(objectUrl);
       }
     };
-  }, [cacheKey, instantCache, src]);
+  }, [cacheIdentity, cacheKey, instantCache]);
 
   if (!displaySrc) {
     return (
