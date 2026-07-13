@@ -11,6 +11,7 @@ const eslintConfig = [
       "node_modules/**",
       ".local-data/**",
       "private/**",
+      ".agents/**",
       "skills/**",
       "next-env.d.ts",
     ],
