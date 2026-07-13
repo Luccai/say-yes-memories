@@ -51,6 +51,8 @@ import type {
 } from "@/lib/types";
 import {
   CachedMediaImage,
+  clearRetainedMediaCache,
+  hasRetainedMediaSource,
   storeInstantMediaCache,
 } from "@/components/shared/CachedMediaImage";
 import { GuidanceDialog, HelpTriggerButton } from "@/components/shared/GuidanceDialog";
@@ -167,23 +169,22 @@ function GalleryThumbnailImage({
   thumbnail,
   alt,
   priority,
-  delayMs,
 }: {
   thumbnail: StoredMediaObject;
   alt: string;
   priority: boolean;
-  delayMs: number;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(priority);
+  const [visible, setVisible] = useState(() =>
+    priority || hasRetainedMediaSource(thumbnail.storagePath ?? thumbnail.id, thumbnail.url),
+  );
 
   useEffect(() => {
     if (visible || !containerRef.current) return;
-    let timer: number | null = null;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) {
-          timer = window.setTimeout(() => setVisible(true), delayMs);
+          setVisible(true);
           observer.disconnect();
         }
       },
@@ -192,9 +193,8 @@ function GalleryThumbnailImage({
     observer.observe(containerRef.current);
     return () => {
       observer.disconnect();
-      if (timer !== null) window.clearTimeout(timer);
     };
-  }, [delayMs, visible]);
+  }, [visible]);
 
   return (
     <div ref={containerRef} className="h-full w-full">
@@ -204,6 +204,9 @@ function GalleryThumbnailImage({
           cacheKey={thumbnail.storagePath ?? thumbnail.id}
           alt={alt}
           className="h-full w-full object-cover"
+          retainInMemory
+          cacheByteSize={thumbnail.byteSize}
+          cacheResponse={thumbnail.byteSize <= 1024 * 1024}
           loading={priority ? "eager" : "lazy"}
           fetchPriority={priority ? "high" : "auto"}
         />
@@ -761,6 +764,7 @@ export function AdminExperience({
 
   async function logout() {
     if (demoMode) {
+      clearRetainedMediaCache();
       window.location.assign("/login");
       return;
     }
@@ -773,6 +777,7 @@ export function AdminExperience({
         code?: string;
       } | null;
       if (response.ok || payload?.code === "LOGOUT_UNAVAILABLE") {
+        clearRetainedMediaCache();
         window.location.assign("/login");
         return;
       }
@@ -976,6 +981,7 @@ export function AdminExperience({
                   <IdentityCard
                     key={`${wedding.brideName}|${wedding.groomName}|${wedding.eventDate ?? ""}|${wedding.welcomeNote}`}
                     wedding={wedding}
+                    demoMode={demoMode}
                     saving={saving}
                     profileUploading={profileUploading}
                     onUploadProfileMedia={uploadProfileMedia}
@@ -1358,6 +1364,7 @@ function StorageOverview({
 
 function IdentityCard({
   wedding,
+  demoMode,
   saving,
   profileUploading,
   onUploadProfileMedia,
@@ -1366,6 +1373,7 @@ function IdentityCard({
   text,
 }: {
   wedding: Wedding;
+  demoMode: boolean;
   saving: boolean;
   profileUploading: boolean;
   onUploadProfileMedia: (event: ChangeEvent<HTMLInputElement>) => void;
@@ -1398,6 +1406,9 @@ function IdentityCard({
           <h2 className="text-tech-heading mt-2 text-balance text-[var(--ink)]">
             {text.identityTitle}
           </h2>
+          <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--ink-soft)]">
+            {text.identityDescription}
+          </p>
         </div>
         {saving ? (
           <Loader2 className="mt-1 size-5 shrink-0 animate-spin text-[var(--champagne-deep)]" />
@@ -1452,29 +1463,66 @@ function IdentityCard({
                 markDirty();
               }}
               rows={4}
-              className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-3 !text-[16px] leading-7 outline-none"
+              disabled={demoMode}
+              className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-3 !text-[16px] leading-7 outline-none disabled:cursor-not-allowed disabled:opacity-65"
             />
-          </label>
-          <div className="flex flex-wrap gap-3">
-            <Button
-              onClick={handleSaveIdentity}
-              loading={saving}
-              className="w-fit"
-            >
-              <Check className="size-3.5" />
-              {text.saveIdentity}
-            </Button>
-            <Button
-              onClick={() => onSave({ uploadLocked: !wedding.uploadLocked })}
-              variant="paper"
-              aria-pressed={wedding.uploadLocked}
-              className="w-fit"
-            >
-              <span className="inline-flex items-center justify-center gap-2">
-                {wedding.uploadLocked ? <Lock className="size-4" /> : <Unlock className="size-4" />}
-                {wedding.uploadLocked ? text.uploadsLocked : text.uploadsOpen}
+            {demoMode ? (
+              <span className="text-xs font-normal leading-5 text-[var(--ink-soft)]">
+                {text.demoWelcomeNoteLocked}
               </span>
-            </Button>
+            ) : null}
+          </label>
+          <div className="grid gap-3">
+            <div
+              role="status"
+              aria-live="polite"
+              data-guest-upload-status={wedding.uploadLocked ? "closed" : "open"}
+              className={`flex items-start gap-3 rounded-[20px] border px-4 py-3 ${
+                wedding.uploadLocked
+                  ? "border-[rgba(140,81,68,0.24)] bg-[rgba(255,245,242,0.74)]"
+                  : "border-[rgba(64,117,87,0.24)] bg-[rgba(244,251,246,0.76)]"
+              }`}
+            >
+              <span
+                aria-hidden="true"
+                className={`mt-1.5 size-2.5 shrink-0 rounded-full ${
+                  wedding.uploadLocked
+                    ? "bg-[#b85e52] shadow-[0_0_0.75rem_rgba(184,94,82,0.6)]"
+                    : "bg-emerald-500 shadow-[0_0_0.75rem_rgba(16,185,129,0.65)] motion-safe:animate-pulse"
+                }`}
+              />
+              <div>
+                <p className="text-sm font-extrabold text-[var(--ink)]">
+                  {wedding.uploadLocked ? text.uploadStatusClosed : text.uploadStatusOpen}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-[var(--ink-soft)]">
+                  {wedding.uploadLocked
+                    ? text.uploadStatusClosedBody
+                    : text.uploadStatusOpenBody}
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                onClick={handleSaveIdentity}
+                loading={saving}
+                className="w-fit"
+              >
+                <Check className="size-3.5" />
+                {text.saveIdentity}
+              </Button>
+              <Button
+                onClick={() => onSave({ uploadLocked: !wedding.uploadLocked })}
+                variant="paper"
+                aria-pressed={!wedding.uploadLocked}
+                className="w-fit"
+              >
+                <span className="inline-flex items-center justify-center gap-2">
+                  {wedding.uploadLocked ? <Lock className="size-4" /> : <Unlock className="size-4" />}
+                  {wedding.uploadLocked ? text.openUploads : text.closeUploads}
+                </span>
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -1572,13 +1620,13 @@ function QrStudio({
           <QrCode className="size-4" />
           {text.qrStudio}
         </p>
-        <h2 className="text-tech-heading mt-2 text-balance text-[var(--ink)]">
-          {text.qrTitle}
-        </h2>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(19rem,0.92fr)_minmax(18rem,1.08fr)] lg:items-stretch">
-        <div className="paper-grain relative isolate overflow-hidden rounded-[34px] border border-[rgba(139,107,63,0.24)] bg-[#efe1cf] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_20px_50px_rgba(58,40,25,0.12)] sm:p-4">
+        <div
+          data-qr-card="true"
+          className="paper-grain relative isolate overflow-hidden rounded-[34px] border border-[rgba(139,107,63,0.24)] bg-[#efe1cf] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_20px_50px_rgba(58,40,25,0.12)] sm:p-4"
+        >
           <div className="relative z-10 flex min-h-[34rem] flex-col items-center rounded-[27px] border border-[rgba(139,107,63,0.24)] bg-[rgba(255,250,243,0.9)] px-5 py-7 text-center">
             <MediaOrb media={wedding.profileMedia} label={wedding.coupleName} className="h-20 w-16" />
             <p className="mt-5 font-display text-3xl font-semibold leading-none text-[var(--ink)]">
@@ -1597,32 +1645,34 @@ function QrStudio({
             <div className="grid size-64 place-items-center rounded-[28px] border border-[rgba(139,107,63,0.2)] bg-[var(--paper-soft)] p-3 shadow-[0_16px_34px_rgba(58,40,25,0.12)]">
               <canvas ref={canvasRef} className="size-[14.5rem]" aria-label={text.qrCode} />
             </div>
-            <p className="mt-5 text-[0.68rem] font-extrabold uppercase tracking-[0.22em] text-[var(--ink-soft)]">
-              {text.scan}
+            <div className="mt-5 flex flex-wrap justify-center gap-2">
+              <Button variant="paper" size="compact" onClick={downloadPng}>
+                <Download className="size-3.5" />
+                PNG
+              </Button>
+              <Button variant="paper" size="compact" onClick={downloadSvg}>
+                <Download className="size-3.5" />
+                SVG
+              </Button>
+            </div>
+            <p className="mt-4 max-w-sm text-sm leading-6 text-[var(--ink-soft)]">
+              {text.qrPrintGuide}
             </p>
           </div>
         </div>
 
-        <div className="flex flex-col justify-center rounded-[32px] border border-[rgba(139,107,63,0.16)] bg-white/48 p-4 sm:p-6">
+        <div
+          data-guest-link-card="true"
+          className="flex flex-col justify-center rounded-[32px] border border-[rgba(139,107,63,0.16)] bg-white/48 p-4 sm:p-6"
+        >
           <p className="eyebrow text-[var(--champagne-deep)]">{text.guestLink}</p>
-          <p className="mt-3 font-display text-2xl font-semibold leading-tight text-[var(--ink)]">
-            {text.qrTitle}
-          </p>
-          <div className="mt-6 rounded-[24px] border border-[rgba(55,38,25,0.12)] bg-[rgba(239,225,207,0.58)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
+          <div className="mt-4 rounded-[24px] border border-[rgba(55,38,25,0.12)] bg-[rgba(239,225,207,0.58)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
             <p className="break-all text-sm font-semibold leading-6 text-[var(--ink-soft)]">{eventUrl}</p>
           </div>
           <Button className="mt-4 w-fit" onClick={copyLink}>
             {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
             {copied ? text.copied : text.copy}
           </Button>
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            <Button variant="paper" onClick={downloadPng}>
-              <Download className="size-4" />PNG
-            </Button>
-            <Button variant="paper" onClick={downloadSvg}>
-              <Download className="size-4" />SVG
-            </Button>
-          </div>
         </div>
       </div>
     </motion.article>
@@ -1918,7 +1968,6 @@ function MemoryInbox({
                             thumbnail={thumbnail}
                             alt={item.note ?? item.fileName}
                             priority={index === 0}
-                            delayMs={450 + index * 90}
                           />
                         ) : item.kind === "video" ? (
                           <video
@@ -2065,6 +2114,7 @@ function MemoryInbox({
             <div className="relative grid min-h-[18rem] w-full min-w-0 max-w-full place-items-center overflow-hidden rounded-[26px] bg-[#eadcca]">
               {selectedMedia.kind === "image" ? (
                 <CachedMediaImage
+                  key={selectedMedia.id}
                   src={selectedMedia.url}
                   cacheKey={selectedMedia.storagePath ?? selectedMedia.id}
                   alt={selectedMedia.note ?? selectedMedia.fileName}
@@ -2129,10 +2179,10 @@ function MemoryInbox({
                   }}
                   variant="danger"
                   size="compact"
-                  className="max-w-[8rem] gap-1.5 px-3"
+                  className="max-w-[8rem] gap-1.5 px-3 !border-[var(--rosewood)] !bg-[var(--rosewood)] !font-extrabold !text-white hover:!bg-[#6f332b]"
                 >
                   <Trash2 className="size-3.5 shrink-0" />
-                  <span className="truncate">{text.deleteMemory}</span>
+                  <span className="truncate font-extrabold">{text.deleteMemory}</span>
                 </Button>
               </div>
             </div>

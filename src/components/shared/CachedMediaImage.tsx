@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useEffectEvent, useState } from "react";
+import { useEffect, useEffectEvent, useLayoutEffect, useState } from "react";
 import { mediaCacheIdentity, mediaSourceFingerprint } from "@/lib/media-cache";
 
 type CachedMediaImageProps = {
@@ -9,6 +9,9 @@ type CachedMediaImageProps = {
   alt: string;
   className?: string;
   instantCache?: boolean;
+  retainInMemory?: boolean;
+  cacheByteSize?: number;
+  cacheResponse?: boolean;
   loading?: "eager" | "lazy";
   fetchPriority?: "high" | "low" | "auto";
   onReady?: () => void;
@@ -20,7 +23,71 @@ const INSTANT_CACHE_PREFIX = "sayyes.media.instant.v2.";
 const OLD_INSTANT_CACHE_PREFIXES = ["sayyes.media.instant."];
 const INSTANT_CACHE_MAX_BYTES = 650 * 1024;
 const INSTANT_CACHE_MAX_DIMENSION = 760;
+const RETAINED_MEDIA_MAX_ENTRIES = 48;
+const RETAINED_MEDIA_MAX_BYTES = 16 * 1024 * 1024;
+const RETAINED_MEDIA_MAX_ITEM_BYTES = 1024 * 1024;
+const retainedMediaBlobs = new Map<string, Blob>();
+let retainedMediaBytes = 0;
 let oldMediaCacheCleanupStarted = false;
+
+const useSafeLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+
+function removeRetainedMediaBlob(cacheIdentity: string) {
+  const blob = retainedMediaBlobs.get(cacheIdentity);
+
+  if (!blob) {
+    return;
+  }
+
+  retainedMediaBlobs.delete(cacheIdentity);
+  retainedMediaBytes -= blob.size;
+}
+
+function getRetainedMediaBlob(cacheIdentity: string, touch = false) {
+  const blob = retainedMediaBlobs.get(cacheIdentity);
+
+  if (!blob || !touch) {
+    return blob;
+  }
+
+  retainedMediaBlobs.delete(cacheIdentity);
+  retainedMediaBlobs.set(cacheIdentity, blob);
+  return blob;
+}
+
+function retainMediaBlob(cacheIdentity: string, blob: Blob) {
+  if (blob.size > RETAINED_MEDIA_MAX_ITEM_BYTES) {
+    return false;
+  }
+
+  removeRetainedMediaBlob(cacheIdentity);
+  retainedMediaBlobs.set(cacheIdentity, blob);
+  retainedMediaBytes += blob.size;
+
+  while (
+    retainedMediaBlobs.size > RETAINED_MEDIA_MAX_ENTRIES ||
+    retainedMediaBytes > RETAINED_MEDIA_MAX_BYTES
+  ) {
+    const oldest = retainedMediaBlobs.keys().next().value;
+
+    if (!oldest) {
+      break;
+    }
+
+    removeRetainedMediaBlob(oldest);
+  }
+
+  return retainedMediaBlobs.has(cacheIdentity);
+}
+
+export function hasRetainedMediaSource(cacheKey: string | undefined, src: string) {
+  return retainedMediaBlobs.has(mediaCacheIdentity(cacheKey, src));
+}
+
+export function clearRetainedMediaCache() {
+  retainedMediaBlobs.clear();
+  retainedMediaBytes = 0;
+}
 
 function mediaCacheRequest(cacheKey: string, src: string) {
   return new Request(
@@ -175,26 +242,65 @@ export function CachedMediaImage({
   alt,
   className = "",
   instantCache = false,
+  retainInMemory = false,
+  cacheByteSize,
+  cacheResponse = true,
   loading = "lazy",
   fetchPriority = "auto",
   onReady,
 }: CachedMediaImageProps) {
-  const [displaySrc, setDisplaySrc] = useState(src);
   const cacheIdentity = mediaCacheIdentity(cacheKey, src);
+  const canRetainInMemory =
+    retainInMemory &&
+    typeof cacheByteSize === "number" &&
+    cacheByteSize > 0 &&
+    cacheByteSize <= RETAINED_MEDIA_MAX_ITEM_BYTES;
+  const [displaySrc, setDisplaySrc] = useState(() =>
+    canRetainInMemory ? "" : src,
+  );
   const getLatestSource = useEffectEvent(() => src);
+
+  useSafeLayoutEffect(() => {
+    if (!canRetainInMemory) {
+      return;
+    }
+
+    setDisplaySrc("");
+    const blob = getRetainedMediaBlob(cacheIdentity, true);
+
+    if (!blob) {
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(blob);
+    setDisplaySrc(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [cacheIdentity, canRetainInMemory]);
 
   useEffect(() => {
     let cancelled = false;
-    let objectUrl = "";
+    let objectUrlToRevoke = "";
+    const controller = new AbortController();
     const source = getLatestSource();
+    const retainedBlob = canRetainInMemory
+      ? getRetainedMediaBlob(cacheIdentity, true)
+      : undefined;
 
     cleanupOldMediaCaches();
 
-    // Versioned demo WebPs are immutable static assets. Replacing them with a
-    // late-created blob URL wastes memory and can move the LCP timestamp.
-    if (source.startsWith("/demo/")) {
+    if (retainedBlob) {
       return () => {
         cancelled = true;
+        controller.abort();
+      };
+    }
+
+    // Versioned demo WebPs outside the gallery can keep using the browser's
+    // native cache. Gallery thumbs opt into the shared cache for route returns.
+    if (source.startsWith("/demo/") && !canRetainInMemory) {
+      return () => {
+        cancelled = true;
+        controller.abort();
       };
     }
 
@@ -206,9 +312,11 @@ export function CachedMediaImage({
         return;
       }
 
-      setDisplaySrc(source);
+      if (!canRetainInMemory) {
+        setDisplaySrc(source);
+      }
 
-      if (!source) {
+      if (!source || !cacheResponse) {
         return;
       }
 
@@ -225,11 +333,21 @@ export function CachedMediaImage({
         if (cached) {
           const blob = await cached.blob();
 
+          if (cancelled) {
+            return;
+          }
+
           if (instantCache) {
             void storeInstantMediaCache(cacheKey, blob);
           }
 
-          objectUrl = URL.createObjectURL(blob);
+          const objectUrl = URL.createObjectURL(blob);
+
+          objectUrlToRevoke = objectUrl;
+
+          if (canRetainInMemory) {
+            retainMediaBlob(cacheIdentity, blob);
+          }
 
           if (!cancelled) {
             setDisplaySrc(objectUrl);
@@ -238,7 +356,10 @@ export function CachedMediaImage({
           return;
         }
 
-        const response = await fetch(source, { cache: "force-cache" });
+        const response = await fetch(source, {
+          cache: "force-cache",
+          signal: controller.signal,
+        });
 
         if (!response.ok) {
           throw new Error("Media could not be cached.");
@@ -248,11 +369,21 @@ export function CachedMediaImage({
 
         const blob = await response.blob();
 
+        if (cancelled) {
+          return;
+        }
+
         if (instantCache) {
           void storeInstantMediaCache(cacheKey, blob);
         }
 
-        objectUrl = URL.createObjectURL(blob);
+        const objectUrl = URL.createObjectURL(blob);
+
+        objectUrlToRevoke = objectUrl;
+
+        if (canRetainInMemory) {
+          retainMediaBlob(cacheIdentity, blob);
+        }
 
         if (!cancelled) {
           setDisplaySrc(objectUrl);
@@ -268,12 +399,13 @@ export function CachedMediaImage({
 
     return () => {
       cancelled = true;
+      controller.abort();
 
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
+      if (objectUrlToRevoke) {
+        URL.revokeObjectURL(objectUrlToRevoke);
       }
     };
-  }, [cacheIdentity, cacheKey, instantCache]);
+  }, [cacheIdentity, cacheKey, cacheResponse, canRetainInMemory, instantCache]);
 
   if (!displaySrc) {
     return (

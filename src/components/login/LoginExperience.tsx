@@ -5,11 +5,11 @@ import Link from "next/link";
 import {
   ArrowLeft,
   ArrowRight,
+  Camera,
   CalendarDays,
   KeyRound,
   LockKeyhole,
   ShieldCheck,
-  Sparkles,
 } from "lucide-react";
 import type { PublicWedding } from "@/lib/types";
 import { BrandMark } from "@/components/shared/BrandMark";
@@ -294,7 +294,11 @@ export function LoginExperience({
                         autoFocus
                       />
                     </label>
-                    <Button type="submit" fullWidth loading={submitting} className="mt-5">
+                    <Button
+                      type="submit"
+                      loading={submitting}
+                      className="mt-5 min-w-[12.5rem] max-w-full"
+                    >
                       {authText.signIn}
                       <ArrowRight className="size-4" />
                     </Button>
@@ -414,10 +418,10 @@ export function LoginExperience({
                       {mode === "activate" ? (
                         <label className="grid gap-2 text-sm font-semibold">
                           {authText.eventDate}
-                          <span className="relative">
+                          <span className="relative block min-w-0 w-full">
                             <CalendarDays className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-[var(--champagne-deep)]" />
                             <input
-                              className={`${inputClass} w-full pl-11`}
+                              className={`${inputClass} block min-w-0 w-full max-w-full pl-11`}
                               type="date"
                               min={localToday()}
                               value={form.eventDate}
@@ -473,7 +477,11 @@ export function LoginExperience({
                       ) : null}
                     </div>
 
-                    <Button type="submit" fullWidth loading={submitting} className="mt-6">
+                    <Button
+                      type="submit"
+                      loading={submitting}
+                      className="mt-6 min-w-[12.5rem] max-w-full"
+                    >
                       {mode === "activate"
                         ? authText.activate
                         : mode === "recover"
@@ -485,7 +493,6 @@ export function LoginExperience({
                     {mode === "token" ? (
                       <Button
                         variant="quiet"
-                        fullWidth
                         className="mt-2"
                         onClick={() => chooseMode("recover")}
                       >
@@ -507,9 +514,11 @@ export function LoginExperience({
 
                 <Link
                   href="/admin/mary-john"
-                  className="focus-ring mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white/62 px-5 py-3 text-sm font-extrabold transition hover:bg-white motion-safe:active:scale-[0.985]"
+                  data-login-demo-action="true"
+                  data-demo-icon="camera"
+                  className="focus-ring mt-4 inline-flex min-h-12 w-fit max-w-full items-center justify-center gap-2 self-start rounded-full border border-[var(--line)] bg-white/62 px-5 py-3 text-sm font-extrabold transition hover:bg-white motion-safe:active:scale-[0.985]"
                 >
-                  <Sparkles className="size-4 text-[var(--champagne-deep)]" />
+                  <Camera aria-hidden="true" className="size-4 text-[var(--champagne-deep)]" />
                   {text.login.demo}
                 </Link>
               </form>

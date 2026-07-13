@@ -4,7 +4,7 @@ import type {
   PresentationWedding,
 } from "@/lib/presentation/types";
 
-export const PHOTO_DURATION_MS = 8_000;
+export const PHOTO_DURATION_MS = 3_000;
 export const PRESENTATION_PAGE_SIZE = 12;
 export const PRESENTATION_PREFETCH_AHEAD = 3;
 

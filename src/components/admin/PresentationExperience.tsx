@@ -61,6 +61,7 @@ type PageLoadResult = {
 
 const DEMO_MEDIA_STORAGE_KEY = "sayyes.demo.media";
 const DEMO_SESSION_MEDIA_PREFIX = "demo-session-";
+const PRESENTATION_TRANSITION_SECONDS = 0.32;
 
 function fillTemplate(template: string, values: Record<string, string | number>) {
   return Object.entries(values).reduce(
@@ -303,7 +304,9 @@ export function PresentationExperience({
 
     return () => {
       window.clearTimeout(timer);
-      photoClockRef.current = pausePhotoClock(runningClock, performance.now());
+      if (photoClockRef.current === runningClock) {
+        photoClockRef.current = pausePhotoClock(runningClock, performance.now());
+      }
     };
   }, [currentId, currentKind, paused, playbackRevision, showNext, started]);
 
@@ -601,8 +604,12 @@ export function PresentationExperience({
           initial={reduceMotion ? false : { opacity: 0, scale: 1.01 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={reduceMotion ? undefined : { opacity: 0, scale: 0.995 }}
-          transition={{ duration: reduceMotion ? 0 : 0.32, ease: "easeOut" }}
-          className="absolute inset-0 grid place-items-center"
+          transition={{
+            duration: reduceMotion ? 0 : PRESENTATION_TRANSITION_SECONDS,
+            ease: "easeOut",
+          }}
+          className="absolute inset-0 m-auto grid size-[min(100vw,100dvh)] place-items-center overflow-hidden bg-black"
+          data-presentation-media-id={current.id}
         >
           {current.kind === "image" ? (
             // Full-size memories deliberately bypass Cache API/blob buffering.
@@ -669,15 +676,22 @@ export function PresentationExperience({
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 via-black/20 to-transparent px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-28 sm:px-6">
         <div className="mx-auto flex min-h-16 max-w-6xl items-end justify-between gap-4">
-          <div data-presentation-caption="stable" className="relative h-16 min-w-0 flex-1 overflow-hidden">
+          <div
+            data-presentation-caption="stable"
+            className="relative h-16 min-w-0 flex-1 overflow-hidden"
+          >
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
                 key={`caption-${current.id}`}
+                data-presentation-caption-media-id={current.id}
                 className="absolute inset-0 grid grid-rows-[1.25rem_2.5rem] content-end"
                 initial={reduceMotion ? false : { opacity: 0, y: 7 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={reduceMotion ? undefined : { opacity: 0, y: -5 }}
-                transition={{ duration: reduceMotion ? 0 : 0.2, ease: [0.22, 1, 0.36, 1] }}
+                transition={{
+                  duration: reduceMotion ? 0 : PRESENTATION_TRANSITION_SECONDS,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
               >
                 <p className="truncate text-sm font-extrabold">{current.guestName}</p>
                 <p className="line-clamp-2 h-10 max-w-xl text-xs leading-5 text-white/65">
@@ -769,7 +783,7 @@ export function PresentationExperience({
         </Button>
         <Button
           variant="quiet"
-          className="!min-h-11 !size-11 !p-0 !text-white"
+          className="!hidden !min-h-11 !size-11 !p-0 !text-white md:!inline-flex"
           onClick={() => void toggleFullscreen()}
           aria-label={
             fullscreen

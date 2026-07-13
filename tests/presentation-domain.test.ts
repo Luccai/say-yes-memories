@@ -43,11 +43,11 @@ describe("presentation domain", () => {
     expect(media.map(({ id }) => id)).toEqual(["asset_c", "asset_b", "asset_a"]);
   });
 
-  test("preserves the remaining part of the eight-second photo window", () => {
-    expect(PHOTO_DURATION_MS).toBe(8_000);
+  test("preserves the remaining part of the three-second photo window", () => {
+    expect(PHOTO_DURATION_MS).toBe(3_000);
     const running = createPhotoClock(1_000, PHOTO_DURATION_MS);
-    expect(pausePhotoClock(running, 4_250)).toEqual({
-      remainingMs: 4_750,
+    expect(pausePhotoClock(running, 2_250)).toEqual({
+      remainingMs: 1_750,
       deadlineMs: null,
     });
   });

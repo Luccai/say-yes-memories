@@ -17,7 +17,6 @@ Generated raw tokens are written under `private/` and must never be committed.
 ## Routes
 
 - `/login` - couple token activation and returning-device entry
-- `/privacy` - localized customer privacy and data notice, including the Cloudflare Turnstile addendum
 - `/admin` - private couple studio
 - `/admin/mary-john` - local/demo admin studio
 - `/admin/presentation` - authenticated full-screen Flow Mode
@@ -68,7 +67,7 @@ so an accidental retry cannot add the package twice.
 - A completed staging object is promoted to a unique final object. Reusing an
   old signed staging URL cannot overwrite completed media.
 - Cloudflare Turnstile is verified by the server before quota is reserved.
-- Invisible Turnstile use is disclosed from login and guest screens through the six-language `/privacy` notice.
+- Invisible Turnstile use is disclosed in the six-language Privacy & data modal on login.
 - Profile and thumbnail files do not consume the couple quota; they are tracked
   separately as system storage.
 

@@ -7,7 +7,6 @@ import type { MediaKind, PublicWedding } from "@/lib/types";
 import { Button } from "@/components/shared/Button";
 import { GuidanceDialog, HelpTriggerButton } from "@/components/shared/GuidanceDialog";
 import { MediaOrb } from "@/components/shared/MediaOrb";
-import { PrivacyLink } from "@/components/shared/PrivacyLink";
 import {
   TurnstileGate,
   type TurnstileGateHandle,
@@ -587,7 +586,10 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
               </label>
 
               <div className="grid gap-3">
-                <label className="focus-ring grid cursor-pointer place-items-center rounded-[26px] border border-dashed border-[var(--line)] bg-white/58 p-5 text-center transition hover:bg-white">
+                <label
+                  data-guest-upload-choice="file"
+                  className="focus-ring grid min-h-[8.5rem] cursor-pointer place-items-center rounded-[26px] border border-dashed border-[var(--line)] bg-white/58 p-5 text-center transition hover:bg-white"
+                >
                   <UploadCloud className="mb-2 size-7 text-[var(--champagne-deep)]" />
                   <span className="text-sm font-bold">
                     {file ? file.name : text.guest.choose}
@@ -633,14 +635,20 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
                 ) : null}
 
                 <Button
+                  type="button"
                   onClick={recording ? stopRecording : startRecording}
                   variant="paper"
                   disabled={submitting}
-                  className="justify-self-start"
+                  aria-pressed={recording}
+                  data-guest-upload-choice="voice"
+                  className="grid min-h-[8.5rem] w-full place-items-center rounded-[26px] border-dashed bg-white/58 p-5 text-center hover:bg-white"
                 >
-                  <span className="inline-flex items-center justify-center gap-2">
-                    {recording ? <Pause className="size-4" /> : <Mic className="size-4" />}
+                  {recording ? <Pause aria-hidden="true" className="size-7 text-[var(--champagne-deep)]" /> : <Mic aria-hidden="true" className="size-7 text-[var(--champagne-deep)]" />}
+                  <span className="mt-2 text-sm font-bold">
                     {recording ? text.guest.stop : text.guest.record}
+                  </span>
+                  <span className="mt-1 text-xs font-normal text-[var(--ink-soft)]">
+                    {text.guest.private}
                   </span>
                 </Button>
 
@@ -713,7 +721,7 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
                 <Button
                   type="submit"
                   disabled={recording}
-                  className="justify-self-start"
+                  className="justify-self-start min-h-14 px-6 !font-extrabold uppercase !tracking-[0.08em]"
                 >
                   {uploadFailed ? (
                     <RotateCcw aria-hidden="true" className="size-4" />
@@ -728,7 +736,6 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
           )}
           </section>
         </div>
-        {!demoMode ? <PrivacyLink className="mx-auto mt-6" /> : null}
       </Shell>
       <GuidanceDialog
         open={helpOpen}
