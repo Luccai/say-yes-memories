@@ -98,11 +98,10 @@ function applyBodyScrollLock() {
 
   document.body.style.overflow = "hidden";
   document.body.style.overscrollBehavior = "none";
-  document.body.style.position = "fixed";
-  document.body.style.top = `-${activeLock.scrollY}px`;
-  document.body.style.left = "0";
-  document.body.style.right = "0";
-  document.body.style.width = "100%";
+
+  // Keep the document at its real scroll offset. Restoring a fixed body makes
+  // mobile browsers briefly paint the page from the top before scrolling back.
+  // The wheel and touch guards below still keep the background from moving.
 
   if (scrollbarWidth > 0) {
     document.body.style.paddingRight = `${scrollbarWidth}px`;
@@ -120,8 +119,6 @@ function restoreBodyScrollLock() {
     return;
   }
 
-  const { scrollY } = activeLock;
-
   document.removeEventListener("wheel", preventBackgroundWheel);
   document.removeEventListener("touchstart", recordTouchStart);
   document.removeEventListener("touchmove", preventBackgroundTouchMove);
@@ -134,7 +131,6 @@ function restoreBodyScrollLock() {
   document.body.style.right = activeLock.bodyRight;
   document.body.style.width = activeLock.bodyWidth;
   activeLock = null;
-  window.scrollTo(0, scrollY);
 }
 
 export function useBodyScrollLock(locked: boolean) {

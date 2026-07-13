@@ -1,7 +1,15 @@
-const THUMBNAIL_SIZE = 512;
-const THUMBNAIL_MAX_BYTES = 760 * 1024;
-const THUMBNAIL_START_QUALITY = 0.82;
-const THUMBNAIL_MIN_QUALITY = 0.48;
+export const thumbnailOutputPolicy = {
+  size: 1024,
+  maxBytes: 1024 * 1024,
+  startQuality: 0.9,
+  minQuality: 0.72,
+} as const;
+
+const THUMBNAIL_SIZE = thumbnailOutputPolicy.size;
+const THUMBNAIL_MAX_BYTES = thumbnailOutputPolicy.maxBytes;
+const THUMBNAIL_START_QUALITY = thumbnailOutputPolicy.startQuality;
+const THUMBNAIL_MIN_QUALITY = thumbnailOutputPolicy.minQuality;
+const THUMBNAIL_QUALITY_STEP = 0.08;
 
 function canvasToBlob(canvas: HTMLCanvasElement, quality: number) {
   return new Promise<Blob>((resolve, reject) => {
@@ -67,11 +75,11 @@ function drawCover(
 }
 
 async function fileFromCanvas(canvas: HTMLCanvasElement, fileName: string) {
-  let quality = THUMBNAIL_START_QUALITY;
+  let quality: number = THUMBNAIL_START_QUALITY;
   let blob = await canvasToBlob(canvas, quality);
 
   while (blob.size > THUMBNAIL_MAX_BYTES && quality > THUMBNAIL_MIN_QUALITY) {
-    quality -= 0.08;
+    quality = Math.max(THUMBNAIL_MIN_QUALITY, quality - THUMBNAIL_QUALITY_STEP);
     blob = await canvasToBlob(canvas, quality);
   }
 

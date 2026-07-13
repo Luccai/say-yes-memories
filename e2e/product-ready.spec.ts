@@ -81,6 +81,52 @@ test("guest-memory thumbnails stay mounted while navigating between studio panel
   await expect(firstThumbnail).toHaveAttribute("data-cache-probe", "preserved");
 });
 
+test("mobile lightbox keeps the gallery at the selected memory", async ({ page }) => {
+  if ((page.viewportSize()?.width ?? 1024) > 480) {
+    test.skip();
+  }
+
+  await page.goto("/admin/mary-john");
+  const inbox = page.locator('[data-memory-inbox="true"]');
+  await inbox.evaluate((element) => {
+    const spacer = document.createElement("div");
+    spacer.style.height = "36rem";
+    element.before(spacer);
+  });
+  await page.evaluate(() => window.scrollTo(0, 480));
+
+  const memory = inbox.getByRole("button").last();
+  await memory.scrollIntoViewIfNeeded();
+  const selectedPosition = await page.evaluate(() => window.scrollY);
+  expect(selectedPosition).toBeGreaterThan(0);
+
+  await memory.click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThanOrEqual(selectedPosition - 1);
+
+  await dialog.getByRole("button", { name: "Close" }).click();
+  await expect(dialog).toBeHidden();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThanOrEqual(selectedPosition - 1);
+});
+
+test("story gallery keeps the layout switcher width steady and uses the high-quality demo image", async ({ page }) => {
+  await page.goto("/admin/mary-john");
+  const layoutButton = page.getByRole("button", { name: /^Grid layout:/ });
+  const widthBefore = (await layoutButton.boundingBox())?.width;
+
+  await layoutButton.click();
+  await expect(layoutButton).toHaveAccessibleName("Grid layout: Story");
+  const widthAfter = (await layoutButton.boundingBox())?.width;
+  expect(widthBefore).toBeDefined();
+  expect(widthAfter).toBeDefined();
+  expect(Math.abs((widthBefore ?? 0) - (widthAfter ?? 0))).toBeLessThanOrEqual(1);
+  await expect(page.locator('[data-memory-inbox="true"] img').first()).toHaveAttribute(
+    "src",
+    /demo-couple-1\.webp(?:\?.*)?$/,
+  );
+});
+
 test("demo guest can send a private photo", async ({ page }) => {
   await page.goto("/mary-john?demo=1");
   await expect(page.getByRole("heading", { name: "Mary & John" })).toBeVisible();

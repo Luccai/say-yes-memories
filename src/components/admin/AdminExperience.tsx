@@ -1627,8 +1627,10 @@ function QrStudio({
   );
 }
 
-function galleryThumbnailFor(item: WeddingMedia) {
-  if (item.thumbnail) {
+const STORY_ORIGINAL_IMAGE_MAX_BYTES = 12 * 1024 * 1024;
+
+function galleryThumbnailFor(item: WeddingMedia, useOriginalImage = false) {
+  if (item.thumbnail && !(useOriginalImage && item.kind === "image")) {
     return item.thumbnail;
   }
 
@@ -1846,7 +1848,7 @@ function MemoryInbox({
               onClick={onGridLayoutChange}
               variant="paper"
               size="compact"
-              className="max-w-[8.5rem] shrink-0 px-3"
+              className="w-36 shrink-0 px-3"
               aria-label={`${text.gridLayout}: ${currentGridLayoutLabel}`}
               title={`${text.gridLayout}: ${currentGridLayoutLabel}`}
             >
@@ -1887,7 +1889,11 @@ function MemoryInbox({
             <LayoutGroup id="memory-grid-layout">
               <div className={memoryGridClasses[gridLayout]}>
               {media.map((item, index) => {
-                const thumbnail = galleryThumbnailFor(item);
+                const useOriginalImage =
+                  item.kind === "image" &&
+                  ((demoMode && item.url.startsWith("/demo/")) ||
+                    (gridLayout === "story" && item.byteSize <= STORY_ORIGINAL_IMAGE_MAX_BYTES));
+                const thumbnail = galleryThumbnailFor(item, useOriginalImage);
 
                 return (
                   <motion.button
