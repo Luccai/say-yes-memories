@@ -106,7 +106,7 @@ test("help dialog traps focus and restores it on close", async ({ page }) => {
   await helpButton.click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.keyboard.press("Tab");
-  await expect(page.getByRole("dialog")).toContainText("Set up your studio");
+  await expect(page.getByRole("dialog")).toContainText("Let’s make this space yours");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toBeHidden();
   await expect(helpButton).toBeFocused();
