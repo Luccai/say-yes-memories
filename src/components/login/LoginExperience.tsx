@@ -416,9 +416,9 @@ export function LoginExperience({
                       </label>
 
                       {mode === "activate" ? (
-                        <label className="grid gap-2 text-sm font-semibold">
+                        <label className="grid min-w-0 gap-2 text-sm font-semibold">
                           {authText.eventDate}
-                          <span className="relative block min-w-0 w-full">
+                          <span className="relative block min-w-0 max-w-full">
                             <CalendarDays className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-[var(--champagne-deep)]" />
                             <input
                               className={`${inputClass} block min-w-0 w-full max-w-full pl-11`}
@@ -480,7 +480,9 @@ export function LoginExperience({
                     <Button
                       type="submit"
                       loading={submitting}
-                      className="mt-6 min-w-[12.5rem] max-w-full"
+                      className={`mt-6 ${
+                        mode === "activate" ? "mx-auto !flex w-full max-w-[22rem]" : "min-w-[12.5rem] max-w-full"
+                      }`}
                     >
                       {mode === "activate"
                         ? authText.activate
@@ -492,8 +494,9 @@ export function LoginExperience({
 
                     {mode === "token" ? (
                       <Button
-                        variant="quiet"
-                        className="mt-2"
+                        variant="paper"
+                        size="compact"
+                        className="mt-3 w-fit"
                         onClick={() => chooseMode("recover")}
                       >
                         {authText.forgot}
@@ -512,15 +515,17 @@ export function LoginExperience({
                   </p>
                 ) : null}
 
-                <Link
-                  href="/admin/mary-john"
-                  data-login-demo-action="true"
-                  data-demo-icon="camera"
-                  className="focus-ring mt-4 inline-flex min-h-12 w-fit max-w-full items-center justify-center gap-2 self-start rounded-full border border-[var(--line)] bg-white/62 px-5 py-3 text-sm font-extrabold transition hover:bg-white motion-safe:active:scale-[0.985]"
-                >
-                  <Camera aria-hidden="true" className="size-4 text-[var(--champagne-deep)]" />
-                  {text.login.demo}
-                </Link>
+                {mode === "activate" ? (
+                  <Link
+                    href="/admin/mary-john"
+                    data-login-demo-action="true"
+                    data-demo-icon="camera"
+                    className="focus-ring mx-auto mt-3 flex min-h-12 w-full max-w-[22rem] items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white/62 px-5 py-3 text-sm font-extrabold transition hover:bg-white motion-safe:hover:-translate-y-0.5 motion-safe:active:translate-y-0 motion-safe:active:scale-[0.975]"
+                  >
+                    <Camera aria-hidden="true" className="size-4 text-[var(--champagne-deep)]" />
+                    {text.login.demo}
+                  </Link>
+                ) : null}
               </form>
             )}
           </div>

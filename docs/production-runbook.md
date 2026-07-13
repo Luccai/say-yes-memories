@@ -50,7 +50,7 @@ Migration'lar eklemelidir. Başarısız deploy'da tabloları aceleyle geri silme
 bun run verify:release
 ```
 
-Bu komut lint, TypeScript, birim/kontrat testleri, production build, 360/375/390 px ve masaüstü Playwright akışları ile Lighthouse mobil eşiklerini çalıştırır. Hedefler: performans en az 85, erişilebilirlik en az 95, LCP en fazla 2,5 saniye ve CLS en fazla 0,1.
+Bu komut lint, TypeScript, birim/kontrat testleri, production build, iPhone 17 Pro Max emülasyonu, 360/390 px Android ve masaüstü Playwright akışları ile Lighthouse mobil eşiklerini çalıştırır. Hedefler: performans en az 85, erişilebilirlik en az 95, LCP en fazla 2,5 saniye ve CLS en fazla 0,1.
 
 Supabase SQL kontratları canlıda yalnız `BEGIN ... ROLLBACK` içinde çalıştırılır.
 

@@ -36,6 +36,24 @@ fall back to English.
 The owner cockpit is intentionally Turkish-only because it is an internal
 operator tool, not a customer-facing screen.
 
+## Current studio experience
+
+- The login and owner brand mark use the Say Yes Digital logo at
+  `public/brand/logo.png`; the browser tab icon uses the same source through
+  `src/app/icon.png`. The Mary & John demo profile photo remains separate.
+- Guest Memories keeps its thumbnail cache while couples move between studio
+  panels or return from Flow Mode. The gallery uses sharp source previews and
+  opens media at its natural aspect ratio.
+- Wedding Page clearly shows whether guest uploads are open; its demo keeps the
+  profile action and guest message read-only. The demo guest page is also a
+  safe, read-only preview and never stores a browser upload.
+- QR + Guest Link groups the QR preview and download actions together. Flow
+  Mode presents mixed media in a square stage, advances photos every three
+  seconds, and keeps each guest note attached to its own memory.
+- Login has compact actions and a login-only Privacy & data modal. There is no
+  separate `/privacy` route; customer-facing copy remains available in all six
+  supported languages.
+
 ## Storage and plans
 
 Production media storage uses Cloudflare R2 with private objects and presigned

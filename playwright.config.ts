@@ -1,4 +1,4 @@
-import { defineConfig } from "playwright/test";
+import { defineConfig, devices } from "playwright/test";
 
 const baseURL = "http://127.0.0.1:3100";
 
@@ -29,8 +29,8 @@ export default defineConfig({
   },
   projects: [
     {
-      name: "iphone-se",
-      use: { viewport: { width: 375, height: 667 }, hasTouch: true, isMobile: true },
+      name: "iphone-17-pro-max",
+      use: { ...devices["iPhone 17 Pro Max"] },
     },
     {
       name: "android-360",

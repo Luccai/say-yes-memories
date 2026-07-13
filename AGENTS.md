@@ -51,6 +51,7 @@ Kalite komutları:
 - Commit sırasında `.githooks/pre-commit` staged JS/TS dosyalarında ESLint düzeltmesini yapar; ekstra manuel build/check koşma.
 - Ağır kalite kapısı `bun run check` sadece GitHub'a push ederken `.githooks/pre-push` üzerinden çalışmalıdır.
 - Kullanıcı açıkça test/check isterse veya değişiklik yüksek riskliyse önce sebebini söyle, sonra hedefli kontrol çalıştır.
+- Playwright mobil varsayılanı iPhone 17 Pro Max emülasyonudur; ek kapsama için 360 px ve 390 px Android viewportları korunur.
 
 ## Route Haritası
 
@@ -204,8 +205,9 @@ Demo:
 - Demo çift: Mary & John.
 - Demo admin route: `/admin/mary-john`.
 - Demo guest route: `/mary-john?demo=1`.
-- Demo profil görseli: `public/demo/beautiful-young-couple-hugging-great-wall-china.jpg`.
-- Demo state localStorage ile simüle edilir; gerçek Supabase DB/Storage yazımı yapmaz.
+- Demo profil görseli: `public/demo/demo-couple-1-thumb.webp`.
+- Login ve owner ekranlarındaki marka rozeti: `public/brand/logo.png`; tarayıcı sekmesi ikonu da aynı kaynakla `src/app/icon.png` üzerinden üretilir.
+- Demo stüdyo state'i localStorage ile simüle edilir; gerçek Supabase DB/Storage yazımı yapmaz. Demo misafir sayfası salt okunur önizlemedir: alanlar, dosya/ses seçimi ve Send memory pasiftir; tarayıcıya da upload kaydı yazmaz.
 - Demo admin ve demo misafir sayfalarında Help modalı görünür; demo modunda gerçek storage'a yazılmadığını anlatan ek kart gösterilir.
 
 ## i18n ve Yardım Modalları

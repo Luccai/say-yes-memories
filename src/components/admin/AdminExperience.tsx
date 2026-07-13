@@ -1403,9 +1403,6 @@ function IdentityCard({
             <Settings2 className="size-4" />
             {text.identity}
           </p>
-          <h2 className="text-tech-heading mt-2 text-balance text-[var(--ink)]">
-            {text.identityTitle}
-          </h2>
           <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--ink-soft)]">
             {text.identityDescription}
           </p>
@@ -1418,14 +1415,20 @@ function IdentityCard({
       <div className="grid gap-5 sm:grid-cols-[9rem_1fr]">
         <div className="flex flex-col items-center">
           <MediaOrb media={wedding.profileMedia} label={wedding.coupleName} className="h-44 w-36" />
-          <label className={buttonStyles({ variant: "paper", className: "mt-4 w-fit cursor-pointer" })}>
+          <label
+            className={buttonStyles({
+              variant: "paper",
+              className: `mt-4 w-fit ${demoMode ? "cursor-not-allowed" : "cursor-pointer"}`,
+            })}
+          >
             {profileUploading ? <Loader2 className="size-4 animate-spin" /> : <ImagePlus className="size-4" />}
             {text.upload}
             <input
               type="file"
               accept="image/*"
               className="sr-only"
-              onChange={onUploadProfileMedia}
+              disabled={demoMode}
+              onChange={demoMode ? undefined : onUploadProfileMedia}
             />
           </label>
         </div>
@@ -1451,27 +1454,25 @@ function IdentityCard({
               {wedding.eventDate ?? "—"}
             </p>
           </div>
-          <p className="rounded-[20px] border border-[rgba(139,107,63,0.2)] bg-white/54 px-4 py-3 text-xs font-semibold leading-5 text-[var(--ink-soft)]">
-            {text.identityOwnerManaged}
-          </p>
-          <label className="grid gap-2 text-sm font-semibold">
-            {text.welcomeNote}
-            <textarea
-              value={welcomeNote}
-              onChange={(event) => {
-                setWelcomeNote(event.target.value);
-                markDirty();
-              }}
-              rows={4}
-              disabled={demoMode}
-              className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-3 !text-[16px] leading-7 outline-none disabled:cursor-not-allowed disabled:opacity-65"
-            />
+          <div className="grid gap-2 text-sm font-semibold">
+            <span>{text.welcomeNote}</span>
             {demoMode ? (
-              <span className="text-xs font-normal leading-5 text-[var(--ink-soft)]">
-                {text.demoWelcomeNoteLocked}
-              </span>
-            ) : null}
-          </label>
+              <p className="min-h-12 whitespace-pre-wrap rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-3 text-base font-medium leading-7 text-[var(--ink)]">
+                {welcomeNote || "—"}
+              </p>
+            ) : (
+              <textarea
+                aria-label={text.welcomeNote}
+                value={welcomeNote}
+                onChange={(event) => {
+                  setWelcomeNote(event.target.value);
+                  markDirty();
+                }}
+                rows={4}
+                className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-3 !text-[16px] leading-7 outline-none"
+              />
+            )}
+          </div>
           <div className="grid gap-3">
             <div
               role="status"
@@ -1502,11 +1503,12 @@ function IdentityCard({
                 </p>
               </div>
             </div>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-nowrap gap-2">
               <Button
                 onClick={handleSaveIdentity}
                 loading={saving}
-                className="w-fit"
+                size="compact"
+                className="min-w-0 w-fit whitespace-nowrap px-3 sm:px-4"
               >
                 <Check className="size-3.5" />
                 {text.saveIdentity}
@@ -1515,7 +1517,8 @@ function IdentityCard({
                 onClick={() => onSave({ uploadLocked: !wedding.uploadLocked })}
                 variant="paper"
                 aria-pressed={!wedding.uploadLocked}
-                className="w-fit"
+                size="compact"
+                className="min-w-0 w-fit whitespace-nowrap px-3 sm:px-4"
               >
                 <span className="inline-flex items-center justify-center gap-2">
                   {wedding.uploadLocked ? <Lock className="size-4" /> : <Unlock className="size-4" />}
@@ -1622,10 +1625,10 @@ function QrStudio({
         </p>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(19rem,0.92fr)_minmax(18rem,1.08fr)] lg:items-stretch">
+      <div className="flex flex-col items-center gap-4 sm:gap-5">
         <div
           data-qr-card="true"
-          className="paper-grain relative isolate overflow-hidden rounded-[34px] border border-[rgba(139,107,63,0.24)] bg-[#efe1cf] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_20px_50px_rgba(58,40,25,0.12)] sm:p-4"
+          className="paper-grain relative isolate w-full max-w-[40rem] overflow-hidden rounded-[34px] border border-[rgba(139,107,63,0.24)] bg-[#efe1cf] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_20px_50px_rgba(58,40,25,0.12)] sm:p-4"
         >
           <div className="relative z-10 flex min-h-[34rem] flex-col items-center rounded-[27px] border border-[rgba(139,107,63,0.24)] bg-[rgba(255,250,243,0.9)] px-5 py-7 text-center">
             <MediaOrb media={wedding.profileMedia} label={wedding.coupleName} className="h-20 w-16" />
@@ -1663,16 +1666,18 @@ function QrStudio({
 
         <div
           data-guest-link-card="true"
-          className="flex flex-col justify-center rounded-[32px] border border-[rgba(139,107,63,0.16)] bg-white/48 p-4 sm:p-6"
+          className="w-full max-w-[32rem] rounded-[28px] border border-[rgba(139,107,63,0.16)] bg-white/48 p-4 shadow-[0_12px_30px_rgba(58,40,25,0.06)] sm:p-5"
         >
           <p className="eyebrow text-[var(--champagne-deep)]">{text.guestLink}</p>
-          <div className="mt-4 rounded-[24px] border border-[rgba(55,38,25,0.12)] bg-[rgba(239,225,207,0.58)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
-            <p className="break-all text-sm font-semibold leading-6 text-[var(--ink-soft)]">{eventUrl}</p>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="min-w-0 flex-1 rounded-[20px] border border-[rgba(55,38,25,0.12)] bg-[rgba(239,225,207,0.58)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
+              <p className="break-all text-sm font-semibold leading-6 text-[var(--ink-soft)]">{eventUrl}</p>
+            </div>
+            <Button className="w-fit shrink-0" onClick={copyLink}>
+              {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+              {copied ? text.copied : text.copy}
+            </Button>
           </div>
-          <Button className="mt-4 w-fit" onClick={copyLink}>
-            {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
-            {copied ? text.copied : text.copy}
-          </Button>
         </div>
       </div>
     </motion.article>

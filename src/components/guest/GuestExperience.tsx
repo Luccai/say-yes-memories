@@ -201,6 +201,11 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
   );
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    if (demoMode) {
+      event.target.value = "";
+      return;
+    }
+
     const selectedFile = event.target.files?.[0] ?? null;
     setError("");
     setUploadFailed(false);
@@ -230,6 +235,8 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
   }
 
   async function startRecording() {
+    if (demoMode) return;
+
     setError("");
 
     try {
@@ -305,6 +312,9 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (demoMode) return;
+
     setSubmitting(true);
     setError("");
     setUploadFailed(false);
@@ -318,73 +328,6 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
               type: cleanMimeType(recordedBlob.type || "audio/webm"),
             })
           : null);
-
-      if (!uploadFile && !demoMode) {
-        setError(text.guest.missingMedia);
-        return;
-      }
-
-      if (demoMode) {
-        if (!uploadFile) {
-          setError(text.guest.missingMedia);
-          return;
-        }
-
-        const kind = mediaKindFor(uploadFile);
-
-        if (!kind) {
-          setError(text.guest.uploadFailed);
-          return;
-        }
-
-        const [{ createMediaThumbnail }, demoSession] = await Promise.all([
-          import("@/lib/media-thumbnails"),
-          import("@/lib/demo-session-media"),
-        ]);
-        const thumbnailFile = await createMediaThumbnail(uploadFile);
-        const createdAt = new Date().toISOString();
-        const id = demoSession.createDemoSessionMediaId();
-        const stored = await demoSession.addDemoSessionMedia({
-          id,
-          weddingId: wedding.id,
-          file: uploadFile,
-          kind,
-          mimeType: uploadFile.type || "application/octet-stream",
-          fileName: uploadFile.name || `memory-${id}`,
-          byteSize: uploadFile.size,
-          createdAt,
-          guestName,
-          note: note || undefined,
-          thumbnail: thumbnailFile
-            ? {
-                id: `${id}-thumb`,
-                file: thumbnailFile,
-                kind: "image",
-                mimeType: thumbnailFile.type,
-                fileName: thumbnailFile.name,
-                byteSize: thumbnailFile.size,
-                createdAt,
-              }
-            : undefined,
-          approved: true,
-          hidden: false,
-          favorite: false,
-        });
-
-        if (!stored) {
-          setError(text.guest.uploadFailed);
-          return;
-        }
-
-        await new Promise((resolve) => window.setTimeout(resolve, 520));
-        setSubmitted(true);
-        setGuestName("");
-        setRawNote("");
-        setFile(null);
-        setFilePreviewUrl("");
-        setRecordedBlob(null);
-        return;
-      }
 
       if (!uploadFile) {
         setError(text.guest.missingMedia);
@@ -567,8 +510,8 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
                   value={guestName}
                   onChange={(event) => setGuestName(event.target.value)}
                   required
-                  disabled={submitting}
-                  className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-4 !text-[16px] outline-none"
+                  disabled={demoMode || submitting}
+                  className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-4 !text-[16px] outline-none disabled:cursor-not-allowed disabled:opacity-65"
                   placeholder={text.guest.name}
                 />
               </label>
@@ -579,8 +522,8 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
                   value={note}
                   onChange={(event) => setRawNote(event.target.value)}
                   rows={4}
-                  disabled={submitting}
-                  className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-4 !text-[16px] leading-7 outline-none"
+                  disabled={demoMode || submitting}
+                  className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-4 !text-[16px] leading-7 outline-none disabled:cursor-not-allowed disabled:opacity-65"
                   placeholder={text.guest.notePlaceholder}
                 />
               </label>
@@ -588,21 +531,23 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
               <div className="grid gap-3">
                 <label
                   data-guest-upload-choice="file"
-                  className="focus-ring grid min-h-[8.5rem] cursor-pointer place-items-center rounded-[26px] border border-dashed border-[var(--line)] bg-white/58 p-5 text-center transition hover:bg-white"
+                  aria-disabled={demoMode || submitting || recording}
+                  className={`focus-ring grid min-h-[8.5rem] place-content-center gap-2 rounded-[26px] border border-dashed border-[var(--line)] bg-white/58 p-5 text-center transition ${
+                    demoMode || submitting || recording
+                      ? "cursor-not-allowed opacity-65"
+                      : "cursor-pointer hover:bg-white"
+                  }`}
                 >
-                  <UploadCloud className="mb-2 size-7 text-[var(--champagne-deep)]" />
+                  <UploadCloud className="size-7 text-[var(--champagne-deep)]" />
                   <span className="text-sm font-bold">
                     {file ? file.name : text.guest.choose}
-                  </span>
-                  <span className="mt-1 text-xs text-[var(--ink-soft)]">
-                    {text.guest.private}
                   </span>
                   <input
                     type="file"
                     accept="image/*,video/*,audio/*"
                     className="sr-only"
                     onChange={handleFileChange}
-                    disabled={submitting || recording}
+                    disabled={demoMode || submitting || recording}
                   />
                 </label>
 
@@ -638,17 +583,14 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
                   type="button"
                   onClick={recording ? stopRecording : startRecording}
                   variant="paper"
-                  disabled={submitting}
+                  disabled={demoMode || submitting}
                   aria-pressed={recording}
                   data-guest-upload-choice="voice"
-                  className="grid min-h-[8.5rem] w-full place-items-center rounded-[26px] border-dashed bg-white/58 p-5 text-center hover:bg-white"
+                  className="grid min-h-[8.5rem] w-full place-content-center gap-2 rounded-[26px] border-dashed bg-white/58 p-5 text-center hover:bg-white"
                 >
                   {recording ? <Pause aria-hidden="true" className="size-7 text-[var(--champagne-deep)]" /> : <Mic aria-hidden="true" className="size-7 text-[var(--champagne-deep)]" />}
-                  <span className="mt-2 text-sm font-bold">
+                  <span className="text-sm font-bold">
                     {recording ? text.guest.stop : text.guest.record}
-                  </span>
-                  <span className="mt-1 text-xs font-normal text-[var(--ink-soft)]">
-                    {text.guest.private}
                   </span>
                 </Button>
 
@@ -720,8 +662,8 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
               ) : (
                 <Button
                   type="submit"
-                  disabled={recording}
-                  className="justify-self-start min-h-14 px-6 !font-extrabold uppercase !tracking-[0.08em]"
+                  disabled={demoMode || recording}
+                  className="justify-self-center min-h-14 px-6 !font-extrabold uppercase !tracking-[0.08em]"
                 >
                   {uploadFailed ? (
                     <RotateCcw aria-hidden="true" className="size-4" />
