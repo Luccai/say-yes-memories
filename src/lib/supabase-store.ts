@@ -13,6 +13,7 @@ import { toPublicWedding } from "@/lib/public-wedding";
 import { makeBaseWeddingSlug, makeCoupleName } from "@/lib/text";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { createSignedStorageUrl, deleteStoredFile } from "@/lib/storage/storage-service";
+import type { MediaLibraryCounts, MediaLibraryOrder } from "@/lib/media-library";
 import {
   buildActivationFallbackWindow,
   CLASSIC_STORAGE_BYTES,
@@ -624,7 +625,7 @@ export async function listWeddingMediaPage(
   options: {
     offset?: number;
     limit?: number;
-    order?: "newest" | "oldest";
+    order?: MediaLibraryOrder;
     kind?: MediaKind;
   } = {},
 ) {
@@ -639,20 +640,49 @@ export async function listWeddingMediaPage(
     query = query.eq("kind", options.kind);
   }
 
-  const { data, error, count } = await query
-    .order("created_at", { ascending: options.order === "oldest" })
-    .order("id", { ascending: options.order === "oldest" })
-    .range(offset, offset + limit - 1);
+  const countMediaKind = (kind: MediaKind) =>
+    getSupabaseAdmin()
+      .from("wedding_media")
+      .select("id", { count: "exact", head: true })
+      .eq("wedding_id", weddingId)
+      .eq("kind", kind);
 
-  if (error) {
-    throw new Error(error.message);
+  const [pageResult, imageCountResult, videoCountResult, audioCountResult] = await Promise.all([
+    query
+      .order("created_at", { ascending: options.order === "oldest" })
+      .order("id", { ascending: options.order === "oldest" })
+      .range(offset, offset + limit - 1),
+    countMediaKind("image"),
+    countMediaKind("video"),
+    countMediaKind("audio"),
+  ]);
+  const { data, error, count } = pageResult;
+
+  if (error || imageCountResult.error || videoCountResult.error || audioCountResult.error) {
+    throw new Error(
+      error?.message ??
+        imageCountResult.error?.message ??
+        videoCountResult.error?.message ??
+        audioCountResult.error?.message ??
+        "Unable to load media.",
+    );
   }
   const media = await Promise.all((data ?? []).map((row) => mediaFromRow(row)));
   const nextOffset = offset + media.length;
   const total = count ?? nextOffset;
+  const counts: MediaLibraryCounts = {
+    image: imageCountResult.count ?? 0,
+    video: videoCountResult.count ?? 0,
+    audio: audioCountResult.count ?? 0,
+    all:
+      (imageCountResult.count ?? 0) +
+      (videoCountResult.count ?? 0) +
+      (audioCountResult.count ?? 0),
+  };
   return {
     media,
     total,
+    counts,
     nextOffset,
     hasMore: nextOffset < total,
   };

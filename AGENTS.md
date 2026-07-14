@@ -56,7 +56,7 @@ Kalite komutları:
 ## Route Haritası
 
 - `/`: `/login` sayfasına redirect eder.
-- `/login`: Etsy token aktivasyonu, geri dönen cihazda stüdyoya giriş kartı ve Mary & John demo CTA'sı.
+- `/login`: ilk kurulumda önce Etsy tokenını sunucuda kontrol eden, sonra çift bilgileri ve şifreyi isteyen iki aşamalı aktivasyon; geri dönen cihazda stüdyoya giriş kartı ve Mary & John demo CTA'sı.
 - `/admin`: HTTP-only session cookie ile gerçek çift admin paneli.
 - `/admin/mary-john`: Mary & John demo admin paneli.
 - `/admin/presentation`: gerçek üyeliğin tam ekran Akış Modu.
@@ -68,6 +68,7 @@ Kalite komutları:
 
 API route'ları:
 
+- `/api/auth/activation-token`: ilk kurulumun ilk adımında normalize edilmiş tokenın aktivasyona uygunluğunu hız sınırıyla kontrol eder; tokenı ayırmaz veya tüketmez ve kullanılmış/geçersiz durum ayrıntısını dışarı açmaz.
 - `/api/auth/activate`: token + iki isim + şifre + düğün tarihi + saat dilimiyle atomik ilk aktivasyon.
 - `/api/auth/login`: aynı cihazda slug + şifre, yeni cihazda aktif token + şifre ile giriş.
 - `/api/auth/recover`: aktif tokenla şifreyi yeniler ve bütün eski oturumları kapatır.
@@ -138,6 +139,7 @@ Storage bucket:
 ## Auth ve Token Akışı
 
 - Token frontend'de kalıcı saklanmaz.
+- Token girişte kırpılır ve büyük harfe dönüştürülür. İlk kurulumun ön kontrolü yalnız uygun tokenı ikinci adıma geçirir; gerçek hak sahipliği ve eşzamanlı kullanım koruması yine atomik aktivasyonda kesinleşir.
 - Token normalize edilip SHA-256 hash ile `tokens.token_hash` karşılaştırılır.
 - İlk başarılı aktivasyon tek veritabanı işleminde wedding, canonical slug ve hash'li session oluşturur; aynı token eşzamanlı ikinci üyelik açamaz.
 - Şifreler kişiye özel salt, scrypt ve sunucu `AUTH_PASSWORD_PEPPER` değeriyle korunur; açık şifre saklanmaz.
@@ -156,10 +158,15 @@ Admin ana ekranı mobilde sade kalmalıdır:
 - Help yalnız More içinde tutulur; eski hamburger menü ve üst başlıktaki ikinci Help düğmesi kullanılmaz.
 - Logout More bölümünde küçük aksiyon gibi görünür ve `/login` sayfasına döndürür.
 - View Guest Page yeni sekmede misafir sayfasını açar; QR panelinde ayrıca ikinci bir misafir sayfası butonu tutulmaz.
+- `AdminExperience.tsx` yalnız veri, realtime/demo senkronu ve API callback orkestrasyonunu tutar. Shell, header, paneller, galeri, lightbox, silme ve Premium parçaları `src/components/admin/` altındaki ayrı bileşenlerde kalmalıdır; bu sorumluluklar yeniden tek dosyada birleştirilmemelidir.
+- `AdminShell` panel state/geçişlerini yönetir. Memories paneli thumbnail belleğini korumak için panel değişiminde unmount edilmez; görünmez hale getirilir. Flow Mode iç geçişleri Next.js `Link` kullanır, tam sayfa yenilemeyle bellek cache'i sıfırlanmaz.
 
 Guest Memories:
 
 - Misafir uploadları admin ekranında görünür Check Again butonu olmadan yenilenmelidir.
+- Classic, Story ve Compact düzenleri tek tıkla döngüye girmemeli; mevcut düzeni gösteren küçük bir menüden doğrudan seçilmelidir.
+- Düzen ve sıralama menüleri açıldığında seçili öğeye odaklanır; Arrow Up/Down, Home, End, Enter ve Escape ile kullanılabilir.
+- Everything, Photos, Videos ve Voice filtreleri toplam medya adetini göstermeli; Newest / Oldest sıralaması doğrudan seçilebilmelidir.
 - Guest Memories, küçük kare albüm grid'i olarak görünmelidir. Dikey/yatay görsel ve videolar grid'de `object-cover` kare thumbnail olur; tıklanınca lightbox'ta kendi doğal oranına yakın `object-contain` şekilde açılır.
 - Görsel/video thumbnail'ları hazır olana kadar Guest Memories section'ı tek bir yükleniyor katmanı göstermeli; kartların kendi içinde ayrı scrollbar, siyah video karesi veya yarım yüklenmiş boş medya kutuları görünmemelidir.
 - Supabase Realtime Broadcast upload/delete sonrası admin ekranını tetikler; görünmeyen uzun fallback sadece bağlantı uyursa toparlamak için kalır.
@@ -176,10 +183,10 @@ Akış Modu:
 
 Private Storage:
 
-- Hamburger menüde ayrı, minimal bir panel olarak bulunur; Guest Memories'in üstünde büyük kota kartı gösterilmez.
+- Mobilde More, masaüstünde sidebar'ın More bölümü altında ayrı ve minimal bir panel olarak bulunur; Guest Memories'in üstünde büyük kota kartı gösterilmez.
 - Plan, kullanılan/toplam storage, access süresi, çift adı ve Premium Extension akışı burada gösterilir.
 - Premium button Etsy listing URL env'i varsa listing'i açar; müşteri Etsy personalization alanına yalnızca paneldeki çift adını yazar.
-- Demo admin panelinde gerçek para/upgrade aksiyonları çalışmaz; demo state yanıltıcı olmamalıdır.
+- Demo admin panelinde Premium modalı paket önizlemesi olarak açılır. `+50 GB` ve `+6 ay` görünür; çift adı kopyalama ve Etsy satın alma aksiyonu pasif kalır ve CTA açıkça Demo only bilgisini taşır.
 
 Owner Kokpiti:
 
@@ -196,10 +203,13 @@ Owner Kokpiti:
 Wedding Page:
 
 - Profil fotoğrafı upload eder. Video PP kullanılmaz.
+- Profil yükleme ve sayfa kaydetme hataları native tarayıcı alert'i açmaz; ortak, erişilebilir uygulama toast'ında gösterilir. Alan doğrulama hataları bağlamını kaybetmemek için inline kalır.
+- Upload durumu pulse veya glow kullanmaz; açık durumda statik sage noktalı, hafif yüzeyli küçük bir pill ile gösterilir.
 - Profil fotoğrafı client-side sıkıştırılır ve API tarafında 500 KB üstü profil fotoğrafı kabul edilmez.
 - Profil fotoğrafı küçük olduğu için cihazda instant cache'e alınır; geri dönüş/login/admin/guest header'da mümkünse ilk render'da fotoğraf gösterilir, cache yoksa boş beyaz oval değil yükleniyor yüzeyi görünür.
 - Müşteri profil fotoğrafı, welcome note ve upload lock ayarlarını yönetir; isim ve düğün tarihi güvenlik için salt okunurdur.
 - İsim/tarih yalnızca owner kokpitinden değişir. Yeni canonical slug üretilir; eski slug alias olarak kaldığı için basılmış QR/link yeni adrese yönlenir.
+- Salt okunur düğün tarihi ham ISO metin olarak basılmaz; ziyaretçinin aktif diliyle `formatWeddingDate()` üzerinden gösterilir.
 - Profil medya da presigned upload ile R2'ye gider ancak guest storage kotasına dahil edilmez.
 
 Demo:

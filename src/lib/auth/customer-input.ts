@@ -1,4 +1,7 @@
 import { validatePassword } from "@/lib/auth/passwords";
+import { normalizeEtsyToken } from "@/lib/auth/etsy-token";
+
+export { normalizeEtsyToken } from "@/lib/auth/etsy-token";
 
 export type CustomerAuthErrorCode =
   | "INVALID_REQUEST"
@@ -34,6 +37,20 @@ function stringField(record: Record<string, unknown>, key: string) {
 
 function validToken(value: string) {
   return value.length >= 8 && value.length <= 160;
+}
+
+export function validateActivationTokenRequest(raw: unknown) {
+  const record = asRecord(raw);
+  if (!record) {
+    return failure("INVALID_REQUEST");
+  }
+
+  const token = normalizeEtsyToken(stringField(record, "token"));
+  if (!validToken(token)) {
+    return failure("INVALID_TOKEN");
+  }
+
+  return { ok: true as const, value: { token } };
 }
 
 function parseCalendarDate(value: string) {
@@ -99,7 +116,7 @@ export function validateActivationRequest(raw: unknown, now = new Date()) {
     return failure("INVALID_REQUEST");
   }
 
-  const token = stringField(record, "token").trim();
+  const token = normalizeEtsyToken(stringField(record, "token"));
   const brideName = stringField(record, "brideName").trim();
   const groomName = stringField(record, "groomName").trim();
   const password = stringField(record, "password");
@@ -163,7 +180,7 @@ export function validateLoginRequest(raw: unknown) {
   }
 
   const slug = stringField(record, "slug").trim().toLowerCase();
-  const token = stringField(record, "token").trim();
+  const token = normalizeEtsyToken(stringField(record, "token"));
   const password = stringField(record, "password");
   const hasSlug = Boolean(slug);
   const hasToken = Boolean(token);
@@ -197,7 +214,7 @@ export function validateRecoveryRequest(raw: unknown) {
     return failure("INVALID_REQUEST");
   }
 
-  const token = stringField(record, "token").trim();
+  const token = normalizeEtsyToken(stringField(record, "token"));
   const password = stringField(record, "password");
   const passwordConfirm = stringField(record, "passwordConfirm");
 

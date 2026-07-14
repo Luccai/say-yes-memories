@@ -46,7 +46,7 @@ export function OwnerErrorState({ retry }: { retry: () => void }) {
       <AlertCircle className="size-5" />
       <p className="mt-3 font-bold">Bu bölüm şu an yüklenemedi.</p>
       <p className="mt-1 text-sm leading-6">Bağlantıyı kontrol edip tekrar deneyebilirsin.</p>
-      <Button variant="danger" className="mt-4" onClick={retry}>Tekrar dene</Button>
+      <Button variant="paper" className="mt-4" onClick={retry}>Tekrar dene</Button>
     </div>
   );
 }

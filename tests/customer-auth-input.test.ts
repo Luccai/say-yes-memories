@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import {
+  normalizeEtsyToken,
   validateActivationRequest,
+  validateActivationTokenRequest,
   validateLoginRequest,
   validateRecoveryRequest,
 } from "@/lib/auth/customer-input";
@@ -9,6 +11,18 @@ const ACTIVATION_KEY = "a".repeat(43);
 const NOW = new Date("2026-07-11T21:30:00.000Z");
 
 describe("customer activation input", () => {
+  test("normalizes Etsy tokens before validation", () => {
+    expect(normalizeEtsyToken("  syd-abcde-fghij-klmno-pqrst  ")).toBe(
+      "SYD-ABCDE-FGHIJ-KLMNO-PQRST",
+    );
+    expect(
+      validateActivationTokenRequest({ token: "  syd-abcde-fghij-klmno-pqrst  " }),
+    ).toEqual({
+      ok: true,
+      value: { token: "SYD-ABCDE-FGHIJ-KLMNO-PQRST" },
+    });
+  });
+
   test("accepts a complete first activation at the customer's local today", () => {
     const result = validateActivationRequest(
       {
@@ -27,7 +41,7 @@ describe("customer activation input", () => {
     expect(result).toEqual({
       ok: true,
       value: {
-        token: "syd-abc-def",
+        token: "SYD-ABC-DEF",
         brideName: "Fatma",
         groomName: "Mihail",
         password: "a safe wedding passphrase",

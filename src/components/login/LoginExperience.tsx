@@ -1,12 +1,22 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import {
+  FormEvent,
+  type InputHTMLAttributes,
+  useEffect,
+  useId,
+  useState,
+} from "react";
 import Link from "next/link";
+import { motion, useReducedMotion } from "motion/react";
 import {
   ArrowLeft,
   ArrowRight,
   Camera,
   CalendarDays,
+  CheckCircle2,
+  Eye,
+  EyeOff,
   KeyRound,
   LockKeyhole,
   ShieldCheck,
@@ -26,9 +36,11 @@ import {
   rememberMembership,
   type RememberedMembership,
 } from "@/lib/auth/device-hint";
+import { normalizeEtsyToken } from "@/lib/auth/etsy-token";
 import { useAuthCopy, useCopy } from "@/lib/i18n-client";
 
 type LoginMode = "activate" | "token" | "recover" | "remembered";
+type ActivationStep = "token" | "details";
 
 type AuthForm = {
   brideName: string;
@@ -41,6 +53,60 @@ type AuthForm = {
 };
 
 const ACTIVATION_RETRY_KEY = "sayyes.activation.retry-key.v1";
+const TOKEN_EXAMPLE = "SYD-ABCDE-FGHIJ-KLMNO-PQRST";
+
+type PasswordFieldProps = Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  "className" | "type"
+> & {
+  inputClass: string;
+  label: string;
+  showLabel: string;
+  hideLabel: string;
+  hint?: string;
+};
+
+function PasswordField({
+  inputClass,
+  label,
+  showLabel,
+  hideLabel,
+  hint,
+  ...inputProps
+}: PasswordFieldProps) {
+  const inputId = useId();
+  const [revealed, setRevealed] = useState(false);
+
+  return (
+    <div className="grid gap-2 text-sm font-semibold">
+      <label htmlFor={inputId}>{label}</label>
+      <div className="relative min-w-0">
+        <input
+          {...inputProps}
+          id={inputId}
+          type={revealed ? "text" : "password"}
+          className={`${inputClass} w-full pr-14`}
+        />
+        <button
+          type="button"
+          aria-label={revealed ? hideLabel : showLabel}
+          aria-pressed={revealed}
+          className="focus-ring absolute right-1.5 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full text-[var(--champagne-deep)] transition hover:bg-white/70 active:scale-95"
+          onClick={() => setRevealed((current) => !current)}
+        >
+          {revealed ? (
+            <EyeOff aria-hidden="true" className="size-4" />
+          ) : (
+            <Eye aria-hidden="true" className="size-4" />
+          )}
+        </button>
+      </div>
+      {hint ? (
+        <span className="text-xs font-normal leading-5 text-[var(--ink-soft)]">{hint}</span>
+      ) : null}
+    </div>
+  );
+}
 
 function localToday() {
   const now = new Date();
@@ -97,10 +163,12 @@ export function LoginExperience({
   const [activeSession] = useState<PublicWedding | null>(initialSession);
   const [remembered, setRemembered] = useState<RememberedMembership | null>(null);
   const [mode, setMode] = useState<LoginMode>("activate");
+  const [activationStep, setActivationStep] = useState<ActivationStep>("token");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [helpOpen, setHelpOpen] = useState(false);
   const [privacyOpen, setPrivacyOpen] = useState(false);
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -131,6 +199,7 @@ export function LoginExperience({
 
   function chooseMode(nextMode: LoginMode) {
     setMode(nextMode);
+    setActivationStep("token");
     setError("");
     setForm((current) => ({
       ...current,
@@ -145,7 +214,29 @@ export function LoginExperience({
     if (code === "EVENT_DATE_IN_PAST") return authText.pastDate;
     if (code === "SETUP_REQUIRED") return authText.setupRequired;
     if (code === "TOO_MANY_ATTEMPTS") return authText.tooManyAttempts;
+    if (code === "TOKEN_UNAVAILABLE") return authText.tokenUnavailable;
+    if (code === "TOKEN_CHECK_UNAVAILABLE") return authText.tokenCheckUnavailable;
     return authText.invalid;
+  }
+
+  async function checkActivationToken() {
+    const token = normalizeEtsyToken(form.token);
+    setForm((current) => ({ ...current, token }));
+
+    const response = await fetch("/api/auth/activation-token", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    });
+    const payload = (await response.json()) as { valid?: boolean; code?: string };
+
+    if (!response.ok || !payload.valid) {
+      setError(errorMessage(payload.code));
+      return false;
+    }
+
+    setActivationStep("details");
+    return true;
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -154,6 +245,11 @@ export function LoginExperience({
     setError("");
 
     try {
+      if (mode === "activate" && activationStep === "token") {
+        await checkActivationToken();
+        return;
+      }
+
       const endpoint =
         mode === "activate"
           ? "/api/auth/activate"
@@ -162,13 +258,17 @@ export function LoginExperience({
             : "/api/auth/login";
       const body =
         mode === "activate"
-          ? { ...form, activationKey: activationRetryKey() }
+          ? {
+              ...form,
+              token: normalizeEtsyToken(form.token),
+              activationKey: activationRetryKey(),
+            }
           : mode === "remembered"
             ? { slug: remembered?.slug, password: form.password }
             : mode === "token"
-              ? { token: form.token, password: form.password }
+              ? { token: normalizeEtsyToken(form.token), password: form.password }
               : {
-                  token: form.token,
+                  token: normalizeEtsyToken(form.token),
                   password: form.password,
                   passwordConfirm: form.passwordConfirm,
                 };
@@ -209,6 +309,18 @@ export function LoginExperience({
 
   const inputClass =
     "focus-ring min-h-12 rounded-[18px] border border-[var(--line)] bg-[#f1e8db] px-4 py-3 !text-[16px] text-[var(--ink)] outline-none transition placeholder:text-[var(--ink-soft)]/48";
+  const passwordMatch =
+    form.passwordConfirm.length === 0 ? null : form.password === form.passwordConfirm;
+
+  function changeActivationToken() {
+    setActivationStep("token");
+    setError("");
+    setForm((current) => ({
+      ...current,
+      password: "",
+      passwordConfirm: "",
+    }));
+  }
 
   return (
     <main className="min-h-[100dvh] px-3 py-3 text-[var(--ink)] sm:px-6 sm:py-6 lg:px-10">
@@ -279,21 +391,23 @@ export function LoginExperience({
                         {authText.rememberedBody}
                       </p>
                     </div>
-                    <label className="mt-6 grid gap-2 text-sm font-semibold">
-                      {authText.password}
-                      <input
-                        className={inputClass}
-                        type="password"
+                    <div className="mt-6">
+                      <PasswordField
+                        inputClass={inputClass}
+                        label={authText.password}
+                        showLabel={authText.showPassword}
+                        hideLabel={authText.hidePassword}
                         value={form.password}
                         onChange={(event) =>
                           setForm((current) => ({ ...current, password: event.target.value }))
                         }
                         autoComplete="current-password"
                         minLength={10}
+                        maxLength={256}
                         required
                         autoFocus
                       />
-                    </label>
+                    </div>
                     <Button
                       type="submit"
                       loading={submitting}
@@ -343,7 +457,9 @@ export function LoginExperience({
                         </h1>
                         <p className="mt-3 text-sm leading-6 text-[var(--ink-soft)]">
                           {mode === "activate"
-                            ? authText.firstSetupBody
+                            ? activationStep === "token"
+                              ? authText.firstSetupBody
+                              : authText.detailsStepBody
                             : mode === "recover"
                               ? authText.recoverBody
                               : authText.returningBody}
@@ -370,9 +486,63 @@ export function LoginExperience({
                       </div>
                     ) : null}
 
-                    <div className="mt-6 grid gap-4">
-                      {mode === "activate" ? (
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    {mode === "activate" ? (
+                      <div
+                        data-activation-step={activationStep}
+                        className="mt-5 grid gap-2"
+                      >
+                        <div className="flex items-center justify-between gap-3 text-xs font-extrabold uppercase tracking-[0.14em] text-[var(--champagne-deep)]">
+                          <span>
+                            {activationStep === "token"
+                              ? authText.stepOne
+                              : authText.stepTwo}
+                          </span>
+                          <span>{activationStep === "token" ? "1 / 2" : "2 / 2"}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2" aria-hidden="true">
+                          <span className="h-1.5 rounded-full bg-[var(--champagne-deep)]" />
+                          <span
+                            className={`h-1.5 rounded-full transition-colors duration-300 ${
+                              activationStep === "details"
+                                ? "bg-[var(--champagne-deep)]"
+                                : "bg-[var(--line)]"
+                            }`}
+                          />
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <motion.div
+                      key={`${mode}-${activationStep}`}
+                      initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: prefersReducedMotion ? 0 : 0.24, ease: [0.22, 1, 0.36, 1] }}
+                      className="mt-6 grid gap-4"
+                    >
+                      {mode === "activate" && activationStep === "details" ? (
+                        <>
+                          <div className="flex items-center gap-3 rounded-[20px] border border-[rgba(139,107,63,0.24)] bg-[rgba(236,218,184,0.34)] px-4 py-3">
+                            <CheckCircle2
+                              aria-hidden="true"
+                              className="size-5 shrink-0 text-[var(--champagne-deep)]"
+                            />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-extrabold">{authText.tokenVerified}</p>
+                              <p className="truncate font-mono text-[11px] font-semibold text-[var(--ink-soft)]">
+                                {form.token}
+                              </p>
+                            </div>
+                            <Button
+                              variant="quiet"
+                              size="compact"
+                              className="shrink-0 px-3"
+                              onClick={changeActivationToken}
+                            >
+                              {authText.changeToken}
+                            </Button>
+                          </div>
+
+                          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                           <label className="grid gap-2 text-sm font-semibold">
                             {text.login.bride}
                             <input
@@ -399,23 +569,42 @@ export function LoginExperience({
                               required
                             />
                           </label>
-                        </div>
+                          </div>
+                        </>
                       ) : null}
 
-                      <label className="grid gap-2 text-sm font-semibold">
-                        {text.login.token}
-                        <input
-                          className={`${inputClass} uppercase placeholder:normal-case`}
-                          value={form.token}
-                          onChange={(event) =>
-                            setForm((current) => ({ ...current, token: event.target.value }))
-                          }
-                          autoComplete="one-time-code"
-                          required
-                        />
-                      </label>
+                      {mode !== "activate" || activationStep === "token" ? (
+                        <label className="grid gap-2 text-sm font-semibold">
+                          {text.login.token}
+                          <input
+                            className={`${inputClass} font-mono uppercase placeholder:font-sans placeholder:normal-case`}
+                            value={form.token}
+                            onChange={(event) =>
+                              setForm((current) => ({
+                                ...current,
+                                token: normalizeEtsyToken(event.target.value),
+                              }))
+                            }
+                            onBlur={(event) =>
+                              setForm((current) => ({
+                                ...current,
+                                token: normalizeEtsyToken(event.target.value),
+                              }))
+                            }
+                            placeholder={TOKEN_EXAMPLE}
+                            autoComplete="one-time-code"
+                            autoCapitalize="characters"
+                            spellCheck={false}
+                            required
+                            autoFocus={mode === "activate"}
+                          />
+                          <span className="text-xs font-normal leading-5 text-[var(--ink-soft)]">
+                            {authText.tokenExample.replace("{token}", TOKEN_EXAMPLE)}
+                          </span>
+                        </label>
+                      ) : null}
 
-                      {mode === "activate" ? (
+                      {mode === "activate" && activationStep === "details" ? (
                         <label className="grid min-w-0 gap-2 text-sm font-semibold">
                           {authText.eventDate}
                           <span className="relative block min-w-0 max-w-full">
@@ -437,11 +626,12 @@ export function LoginExperience({
                         </label>
                       ) : null}
 
-                      <label className="grid gap-2 text-sm font-semibold">
-                        {authText.password}
-                        <input
-                          className={inputClass}
-                          type="password"
+                      {mode !== "activate" || activationStep === "details" ? (
+                        <PasswordField
+                          inputClass={inputClass}
+                          label={authText.password}
+                          showLabel={authText.showPassword}
+                          hideLabel={authText.hidePassword}
                           value={form.password}
                           onChange={(event) =>
                             setForm((current) => ({ ...current, password: event.target.value }))
@@ -450,20 +640,17 @@ export function LoginExperience({
                           minLength={10}
                           maxLength={256}
                           required
+                          hint={mode !== "token" ? authText.passwordHint : undefined}
                         />
-                        {mode !== "token" ? (
-                          <span className="text-xs font-normal text-[var(--ink-soft)]">
-                            {authText.passwordHint}
-                          </span>
-                        ) : null}
-                      </label>
+                      ) : null}
 
-                      {mode !== "token" ? (
-                        <label className="grid gap-2 text-sm font-semibold">
-                          {authText.passwordConfirm}
-                          <input
-                            className={inputClass}
-                            type="password"
+                      {mode !== "token" && (mode !== "activate" || activationStep === "details") ? (
+                        <>
+                          <PasswordField
+                            inputClass={inputClass}
+                            label={authText.passwordConfirm}
+                            showLabel={authText.showPassword}
+                            hideLabel={authText.hidePassword}
                             value={form.passwordConfirm}
                             onChange={(event) =>
                               setForm((current) => ({ ...current, passwordConfirm: event.target.value }))
@@ -473,19 +660,40 @@ export function LoginExperience({
                             maxLength={256}
                             required
                           />
-                        </label>
+                          {passwordMatch !== null ? (
+                            <p
+                              role="status"
+                              aria-live="polite"
+                              className={`-mt-1 flex items-center gap-2 text-xs font-bold ${
+                                passwordMatch ? "text-emerald-700" : "text-red-700"
+                              }`}
+                            >
+                              <CheckCircle2 aria-hidden="true" className="size-4 shrink-0" />
+                              {passwordMatch
+                                ? authText.passwordMatch
+                                : authText.passwordMismatch}
+                            </p>
+                          ) : null}
+                        </>
                       ) : null}
-                    </div>
+                    </motion.div>
 
                     <Button
                       type="submit"
                       loading={submitting}
+                      disabled={
+                        (mode === "recover" ||
+                          (mode === "activate" && activationStep === "details")) &&
+                        passwordMatch === false
+                      }
                       className={`mt-6 ${
                         mode === "activate" ? "mx-auto !flex w-full max-w-[22rem]" : "min-w-[12.5rem] max-w-full"
                       }`}
                     >
                       {mode === "activate"
-                        ? authText.activate
+                        ? activationStep === "token"
+                          ? authText.continue
+                          : authText.activate
                         : mode === "recover"
                           ? authText.reset
                           : authText.signIn}

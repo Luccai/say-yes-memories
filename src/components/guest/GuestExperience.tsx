@@ -1,7 +1,7 @@
 "use client";
 
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Mic, Pause, RotateCcw, UploadCloud, X } from "lucide-react";
+import { Check, LockKeyhole, Mic, Pause, RotateCcw, UploadCloud, X } from "lucide-react";
 import Image from "next/image";
 import type { MediaKind, PublicWedding } from "@/lib/types";
 import { Button } from "@/components/shared/Button";
@@ -38,6 +38,8 @@ type VoiceRecorder = {
   intervalId: number;
   timeoutId: number;
 };
+
+type UploadChoice = "file" | "voice" | null;
 
 const MAX_RECORDING_SECONDS = 5 * 60;
 const RECORDING_WARNING_SECONDS = 30;
@@ -122,6 +124,7 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [recordedUrl, setRecordedUrl] = useState("");
+  const [uploadChoice, setUploadChoice] = useState<UploadChoice>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadFailed, setUploadFailed] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -233,6 +236,25 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
       URL.revokeObjectURL(recordedUrl);
       setRecordedUrl("");
     }
+  }
+
+  function clearSelectedMedia() {
+    setFile(null);
+    setFilePreviewUrl("");
+    setRecordedBlob(null);
+    setRecordedUrl("");
+  }
+
+  function chooseUploadChoice(nextChoice: Exclude<UploadChoice, null>) {
+    if (demoMode || submitting || uploadChoice === nextChoice) return;
+
+    if (recording) {
+      stopRecording();
+    }
+    clearSelectedMedia();
+    setUploadChoice(nextChoice);
+    setError("");
+    setUploadFailed(false);
   }
 
   async function startRecording() {
@@ -373,6 +395,7 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
       setFile(null);
       setFilePreviewUrl("");
       setRecordedBlob(null);
+      setUploadChoice(null);
       if (recordedUrl) {
         URL.revokeObjectURL(recordedUrl);
         setRecordedUrl("");
@@ -418,6 +441,7 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
     MAX_RECORDING_SECONDS - recordingSeconds,
     0,
   );
+  const shouldShowIdentityFields = demoMode || uploadChoice !== null;
 
   return (
     <>
@@ -430,29 +454,33 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
       >
         <div className="mx-auto max-w-[34rem] min-w-0 overflow-x-clip">
           <section
-            className="paper-grain overflow-hidden rounded-[36px] border border-white/75 bg-[var(--paper-soft)] p-6 text-center shadow-none sm:shadow-[var(--shadow-soft)]"
+            className="paper-grain overflow-hidden rounded-[30px] border border-white/75 bg-[var(--paper-soft)] p-4 shadow-none sm:p-5 sm:shadow-[var(--shadow-soft)]"
           >
             <div className="relative z-10">
-              <div className="mb-4 flex justify-end">
+              <div className="flex justify-end">
                 <HelpTriggerButton label={text.help} onClick={() => setHelpOpen(true)} />
               </div>
-              <MediaOrb
-                media={displayWedding.profileMedia}
-                label={displayWedding.coupleName}
-                className="mx-auto h-40 w-32"
-              />
-              <p className="eyebrow mt-6 text-[var(--champagne-deep)]">
-                {text.guest.invited}
-              </p>
-              <h1 className="mt-3 font-display text-fluid-display font-semibold text-balance text-[var(--ink)]">
-                {displayWedding.coupleName}
-              </h1>
-              {displayWedding.eventDate ? (
-                <p className="mt-4 text-sm font-semibold tracking-wide text-[var(--ink-soft)]">
-                  {formatWeddingDate(displayWedding.eventDate, locale)}
-                </p>
-              ) : null}
-              <p className="mx-auto mt-5 max-w-sm text-pretty text-sm leading-relaxed text-[var(--ink-soft)]">
+              <div className="mx-auto -mt-4 flex max-w-md items-center gap-4 text-left sm:-mt-5">
+                <MediaOrb
+                  media={displayWedding.profileMedia}
+                  label={displayWedding.coupleName}
+                  className="h-20 w-16 shrink-0 sm:h-24 sm:w-20"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="eyebrow text-[var(--champagne-deep)]">
+                    {text.guest.invited}
+                  </p>
+                  <h1 className="mt-1 font-display text-3xl font-semibold leading-none text-balance text-[var(--ink)] sm:text-4xl">
+                    {displayWedding.coupleName}
+                  </h1>
+                  {displayWedding.eventDate ? (
+                    <p className="mt-2 text-xs font-semibold tracking-wide text-[var(--ink-soft)]">
+                      {formatWeddingDate(displayWedding.eventDate, locale)}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+              <p className="mx-auto mt-4 max-w-md text-pretty text-sm leading-6 text-[var(--ink-soft)]">
                 {displayWedding.welcomeNote}
               </p>
             </div>
@@ -495,7 +523,10 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
                   {text.guest.thankYouBody}
                 </p>
                 <Button
-                  onClick={() => setSubmitted(false)}
+                  onClick={() => {
+                    setSubmitted(false);
+                    setUploadChoice(null);
+                  }}
                   variant="paper"
                   className="mt-6"
                 >
@@ -505,134 +536,183 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="grid gap-4">
-              <label className="grid gap-2 text-sm font-semibold">
-                {text.guest.name}
-                <input
-                  value={guestName}
-                  onChange={(event) => setGuestName(event.target.value)}
-                  required
-                  disabled={demoMode || submitting}
-                  className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-4 !text-[16px] outline-none disabled:cursor-not-allowed disabled:opacity-65"
-                  placeholder={text.guest.name}
-                />
-              </label>
-
-              <label className="grid gap-2 text-sm font-semibold">
-                {text.guest.note}
-                <textarea
-                  value={note}
-                  onChange={(event) => setRawNote(event.target.value)}
-                  rows={4}
-                  disabled={demoMode || submitting}
-                  className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-4 !text-[16px] leading-7 outline-none disabled:cursor-not-allowed disabled:opacity-65"
-                  placeholder={text.guest.notePlaceholder}
-                />
-              </label>
-
-              <div className="grid gap-3">
-                <label
-                  data-guest-upload-choice="file"
-                  aria-disabled={demoMode || submitting || recording}
-                  className={`focus-ring grid min-h-[8.5rem] place-content-center gap-2 rounded-[26px] border border-dashed border-[var(--line)] bg-white/58 p-5 text-center transition ${
-                    demoMode || submitting || recording
-                      ? "cursor-not-allowed opacity-65"
-                      : "cursor-pointer hover:bg-white"
-                  }`}
-                >
-                  <UploadCloud className="size-7 text-[var(--champagne-deep)]" />
-                  <span className="text-sm font-bold">
-                    {file ? file.name : text.guest.choose}
-                  </span>
-                  <input
-                    type="file"
-                    accept="image/*,video/*,audio/*"
-                    className="sr-only"
-                    onChange={handleFileChange}
+              <fieldset className="grid gap-3">
+                <legend className="sr-only">{text.guest.chooseType}</legend>
+                <div data-guest-upload-choices="true" className="grid grid-cols-2 gap-3">
+                  <Button
+                    type="button"
+                    variant={uploadChoice === "file" ? "ink" : "paper"}
                     disabled={demoMode || submitting || recording}
-                  />
-                </label>
+                    aria-pressed={uploadChoice === "file"}
+                    data-guest-upload-choice="file"
+                    onClick={() => chooseUploadChoice("file")}
+                    className="min-h-24 flex-col gap-2 rounded-[24px] px-3 py-4 text-center"
+                  >
+                    <UploadCloud aria-hidden="true" className="size-6 text-[var(--champagne-deep)]" />
+                    <span>{text.guest.photoVideo}</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={uploadChoice === "voice" ? "ink" : "paper"}
+                    disabled={demoMode || submitting}
+                    aria-pressed={uploadChoice === "voice"}
+                    data-guest-upload-choice="voice"
+                    onClick={() => chooseUploadChoice("voice")}
+                    className="min-h-24 flex-col gap-2 rounded-[24px] px-3 py-4 text-center"
+                  >
+                    <Mic aria-hidden="true" className="size-6 text-[var(--champagne-deep)]" />
+                    <span>{text.guest.voiceNote}</span>
+                  </Button>
+                </div>
+              </fieldset>
 
-                {file && filePreviewUrl ? (
-                  <div className="overflow-hidden rounded-[24px] border border-[var(--line)] bg-black/5">
-                    {mediaKindFor(file) === "image" ? (
-                      <div className="relative aspect-[4/3]">
-                        <Image
-                          src={filePreviewUrl}
-                          alt={file.name}
-                          fill
-                          unoptimized
-                          sizes="(max-width: 544px) 100vw, 480px"
-                          className="object-contain"
-                        />
-                      </div>
-                    ) : mediaKindFor(file) === "video" ? (
-                      <video
-                        src={filePreviewUrl}
-                        controls
-                        preload="metadata"
-                        className="max-h-72 w-full bg-black object-contain"
-                      />
-                    ) : (
-                      <div className="p-4">
-                        <audio src={filePreviewUrl} controls className="w-full" />
-                      </div>
-                    )}
-                  </div>
-                ) : null}
-
-                <Button
-                  type="button"
-                  onClick={recording ? stopRecording : startRecording}
-                  variant="paper"
-                  disabled={demoMode || submitting}
-                  aria-pressed={recording}
-                  data-guest-upload-choice="voice"
-                  className="grid min-h-[8.5rem] w-full place-content-center gap-2 rounded-[26px] border-dashed bg-white/58 p-5 text-center hover:bg-white"
-                >
-                  {recording ? <Pause aria-hidden="true" className="size-7 text-[var(--champagne-deep)]" /> : <Mic aria-hidden="true" className="size-7 text-[var(--champagne-deep)]" />}
-                  <span className="text-sm font-bold">
-                    {recording ? text.guest.stop : text.guest.record}
-                  </span>
-                </Button>
-
-                {recording ? (
-                  <div
-                    role="timer"
-                    aria-live="polite"
-                    className={`rounded-2xl border px-4 py-3 text-center text-sm font-bold tabular-nums ${
-                      recordingRemaining <= RECORDING_WARNING_SECONDS
-                        ? "border-amber-300 bg-amber-50 text-amber-900"
-                        : "border-[var(--line)] bg-white/58 text-[var(--ink-soft)]"
+              {uploadChoice === "file" ? (
+                <div data-guest-upload-panel="file" className="grid gap-3">
+                  <label
+                    className={`focus-ring grid min-h-28 place-content-center gap-2 rounded-[26px] border border-dashed border-[var(--line)] bg-white/58 p-5 text-center transition ${
+                      submitting || recording
+                        ? "cursor-not-allowed opacity-65"
+                        : "cursor-pointer hover:bg-white"
                     }`}
                   >
-                    {text.guest.recordingRemaining.replace(
-                      "{time}",
-                      formatRecordingTime(recordingRemaining),
-                    )}
-                    {recordingRemaining <= RECORDING_WARNING_SECONDS ? (
-                      <span className="mt-1 block text-xs">
-                        {text.guest.recordingEndingSoon}
-                      </span>
-                    ) : null}
-                  </div>
-                ) : null}
-
-                {recordedUrl ? (
-                  <audio src={recordedUrl} controls className="w-full" />
-                ) : null}
-              </div>
-
-              {error ? (
-                <p
-                  role="alert"
-                  aria-live="assertive"
-                  className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700"
-                >
-                  {error}
-                </p>
+                    <UploadCloud className="size-7 text-[var(--champagne-deep)]" />
+                    <span className="text-sm font-bold">
+                      {file ? file.name : text.guest.choosePhotoVideo}
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*,video/*"
+                      className="sr-only"
+                      onChange={handleFileChange}
+                      disabled={submitting || recording}
+                    />
+                  </label>
+                </div>
               ) : null}
 
-              {submitting ? (
+              {uploadChoice === "voice" ? (
+                <div data-guest-upload-panel="voice" className="grid gap-3">
+                  <Button
+                    type="button"
+                    onClick={recording ? stopRecording : startRecording}
+                    variant="paper"
+                    disabled={submitting}
+                    aria-pressed={recording}
+                    className="grid min-h-28 w-full place-content-center gap-2 rounded-[26px] border-dashed bg-white/58 p-5 text-center hover:bg-white"
+                  >
+                    {recording ? <Pause aria-hidden="true" className="size-7 text-[var(--champagne-deep)]" /> : <Mic aria-hidden="true" className="size-7 text-[var(--champagne-deep)]" />}
+                    <span className="text-sm font-bold">
+                      {recording ? text.guest.stop : text.guest.record}
+                    </span>
+                  </Button>
+                  {!recording ? (
+                    <label className="focus-ring cursor-pointer justify-self-center rounded-full px-4 py-2 text-xs font-bold text-[var(--ink-soft)] transition hover:bg-white hover:text-[var(--ink)]">
+                      {text.guest.chooseAudio}
+                      <input
+                        type="file"
+                        accept="audio/*"
+                        className="sr-only"
+                        onChange={handleFileChange}
+                        disabled={submitting}
+                      />
+                    </label>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {file && filePreviewUrl ? (
+                <div className="overflow-hidden rounded-[24px] border border-[var(--line)] bg-black/5">
+                  {mediaKindFor(file) === "image" ? (
+                    <div className="relative aspect-[4/3]">
+                      <Image
+                        src={filePreviewUrl}
+                        alt={file.name}
+                        fill
+                        unoptimized
+                        sizes="(max-width: 544px) 100vw, 480px"
+                        className="object-contain"
+                      />
+                    </div>
+                  ) : mediaKindFor(file) === "video" ? (
+                    <video
+                      src={filePreviewUrl}
+                      controls
+                      preload="metadata"
+                      className="max-h-72 w-full bg-black object-contain"
+                    />
+                  ) : (
+                    <div className="p-4">
+                      <audio src={filePreviewUrl} controls className="w-full" />
+                    </div>
+                  )}
+                </div>
+              ) : null}
+
+              {recording ? (
+                <div
+                  role="timer"
+                  aria-live="polite"
+                  className={`rounded-2xl border px-4 py-3 text-center text-sm font-bold tabular-nums ${
+                    recordingRemaining <= RECORDING_WARNING_SECONDS
+                      ? "border-amber-300 bg-amber-50 text-amber-900"
+                      : "border-[var(--line)] bg-white/58 text-[var(--ink-soft)]"
+                  }`}
+                >
+                  {text.guest.recordingRemaining.replace(
+                    "{time}",
+                    formatRecordingTime(recordingRemaining),
+                  )}
+                  {recordingRemaining <= RECORDING_WARNING_SECONDS ? (
+                    <span className="mt-1 block text-xs">
+                      {text.guest.recordingEndingSoon}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {recordedUrl ? <audio src={recordedUrl} controls className="w-full" /> : null}
+
+              {shouldShowIdentityFields ? (
+                <div className="grid gap-4">
+                  <label className="grid gap-2 text-sm font-semibold">
+                    {text.guest.name}
+                    <input
+                      value={guestName}
+                      onChange={(event) => setGuestName(event.target.value)}
+                      required
+                      disabled={demoMode || submitting}
+                      className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-4 !text-[16px] outline-none disabled:cursor-not-allowed disabled:opacity-65"
+                      placeholder={text.guest.name}
+                    />
+                  </label>
+
+                  <label className="grid gap-2 text-sm font-semibold">
+                    {text.guest.noteOptional}
+                    <textarea
+                      value={note}
+                      onChange={(event) => setRawNote(event.target.value)}
+                      rows={3}
+                      disabled={demoMode || submitting}
+                      className="focus-ring rounded-2xl border border-[var(--line)] bg-[#f1e8db] px-4 py-4 !text-[16px] leading-7 outline-none disabled:cursor-not-allowed disabled:opacity-65"
+                      placeholder={text.guest.notePlaceholder}
+                    />
+                  </label>
+                </div>
+              ) : null}
+
+              {shouldShowIdentityFields ? (
+                <>
+                  {error ? (
+                    <p
+                      role="alert"
+                      aria-live="assertive"
+                      className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700"
+                    >
+                      {error}
+                    </p>
+                  ) : null}
+
+                  {submitting ? (
                 <div className="grid gap-3" aria-live="polite">
                   <div
                     role="progressbar"
@@ -652,7 +732,7 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
                     <span className="tabular-nums">{uploadProgress}%</span>
                   </div>
                   <Button
-                    variant="danger"
+                    variant="paper"
                     onClick={cancelUpload}
                     className="justify-self-start"
                   >
@@ -661,20 +741,30 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
                   </Button>
                 </div>
               ) : (
-                <Button
-                  type="submit"
-                  disabled={demoMode || recording}
-                  className="justify-self-center min-h-14 px-6 !font-extrabold uppercase !tracking-[0.08em]"
-                >
-                  {uploadFailed ? (
-                    <RotateCcw aria-hidden="true" className="size-4" />
-                  ) : (
-                    <Check aria-hidden="true" className="size-4" />
+                <div className="grid justify-items-center gap-2">
+                  <Button
+                    type="submit"
+                    disabled={demoMode || recording}
+                    className="min-h-14 px-6 !font-extrabold uppercase !tracking-[0.08em]"
+                  >
+                    {uploadFailed ? (
+                      <RotateCcw aria-hidden="true" className="size-4" />
+                    ) : (
+                      <Check aria-hidden="true" className="size-4" />
+                    )}
+                    {uploadFailed ? text.guest.retryUpload : text.guest.send}
+                  </Button>
+                  {!demoMode ? (
+                    <p className="flex items-center justify-center gap-1.5 text-center text-xs font-semibold text-[var(--ink-soft)]">
+                      <LockKeyhole aria-hidden="true" className="size-3.5 shrink-0" />
+                      {text.guest.privateDelivery}
+                    </p>
+                  ) : null}
+                </div>
                   )}
-                  {uploadFailed ? text.guest.retryUpload : text.guest.send}
-                </Button>
-              )}
-              {!demoMode ? <TurnstileGate ref={turnstileRef} /> : null}
+                </>
+              ) : null}
+              {!demoMode && shouldShowIdentityFields ? <TurnstileGate ref={turnstileRef} /> : null}
             </form>
           )}
           </section>

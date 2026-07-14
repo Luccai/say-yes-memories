@@ -4,7 +4,7 @@ import {
   consumeRateLimitBucket,
 } from "@/lib/auth/customer-store";
 
-export type CustomerAuthAction = "activate" | "login" | "recover";
+export type CustomerAuthAction = "activation-check" | "activate" | "login" | "recover";
 
 export type RateLimitOperations = {
   consume: typeof consumeRateLimitBucket;
@@ -20,6 +20,7 @@ const POLICIES: Record<
   CustomerAuthAction,
   { identifierAttempts: number; ipAttempts: number }
 > = {
+  "activation-check": { identifierAttempts: 6, ipAttempts: 24 },
   activate: { identifierAttempts: 6, ipAttempts: 24 },
   login: { identifierAttempts: 5, ipAttempts: 30 },
   recover: { identifierAttempts: 4, ipAttempts: 16 },

@@ -16,7 +16,7 @@ Generated raw tokens are written under `private/` and must never be committed.
 
 ## Routes
 
-- `/login` - couple token activation and returning-device entry
+- `/login` - two-step couple activation (Etsy token check, then couple details and password) and returning-device entry
 - `/admin` - private couple studio
 - `/admin/mary-john` - local/demo admin studio
 - `/admin/presentation` - authenticated full-screen Flow Mode
@@ -50,14 +50,34 @@ operator tool, not a customer-facing screen.
 - Wedding Page clearly shows whether guest uploads are open; its demo keeps the
   profile action and guest message read-only. The demo guest page is also a
   safe, read-only preview and never stores a browser upload.
+- Wedding Page save/profile failures use the shared accessible toast instead of
+  native browser alerts. Upload availability uses a static sage status pill
+  without pulse or glow.
+- Demo Storage opens the real Premium package modal as a sales preview, while
+  couple-name copying and the Etsy purchase CTA remain clearly disabled.
 - QR + Guest Link groups the QR preview and download actions together. Its PNG
   download is generated separately at 1600 × 1600 px for print while the screen
-  preview remains lightweight; SVG stays available for recolouring. Flow
+  preview remains lightweight; SVG keeps the same print-safe quiet zone and
+  stays available for recolouring. Flow
   Mode presents mixed media in a square stage, advances photos every three
   seconds, and keeps each guest note attached to its own memory.
 - Login has compact actions and a login-only Privacy & data modal. There is no
   separate `/privacy` route; customer-facing copy remains available in all six
   supported languages.
+- First-time setup trims and uppercases the Etsy token, checks eligibility with a
+  rate-limited endpoint, then asks for names, wedding date and matching password.
+  Password fields include accessible show/hide controls. The final activation
+  remains atomic, so the first check never reserves or consumes the token.
+
+### Admin component architecture
+
+`src/components/admin/AdminExperience.tsx` is the data/effect orchestrator, not
+the entire UI. Navigation and panel transitions live in `AdminShell.tsx` and
+`StudioHeader.tsx`; panel UI lives under `panels/`; gallery/lightbox/delete
+pieces live under `memories/`; quota and Premium pieces live under `storage/`.
+Guest Memories remains mounted while couples switch panels so retained thumbnail
+blobs stay ready. Flow Mode uses client-side Next.js links, preserving that
+in-memory cache when the couple returns to the studio.
 
 ## Storage and plans
 

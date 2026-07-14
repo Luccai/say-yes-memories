@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, type ComponentType } from "react";
 import {
   ExternalLink,
@@ -40,12 +41,14 @@ type NavigationItem =
       kind: "panel";
       panel: AdminPanel;
       label: string;
+      mobileLabel: string;
       icon: ComponentType<{ className?: string }>;
     }
   | {
       kind: "link";
       href: string;
       label: string;
+      mobileLabel: string;
       icon: ComponentType<{ className?: string }>;
       newTab?: boolean;
     };
@@ -74,24 +77,28 @@ export function StudioNavigation({
       kind: "panel",
       panel: "memories",
       label: text.memories,
+      mobileLabel: text.mobileMemories,
       icon: ImageIcon,
     },
     {
       kind: "link",
       href: presentationUrl,
       label: text.presentation,
+      mobileLabel: text.mobilePresentation,
       icon: MonitorPlay,
     },
     {
       kind: "panel",
       panel: "identity",
       label: text.weddingPage,
+      mobileLabel: text.mobileWeddingPage,
       icon: Settings2,
     },
     {
       kind: "panel",
       panel: "qr",
       label: text.qrAndLink,
+      mobileLabel: text.mobileQrAndLink,
       icon: QrCode,
     },
   ];
@@ -194,7 +201,7 @@ export function StudioNavigation({
               onClick={onLogout}
               disabled={loggingOut}
               loading={loggingOut}
-              variant="danger"
+              variant="quiet"
               fullWidth
               className="justify-start px-4"
             >
@@ -212,8 +219,8 @@ export function StudioNavigation({
 
       <nav
         data-studio-navigation="mobile"
-          aria-label={text.navigation}
-        className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-[70] grid w-[min(calc(100vw-1rem),32rem)] -translate-x-1/2 grid-cols-5 gap-1 rounded-[28px] border border-white/80 bg-[rgba(255,250,243,0.9)] p-1.5 shadow-[0_18px_48px_rgba(58,40,25,0.2)] backdrop-blur-xl lg:hidden"
+        aria-label={text.navigation}
+        className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-[70] grid w-[min(calc(100vw-0.5rem),32rem)] -translate-x-1/2 grid-cols-5 gap-0.5 rounded-[28px] border border-white/80 bg-[rgba(255,250,243,0.9)] p-1 shadow-[0_18px_48px_rgba(58,40,25,0.2)] backdrop-blur-xl lg:hidden"
       >
         {primaryItems.map((item) => (
           <NavigationControl
@@ -229,14 +236,16 @@ export function StudioNavigation({
           onClick={() => setMoreOpen(true)}
           aria-expanded={moreOpen}
           aria-current={activePanel === "storage" ? "page" : undefined}
-          className={`focus-ring flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-[22px] px-1 text-[0.6rem] font-extrabold transition motion-safe:active:scale-[0.96] ${
+          className={`focus-ring flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-[20px] border px-0 text-[0.6rem] font-black tracking-[-0.02em] transition max-[374px]:text-[0.56rem] motion-safe:active:scale-[0.96] ${
             activePanel === "storage"
-              ? "bg-[var(--ink)] text-[var(--paper-soft)] shadow-[0_8px_18px_rgba(31,23,18,0.2)]"
-              : "text-[var(--ink-soft)] hover:bg-white/60 hover:text-[var(--ink)]"
+              ? "border-[var(--ink)] bg-[var(--ink)] text-[var(--paper-soft)] shadow-[0_8px_18px_rgba(31,23,18,0.2)]"
+              : "border-[rgba(139,107,63,0.16)] bg-[rgba(255,255,255,0.44)] text-[var(--ink)] shadow-[inset_0_1px_0_rgba(255,255,255,0.72)] hover:border-[rgba(139,107,63,0.28)] hover:bg-white/64"
           }`}
         >
           <Menu className="size-[1.15rem]" />
-          <span className="max-w-full whitespace-normal text-center leading-[1.05]">{text.more}</span>
+          <span className="line-clamp-2 min-h-[2.1em] max-w-full text-center font-extrabold leading-[1.05]">
+            {text.more}
+          </span>
         </button>
       </nav>
 
@@ -298,7 +307,7 @@ export function StudioNavigation({
                   onClick={onLogout}
                   disabled={loggingOut}
                   loading={loggingOut}
-                  variant="danger"
+                  variant="quiet"
                   fullWidth
                   className="justify-start px-4"
                 >
@@ -333,10 +342,10 @@ function NavigationControl({
   const Icon = item.icon;
   const className =
     mode === "mobile"
-      ? `focus-ring flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-[22px] px-1 text-[0.6rem] font-extrabold transition motion-safe:active:scale-[0.96] ${
+      ? `focus-ring flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-[20px] border px-0 text-[0.6rem] font-black tracking-[-0.02em] transition max-[374px]:text-[0.56rem] motion-safe:active:scale-[0.96] ${
           active
-            ? "bg-[var(--ink)] text-[var(--paper-soft)] shadow-[0_8px_18px_rgba(31,23,18,0.2)]"
-            : "text-[var(--ink-soft)] hover:bg-white/60 hover:text-[var(--ink)]"
+            ? "border-[var(--ink)] bg-[var(--ink)] text-[var(--paper-soft)] shadow-[0_8px_18px_rgba(31,23,18,0.2)]"
+            : "border-[rgba(139,107,63,0.16)] bg-[rgba(255,255,255,0.44)] text-[var(--ink)] shadow-[inset_0_1px_0_rgba(255,255,255,0.72)] hover:border-[rgba(139,107,63,0.28)] hover:bg-white/64"
         }`
       : `focus-ring flex min-h-12 w-full items-center gap-3 rounded-full px-3 text-left text-sm font-extrabold transition motion-safe:active:scale-[0.985] ${
           active
@@ -351,21 +360,35 @@ function NavigationControl({
       <span
         className={
           mode === "mobile"
-            ? "max-w-full whitespace-normal text-center leading-[1.05]"
+            ? "line-clamp-2 min-h-[2.1em] max-w-full text-center font-extrabold leading-[1.05]"
             : "truncate"
         }
       >
-        {item.label}
+        {mode === "mobile" ? item.mobileLabel : item.label}
       </span>
     </>
   );
 
   if (item.kind === "link") {
+    if (!item.newTab) {
+      return (
+        <Link
+          href={item.href}
+          prefetch={false}
+          aria-label={mode === "mobile" ? item.label : undefined}
+          className={className}
+        >
+          {content}
+        </Link>
+      );
+    }
+
     return (
       <a
         href={item.href}
-        target={item.newTab ? "_blank" : undefined}
-        rel={item.newTab ? "noreferrer" : undefined}
+        target="_blank"
+        rel="noreferrer"
+        aria-label={mode === "mobile" ? item.label : undefined}
         className={className}
       >
         {content}
@@ -378,6 +401,7 @@ function NavigationControl({
       type="button"
       onClick={() => onPanelChange(item.panel)}
       aria-current={active ? "page" : undefined}
+      aria-label={mode === "mobile" ? item.label : undefined}
       className={className}
     >
       {content}

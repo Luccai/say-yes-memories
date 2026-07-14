@@ -15,6 +15,17 @@ export const QR_PRINT_OPTIONS = {
   color: QR_COLORS,
 } as const;
 
+export const QR_SVG_OPTIONS = {
+  type: "svg",
+  width: 720,
+  margin: 4,
+  color: QR_COLORS,
+} as const;
+
 export function qrPrintFileName(slug: string) {
   return `${slug}-wedding-qr-print.png`;
+}
+
+export function qrSvgFileName(slug: string) {
+  return `${slug}-wedding-qr-print.svg`;
 }

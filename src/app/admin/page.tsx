@@ -15,6 +15,7 @@ export default async function AdminPage() {
     <AdminExperience
       initialWedding={current.wedding}
       initialMedia={page.media}
+      initialMediaCounts={page.counts}
       initialMediaHasMore={page.hasMore}
       initialMediaNextOffset={page.nextOffset}
     />

@@ -49,7 +49,10 @@ const credentials: Credentials = {
   status: "active",
 };
 
-let activationState: { state: "unused" } | { state: "active"; credentials: Credentials };
+let activationState:
+  | { state: "missing" }
+  | { state: "unused" }
+  | { state: "active"; credentials: Credentials };
 let slugCredentials: Credentials | null;
 let tokenCredentials: Credentials | null;
 const activationCalls: Record<string, unknown>[] = [];
@@ -116,6 +119,9 @@ mock.module("@/lib/auth/customer-store", () => ({
 }));
 
 const { POST: activate } = await import("../src/app/api/auth/activate/route");
+const { POST: checkActivationToken } = await import(
+  "../src/app/api/auth/activation-token/route"
+);
 const { POST: login } = await import("../src/app/api/auth/login/route");
 const { POST: recover } = await import("../src/app/api/auth/recover/route");
 const { POST: logout } = await import("../src/app/api/auth/logout/route");
@@ -141,6 +147,44 @@ beforeEach(() => {
 });
 
 describe("customer auth routes", () => {
+  test("checks activation eligibility without consuming the token", async () => {
+    const response = await checkActivationToken(
+      jsonRequest("/api/auth/activation-token", {
+        token: "  syd-abcde-fghij-klmno-pqrst  ",
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ valid: true });
+    expect(activationCalls).toHaveLength(0);
+    expect(sessionCalls).toHaveLength(0);
+  });
+
+  test("does not reveal whether an unavailable token is active", async () => {
+    activationState = { state: "active", credentials };
+
+    const response = await checkActivationToken(
+      jsonRequest("/api/auth/activation-token", { token: "SYD-ABCDE-FGHIJ-KLMNO-PQRST" }),
+    );
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ code: "TOKEN_UNAVAILABLE" });
+  });
+
+  test("keeps legacy passwordless memberships eligible for setup", async () => {
+    activationState = {
+      state: "active",
+      credentials: { ...credentials, passwordHash: null },
+    };
+
+    const response = await checkActivationToken(
+      jsonRequest("/api/auth/activation-token", { token: "SYD-ABCDE-FGHIJ-KLMNO-PQRST" }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ valid: true });
+  });
+
   test("activates atomically and places only a random session secret in the cookie", async () => {
     const response = await activate(
       jsonRequest("/api/auth/activate", {
