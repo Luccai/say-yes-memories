@@ -93,6 +93,20 @@ Current product model:
 - Expired files are not deleted immediately; they become cleanup candidates
   after the 30-day grace window.
 
+### Download all memories
+
+Private Storage can prepare one downloadable ZIP for the couple. It contains
+`Photos/`, `Videos/`, `Voice Notes/`, and `messages.csv`. The job uses a fixed
+media snapshot, so uploads arriving later cannot change a ZIP already being
+prepared. Archive output is system storage and never consumes customer quota.
+
+- One queued, preparing, or unexpired ready archive is reused per couple.
+- Couples see the item count, source size, and preparation progress.
+- The ready ZIP is available through a session-checked URL for 24 hours; daily
+  maintenance then removes its private R2 object.
+- The browser never receives a raw archive R2 path. A separate Cloudflare
+  Worker + Container streams private media directly into a multipart ZIP.
+
 Premium Extension is applied manually from `/owner` after finding the membership
 by couple name. Customers copy only their couple name into Etsy personalization;
 Studio Code and Etsy order number are no longer part of the customer flow. Every
@@ -140,6 +154,10 @@ NEXT_PUBLIC_TURNSTILE_SITE_KEY=
 TURNSTILE_SECRET_KEY=
 TURNSTILE_EXPECTED_HOSTNAMES=
 CRON_SECRET=
+ARCHIVE_RUNNER_URL=
+ARCHIVE_APP_ORIGIN=
+ARCHIVE_DISPATCH_SECRET=
+ARCHIVE_CALLBACK_SECRET=
 ```
 
 Enable R2 in the Cloudflare dashboard before deploying, create the
@@ -164,12 +182,21 @@ Apply migrations in filename order. The product-ready tail is:
 4. `20260712120000_add_secure_multipart_uploads.sql`
 5. `20260712143000_add_daily_maintenance.sql`
 6. `20260712160000_add_presentation_media_index.sql`
+7. `20260714133000_add_memory_archives.sql`
 
-The last migration supports the authenticated Vercel cron route at
-`/api/cron/daily-maintenance`. It expires upload reservations, processes
-owner-approved deletion jobs, finalizes safe cleanup, and records Supabase/R2
-health. `vercel.json` schedules it daily; Vercel sends `CRON_SECRET` as a Bearer
-credential.
+The authenticated Vercel cron route at `/api/cron/daily-maintenance` expires
+upload reservations, removes expired 24-hour archives, processes owner-approved
+deletion jobs, finalizes safe cleanup, and records Supabase/R2 health.
+
+The archive runner lives in `workers/archive-runner` and has its own Bun lock
+and TypeScript check. Vercel signs dispatches with `ARCHIVE_DISPATCH_SECRET`,
+uses `ARCHIVE_APP_ORIGIN` as the only callback origin, and derives a different
+callback credential for every archive attempt from `ARCHIVE_CALLBACK_SECRET`. The
+Worker receives only that attempt-scoped credential; the app reserves the attempt
+atomically so concurrent clicks reuse it, and a two-hour renewable lease lets a
+stalled attempt be replaced without accepting stale callbacks. Daily cleanup removes
+the whole job prefix, including any orphan left by a hard-stopped Container. It also needs private R2
+credentials as Cloudflare secrets. None of these values may use `NEXT_PUBLIC_`.
 
 ## Verification notes
 

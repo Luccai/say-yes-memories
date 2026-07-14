@@ -1,6 +1,7 @@
 import {
   checkR2Connection,
   deleteStoredFile,
+  deleteArchiveJobPrefix,
   abortMultipartR2Upload,
   isNoSuchMultipartUpload,
 } from "@/lib/storage/storage-service";
@@ -19,10 +20,15 @@ import {
   listPendingCleanupWeddingIds,
   recordSystemHealth,
 } from "@/lib/maintenance/store";
+import {
+  claimExpiredArchiveJobs,
+  markArchiveStorageCleanup,
+} from "@/lib/archives/store";
 
 const defaultDependencies = {
   checkR2Connection,
   deleteStoredFile,
+  deleteArchiveJobPrefix,
   abortMultipartR2Upload,
   isNoSuchMultipartUpload,
   expireUploadReservation,
@@ -36,6 +42,8 @@ const defaultDependencies = {
   finishMediaDeletionJob,
   listPendingCleanupWeddingIds,
   recordSystemHealth,
+  claimExpiredArchiveJobs,
+  markArchiveStorageCleanup,
 };
 
 type Dependencies = typeof defaultDependencies;
@@ -102,6 +110,8 @@ export async function runDailyMaintenance(
     failedDeletionJobs: 0,
     finalizedWeddings: 0,
     failedWeddingFinalizations: 0,
+    cleanedArchives: 0,
+    failedArchiveCleanups: 0,
   };
 
   const expired = await dependencies.listExpiredUploadReservations(now, 200);
@@ -166,6 +176,37 @@ export async function runDailyMaintenance(
     }
   }
 
+  let expiredArchives: Awaited<
+    ReturnType<Dependencies["claimExpiredArchiveJobs"]>
+  > = [];
+  try {
+    expiredArchives = await dependencies.claimExpiredArchiveJobs(now, 100);
+  } catch {
+    result.failedArchiveCleanups += 1;
+  }
+
+  for (const archive of expiredArchives) {
+    try {
+      await dependencies.deleteArchiveJobPrefix(archive.weddingId, archive.id);
+      await dependencies.markArchiveStorageCleanup({
+        jobId: archive.id,
+        success: true,
+        now,
+      });
+      result.cleanedArchives += 1;
+    } catch (error) {
+      await dependencies
+        .markArchiveStorageCleanup({
+          jobId: archive.id,
+          success: false,
+          error: errorText(error),
+          now,
+        })
+        .catch(() => undefined);
+      result.failedArchiveCleanups += 1;
+    }
+  }
+
   let supabaseLatencyMs: number | undefined;
   let r2LatencyMs: number | undefined;
   let supabaseOk = false;
@@ -202,7 +243,8 @@ export async function runDailyMaintenance(
       result.failedReservationCleanups === 0 &&
       result.failedDeletionJobClaims === 0 &&
       result.failedDeletionJobs === 0 &&
-      result.failedWeddingFinalizations === 0,
+      result.failedWeddingFinalizations === 0 &&
+      result.failedArchiveCleanups === 0,
     ...result,
     supabaseOk,
     r2Ok,

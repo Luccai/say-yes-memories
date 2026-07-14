@@ -59,6 +59,13 @@ let storageCleanupResults: boolean[] = [];
 let deletionResults: boolean[] = [];
 let recordedHealthDetails: Record<string, unknown> | null = null;
 
+const expiredArchive = {
+  id: "archive_aaaaaaaaaaaaaaaaaaaaaaaa",
+  weddingId: "wedding_test",
+  archivePath:
+    "archives/wedding_test/archive_aaaaaaaaaaaaaaaaaaaaaaaa/mary-john-wedding-memories.zip",
+};
+
 function baseDependencies(): MaintenanceOverrides {
   return {
     listExpiredUploadReservations: async () => [],
@@ -68,6 +75,9 @@ function baseDependencies(): MaintenanceOverrides {
     isNoSuchMultipartUpload: () => false,
     deleteStoredFile: async (path) => {
       deletedPaths.push(path);
+    },
+    deleteArchiveJobPrefix: async (weddingId, jobId) => {
+      deletedPaths.push(`archives/${weddingId}/${jobId}/`);
     },
     markUploadStorageCleanup: async (input) => {
       storageCleanupResults.push(input.success);
@@ -79,6 +89,8 @@ function baseDependencies(): MaintenanceOverrides {
     },
     listPendingCleanupWeddingIds: async () => [],
     finalizeOwnerCleanup: async () => undefined,
+    claimExpiredArchiveJobs: async () => [],
+    markArchiveStorageCleanup: async () => expiredArchive as never,
     checkSupabaseConnection: async () => 12,
     checkR2Connection: async () => 18,
     countCleanupCandidates: async () => 0,
@@ -188,5 +200,43 @@ describe("daily maintenance", () => {
     expect(recordedHealthDetails).toMatchObject({
       failedWeddingFinalizations: 1,
     });
+  });
+
+  test("removes a ready archive after its 24-hour window ends", async () => {
+    const archiveCleanupResults: boolean[] = [];
+    const result = await runDailyMaintenance({
+      ...baseDependencies(),
+      claimExpiredArchiveJobs: async () => [expiredArchive] as never,
+      markArchiveStorageCleanup: async (input) => {
+        archiveCleanupResults.push(input.success);
+        return expiredArchive as never;
+      },
+    });
+
+    expect(result.cleanedArchives).toBe(1);
+    expect(result.failedArchiveCleanups).toBe(0);
+    expect(deletedPaths).toContain(
+      `archives/${expiredArchive.weddingId}/${expiredArchive.id}/`,
+    );
+    expect(archiveCleanupResults).toEqual([true]);
+  });
+
+  test("marks archive cleanup complete even when a failed job has no output object", async () => {
+    const archiveCleanupResults: boolean[] = [];
+    const failedArchive = { ...expiredArchive, archivePath: null };
+    const result = await runDailyMaintenance({
+      ...baseDependencies(),
+      claimExpiredArchiveJobs: async () => [failedArchive] as never,
+      markArchiveStorageCleanup: async (input) => {
+        archiveCleanupResults.push(input.success);
+        return failedArchive as never;
+      },
+    });
+
+    expect(result.cleanedArchives).toBe(1);
+    expect(deletedPaths).toEqual([
+      `archives/${failedArchive.weddingId}/${failedArchive.id}/`,
+    ]);
+    expect(archiveCleanupResults).toEqual([true]);
   });
 });

@@ -15,6 +15,10 @@ const premiumDialogPath = resolve(
   root,
   "src/components/admin/storage/PremiumExtensionDialog.tsx",
 );
+const archiveDownloadPath = resolve(
+  root,
+  "src/components/admin/storage/MemoryArchiveDownload.tsx",
+);
 
 const requiredModules = [
   "src/components/admin/AdminShell.tsx",
@@ -29,6 +33,7 @@ const requiredModules = [
   "src/components/admin/memories/DeleteMemoryDialog.tsx",
   "src/components/admin/storage/StorageMeter.tsx",
   "src/components/admin/storage/PremiumExtensionDialog.tsx",
+  "src/components/admin/storage/MemoryArchiveDownload.tsx",
 ];
 
 describe("admin component architecture", () => {
@@ -56,5 +61,13 @@ describe("admin component architecture", () => {
     expect(meterSource).toContain("aria-label={label}");
     expect(dialogSource).toContain("max-h-[calc(100dvh-1.5rem)]");
     expect(dialogSource).toContain("overflow-y-auto");
+  });
+
+  test("lets a stalled running archive redispatch its already-reserved attempt", () => {
+    const source = readFileSync(archiveDownloadPath, "utf8");
+    expect(source).toContain(
+      '(archive?.status === "running" && !archive.retryStartAvailable)',
+    );
+    expect(source).toContain("archive?.retryStartAvailable");
   });
 });

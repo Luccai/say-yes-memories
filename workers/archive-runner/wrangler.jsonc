@@ -1,0 +1,28 @@
+{
+  "name": "say-yes-memory-archive-runner",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-14",
+  "compatibility_flags": ["nodejs_compat"],
+  "containers": [
+    {
+      "class_name": "ArchiveContainer",
+      "image": "./Dockerfile",
+      "max_instances": 2
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "ARCHIVE_CONTAINER",
+        "class_name": "ArchiveContainer"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["ArchiveContainer"]
+    }
+  ]
+}
+

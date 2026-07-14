@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Copy, Crown, HardDrive } from "lucide-react";
 import { PremiumExtensionDialog } from "@/components/admin/storage/PremiumExtensionDialog";
+import { MemoryArchiveDownload } from "@/components/admin/storage/MemoryArchiveDownload";
 import { StorageMeter } from "@/components/admin/storage/StorageMeter";
 import { Button } from "@/components/shared/Button";
 import type { useCopy } from "@/lib/i18n-client";
@@ -152,6 +153,8 @@ export function StoragePanel({ wedding, demoMode, text }: StoragePanelProps) {
           </div>
         </div>
       </article>
+
+      <MemoryArchiveDownload demoMode={isDemoStorage} text={text} />
 
       <PremiumExtensionDialog
         open={premiumOpen}

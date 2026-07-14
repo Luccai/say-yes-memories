@@ -21,13 +21,13 @@ Gerçek müşteri kaydı, tokenı, kotası, paketi veya dosyası üzerinde write
 - `MaxAgeSeconds`: `3600`.
 - Lifecycle yalnız tamamlanmamış multipart uploadları 1 gün sonra abort eder. Tamamlanmış `weddings/` objelerine otomatik silme kuralı eklenmez.
 - Production ve preview için mümkünse ayrı Turnstile widget kullanılır; hostname listesi şemasız yazılır.
-- Invisible mod kullanılıyorsa `/privacy` sayfasındaki Cloudflare Turnstile Privacy Addendum bağlantısı production'da görünür olmalıdır.
+- Invisible mod kullanılıyorsa login ekranındaki Privacy & data modalında Cloudflare Turnstile Privacy Addendum bağlantısı production'da görünür olmalıdır.
 
 ## 3. Vercel secret ve bağlantı kontrolü
 
 1. Mevcut `say-yes-memories` projesi ve doğru scope açıkça doğrulanır; worktree'den körlemesine yeni proje oluşturulmaz.
 2. `.env.example` içindeki değerler gereken Production/Preview/Development ortamlarına eklenir.
-3. `AUTH_PASSWORD_PEPPER`, `AUTH_RATE_LIMIT_SECRET`, `OWNER_SETUP_SECRET` ve `CRON_SECRET` birbirinden bağımsız, en az 32 byte rastgele değerlerdir.
+3. `AUTH_PASSWORD_PEPPER`, `AUTH_RATE_LIMIT_SECRET`, `OWNER_SETUP_SECRET`, `CRON_SECRET`, `ARCHIVE_DISPATCH_SECRET` ve `ARCHIVE_CALLBACK_SECRET` birbirinden bağımsız, en az 32 byte rastgele değerlerdir.
 4. Aynı Supabase veritabanını kullanan deploy'lar aynı `AUTH_PASSWORD_PEPPER` değerini kullanır.
 5. `NEXT_PUBLIC_` almayan secret değerler istemci bundle'ına açılmaz.
 
@@ -41,6 +41,7 @@ Dosya adına göre sırayla uygula:
 4. `20260712120000_add_secure_multipart_uploads.sql`
 5. `20260712143000_add_daily_maintenance.sql`
 6. `20260712160000_add_presentation_media_index.sql`
+7. `20260714133000_add_memory_archives.sql`
 
 Migration'lar eklemelidir. Başarısız deploy'da tabloları aceleyle geri silme; önce önceki Vercel deployment'ına dön.
 
@@ -56,12 +57,13 @@ Supabase SQL kontratları canlıda yalnız `BEGIN ... ROLLBACK` içinde çalış
 
 ## 6. Preview ve geçici üyelik
 
-1. `codex/product-ready` dalını push et ve oluşan Preview adresini doğrula.
+1. Push edilecek main commitinden oluşturulan Preview adresini doğrula.
 2. Benzersiz bir geçici token ve çift adı üret; ayrı `weddings/<temporary-id>/` R2 prefix'i kullan.
 3. Aktivasyon, aynı cihaz giriş, logout, tokenlı recovery, küçük upload ve multipart upload akışlarını doğrula.
-4. Owner aramasında geçici çifti bul; +50 GB/+6 ay paketini benzersiz işlem anahtarıyla uygula ve aynı anahtarın ikinci kez uygulanmadığını doğrula.
-5. Geçici kaydı owner temizlik akışıyla sil; R2 prefix'in boşaldığını ve başlangıç canlı sayaçlarının geri geldiğini doğrula.
-6. Gerçek iki test üyeliğini yalnız devre dışı bırak; dokuz eski medya kaydını kullanıcı açıkça kalıcı silme onayı verene kadar koru.
+4. Geçici üyelikte Download all memories başlat; sayım/boyut ve ilerlemeyi gör, ZIP'in `Photos/`, `Videos/`, `Voice Notes/` ve `messages.csv` içerdiğini doğrula. İndirmeyi yalnız geçici session ile dene; gerçek müşteri ZIP'i üretme.
+5. Owner aramasında geçici çifti bul; +50 GB/+6 ay paketini benzersiz işlem anahtarıyla uygula ve aynı anahtarın ikinci kez uygulanmadığını doğrula.
+6. Geçici kaydı owner temizlik akışıyla sil; `weddings/<temporary-id>/` ve `archives/<temporary-id>/` prefix'lerinin boşaldığını doğrula.
+7. Gerçek iki test üyeliğini yalnız devre dışı bırak; dokuz eski medya kaydını kullanıcı açıkça kalıcı silme onayı verene kadar koru.
 
 ## 7. Production, owner kurulumu ve rollback
 
@@ -71,3 +73,12 @@ Supabase SQL kontratları canlıda yalnız `BEGIN ... ROLLBACK` içinde çalış
 4. `/api/cron/daily-maintenance` production'da `CRON_SECRET` Bearer ile çalışmalı ve sonucu owner Sistem Durumu bölümüne yazmalıdır.
 5. Sorunda önceki Vercel deployment'ına rollback yap. Eklemeli Supabase alanları eski uygulamayı bozmamalıdır.
 6. Doğrulama tamamlanınca snapshot'taki eski kullanılmamış tokenlar hedefli işlemle iptal edilir; yeni üretilmiş tokenlara dokunulmaz.
+
+## 8. Archive runner deploy
+
+1. `workers/archive-runner` altında `bun install --frozen-lockfile` ve `bun run typecheck` çalıştır.
+2. Worker secret olarak `ARCHIVE_DISPATCH_SECRET`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` ve `R2_BUCKET` tanımla. `ARCHIVE_CALLBACK_SECRET` Worker'a verilmez.
+3. `bun run deploy` sonrasında çıkan HTTPS Worker URL'sini Vercel'deki `ARCHIVE_RUNNER_URL` değerine yaz.
+4. Vercel'e aynı dispatch secretını, bağımsız `ARCHIVE_CALLBACK_SECRET` kökünü ve path içermeyen production originini `ARCHIVE_APP_ORIGIN` olarak ekle.
+5. Worker her dispatchte yalnız DB'de atomik ayrılmış attempt için türetilmiş callback anahtarını alır. Geçici üyelik doğrulamasında eşzamanlı isteklerin aynı attempt'i kullandığını, eski/cross-job callback reddini, lease sonrası güvenli yeniden başlatmayı ve bütün job prefix'inin 24 saatlik cleanup'ını kontrol et.
+6. Cloudflare hesabının Containers desteğini doğrulamadan deploy etme; deployment bu repo push'undan ayrı operasyon adımıdır.

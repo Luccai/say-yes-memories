@@ -312,6 +312,32 @@ export async function deleteStoredFile(storagePath?: string | null) {
   );
 }
 
+export async function deleteArchiveJobPrefix(weddingId: string, jobId: string) {
+  if (
+    !/^[a-zA-Z0-9_-]{8,160}$/.test(weddingId) ||
+    !/^archive_[a-f0-9]{24}$/.test(jobId)
+  ) {
+    throw new Error("Archive cleanup prefix is invalid.");
+  }
+  const prefix = `archives/${weddingId}/${jobId}/`;
+  let continuationToken: string | undefined;
+  do {
+    const page = await getR2Client().send(
+      new ListObjectsV2Command({
+        Bucket: R2_BUCKET,
+        Prefix: prefix,
+        ContinuationToken: continuationToken,
+      }),
+    );
+    await Promise.all(
+      (page.Contents ?? []).map((object) =>
+        object.Key ? deleteStoredFile(object.Key) : Promise.resolve(),
+      ),
+    );
+    continuationToken = page.IsTruncated ? page.NextContinuationToken : undefined;
+  } while (continuationToken);
+}
+
 function storagePrefixFor(weddingId: string, folder: StorageFolder) {
   return `weddings/${weddingId}/${folder}`;
 }
