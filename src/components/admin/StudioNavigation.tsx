@@ -1,0 +1,437 @@
+"use client";
+
+import { useEffect, useRef, useState, type ComponentType } from "react";
+import {
+  ExternalLink,
+  HardDrive,
+  HelpCircle,
+  Image as ImageIcon,
+  LogOut,
+  Menu,
+  MonitorPlay,
+  QrCode,
+  Settings2,
+  X,
+} from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { Button } from "@/components/shared/Button";
+import { MediaOrb } from "@/components/shared/MediaOrb";
+import { useCopy } from "@/lib/i18n-client";
+import type { Wedding } from "@/lib/types";
+import { useAccessibleDialog } from "@/lib/use-accessible-dialog";
+import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
+
+export type AdminPanel = "memories" | "storage" | "identity" | "qr";
+
+type StudioNavigationProps = {
+  activePanel: AdminPanel;
+  wedding: Pick<Wedding, "coupleName" | "profileMedia">;
+  presentationUrl: string;
+  eventUrl: string;
+  loggingOut: boolean;
+  logoutError: string;
+  onPanelChange: (panel: AdminPanel) => void;
+  onHelp: () => void;
+  onLogout: () => void;
+};
+
+type NavigationItem =
+  | {
+      kind: "panel";
+      panel: AdminPanel;
+      label: string;
+      icon: ComponentType<{ className?: string }>;
+    }
+  | {
+      kind: "link";
+      href: string;
+      label: string;
+      icon: ComponentType<{ className?: string }>;
+      newTab?: boolean;
+    };
+
+export function StudioNavigation({
+  activePanel,
+  wedding,
+  presentationUrl,
+  eventUrl,
+  loggingOut,
+  logoutError,
+  onPanelChange,
+  onHelp,
+  onLogout,
+}: StudioNavigationProps) {
+  const copy = useCopy();
+  const text = copy.admin;
+  const close = copy.close;
+  const reduceMotion = useReducedMotion();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreDialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  const primaryItems: NavigationItem[] = [
+    {
+      kind: "panel",
+      panel: "memories",
+      label: text.memories,
+      icon: ImageIcon,
+    },
+    {
+      kind: "link",
+      href: presentationUrl,
+      label: text.presentation,
+      icon: MonitorPlay,
+    },
+    {
+      kind: "panel",
+      panel: "identity",
+      label: text.weddingPage,
+      icon: Settings2,
+    },
+    {
+      kind: "panel",
+      panel: "qr",
+      label: text.qrAndLink,
+      icon: QrCode,
+    },
+  ];
+
+  useBodyScrollLock(moreOpen);
+  useAccessibleDialog({
+    open: moreOpen,
+    containerRef: moreDialogRef,
+    initialFocusRef: closeButtonRef,
+    onClose: () => setMoreOpen(false),
+  });
+
+  useEffect(() => {
+    const desktopBreakpoint = window.matchMedia("(min-width: 1024px)");
+    const closeMoreOnDesktop = () => {
+      if (desktopBreakpoint.matches) {
+        setMoreOpen(false);
+      }
+    };
+
+    closeMoreOnDesktop();
+    desktopBreakpoint.addEventListener("change", closeMoreOnDesktop);
+
+    return () => {
+      desktopBreakpoint.removeEventListener("change", closeMoreOnDesktop);
+    };
+  }, []);
+
+  const selectPanel = (panel: AdminPanel) => {
+    setMoreOpen(false);
+    onPanelChange(panel);
+  };
+
+  const openHelp = () => {
+    setMoreOpen(false);
+    onHelp();
+  };
+
+  return (
+    <>
+      <aside className="hidden lg:sticky lg:top-6 lg:flex lg:h-[calc(100dvh-3rem)] lg:min-h-[38rem] lg:flex-col lg:rounded-[34px] lg:border lg:border-white/75 lg:bg-[rgba(255,250,243,0.8)] lg:p-4 lg:shadow-[var(--shadow-soft)] lg:backdrop-blur-xl">
+        <div className="flex items-center gap-3 border-b border-[var(--line)] px-2 pb-4 pt-1">
+          <MediaOrb
+            media={wedding.profileMedia}
+            label={wedding.coupleName}
+            className="h-[4.25rem] w-[3.4rem] shrink-0"
+          />
+          <div className="min-w-0">
+            <p className="text-[0.64rem] font-black uppercase tracking-[0.2em] text-[var(--champagne-deep)]">
+              {text.studioGroup}
+            </p>
+            <h1 className="mt-1 truncate font-serif text-xl font-bold text-[var(--ink)]">
+              {wedding.coupleName}
+            </h1>
+          </div>
+        </div>
+
+        <nav
+          data-studio-navigation="desktop"
+          aria-label={text.navigation}
+          className="mt-4 flex min-h-0 flex-1 flex-col"
+        >
+          <div className="grid gap-1.5">
+            {primaryItems.map((item) => (
+              <NavigationControl
+                key={item.kind === "panel" ? item.panel : item.href}
+                item={item}
+                mode="desktop"
+                active={item.kind === "panel" && activePanel === item.panel}
+                onPanelChange={selectPanel}
+              />
+            ))}
+          </div>
+
+          <div className="my-4 border-t border-[var(--line)]" />
+          <p className="px-3 text-[0.62rem] font-black uppercase tracking-[0.2em] text-[var(--champagne-deep)]">
+            {text.more}
+          </p>
+          <div className="mt-2 grid gap-1.5">
+            <SecondaryAction
+              icon={HardDrive}
+              label={text.storageNav}
+              active={activePanel === "storage"}
+              onClick={() => selectPanel("storage")}
+            />
+            <SecondaryLink
+              href={eventUrl}
+              icon={ExternalLink}
+              label={text.openPage}
+            />
+            <SecondaryAction
+              icon={HelpCircle}
+              label={copy.help}
+              onClick={openHelp}
+            />
+          </div>
+
+          <div className="mt-auto pt-4">
+            <Button
+              onClick={onLogout}
+              disabled={loggingOut}
+              loading={loggingOut}
+              variant="danger"
+              fullWidth
+              className="justify-start px-4"
+            >
+              <LogOut className="size-4" />
+              {text.logout}
+            </Button>
+            {logoutError ? (
+              <p role="alert" className="mt-2 px-2 text-xs font-semibold text-[var(--rosewood)]">
+                {logoutError}
+              </p>
+            ) : null}
+          </div>
+        </nav>
+      </aside>
+
+      <nav
+        data-studio-navigation="mobile"
+          aria-label={text.navigation}
+        className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-[70] grid w-[min(calc(100vw-1rem),32rem)] -translate-x-1/2 grid-cols-5 gap-1 rounded-[28px] border border-white/80 bg-[rgba(255,250,243,0.9)] p-1.5 shadow-[0_18px_48px_rgba(58,40,25,0.2)] backdrop-blur-xl lg:hidden"
+      >
+        {primaryItems.map((item) => (
+          <NavigationControl
+            key={item.kind === "panel" ? item.panel : item.href}
+            item={item}
+            mode="mobile"
+            active={item.kind === "panel" && activePanel === item.panel}
+            onPanelChange={selectPanel}
+          />
+        ))}
+        <button
+          type="button"
+          onClick={() => setMoreOpen(true)}
+          aria-expanded={moreOpen}
+          aria-current={activePanel === "storage" ? "page" : undefined}
+          className={`focus-ring flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-[22px] px-1 text-[0.6rem] font-extrabold transition motion-safe:active:scale-[0.96] ${
+            activePanel === "storage"
+              ? "bg-[var(--ink)] text-[var(--paper-soft)] shadow-[0_8px_18px_rgba(31,23,18,0.2)]"
+              : "text-[var(--ink-soft)] hover:bg-white/60 hover:text-[var(--ink)]"
+          }`}
+        >
+          <Menu className="size-[1.15rem]" />
+          <span className="max-w-full whitespace-normal text-center leading-[1.05]">{text.more}</span>
+        </button>
+      </nav>
+
+      <AnimatePresence>
+        {moreOpen ? (
+          <motion.div
+            className="fixed inset-0 z-[75] lg:hidden"
+            initial={reduceMotion ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: reduceMotion ? 0 : 0.18 }}
+          >
+            <button
+              type="button"
+              aria-label={close}
+              className="absolute inset-0 bg-[rgba(31,23,18,0.22)] backdrop-blur-[2px]"
+              onClick={() => setMoreOpen(false)}
+            />
+            <motion.div
+              ref={moreDialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label={text.more}
+              tabIndex={-1}
+              initial={reduceMotion ? false : { opacity: 0, y: 24, scale: 0.985 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 18, scale: 0.99 }}
+              transition={{ duration: reduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
+              data-scroll-lock-allow="true"
+              className="absolute bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+5.25rem)] left-1/2 max-h-[calc(100dvh-6.25rem-env(safe-area-inset-bottom))] w-[min(calc(100vw-1rem),32rem)] -translate-x-1/2 overflow-y-auto overscroll-contain rounded-[30px] border border-white/80 bg-[rgba(255,250,243,0.96)] p-3 shadow-[0_24px_70px_rgba(58,40,25,0.24)] backdrop-blur-xl"
+            >
+              <div className="mb-2 flex items-center justify-between px-2 py-1">
+                <p className="font-serif text-2xl font-bold text-[var(--ink)]">{text.more}</p>
+                <Button
+                  ref={closeButtonRef}
+                  onClick={() => setMoreOpen(false)}
+                  variant="paper"
+                  size="icon"
+                  aria-label={close}
+                  className="!size-11 !min-h-11"
+                >
+                  <X className="size-4" />
+                </Button>
+              </div>
+              <div className="grid gap-2">
+                <SecondaryAction
+                  icon={HardDrive}
+                  label={text.storageNav}
+                  active={activePanel === "storage"}
+                  onClick={() => selectPanel("storage")}
+                />
+                <SecondaryLink
+                  href={eventUrl}
+                  icon={ExternalLink}
+                  label={text.openPage}
+                />
+                <SecondaryAction icon={HelpCircle} label={copy.help} onClick={openHelp} />
+                <Button
+                  onClick={onLogout}
+                  disabled={loggingOut}
+                  loading={loggingOut}
+                  variant="danger"
+                  fullWidth
+                  className="justify-start px-4"
+                >
+                  <LogOut className="size-4" />
+                  {text.logout}
+                </Button>
+                {logoutError ? (
+                  <p role="alert" className="px-2 text-xs font-semibold text-[var(--rosewood)]">
+                    {logoutError}
+                  </p>
+                ) : null}
+              </div>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </>
+  );
+}
+
+function NavigationControl({
+  item,
+  mode,
+  active,
+  onPanelChange,
+}: {
+  item: NavigationItem;
+  mode: "mobile" | "desktop";
+  active: boolean;
+  onPanelChange: (panel: AdminPanel) => void;
+}) {
+  const Icon = item.icon;
+  const className =
+    mode === "mobile"
+      ? `focus-ring flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-[22px] px-1 text-[0.6rem] font-extrabold transition motion-safe:active:scale-[0.96] ${
+          active
+            ? "bg-[var(--ink)] text-[var(--paper-soft)] shadow-[0_8px_18px_rgba(31,23,18,0.2)]"
+            : "text-[var(--ink-soft)] hover:bg-white/60 hover:text-[var(--ink)]"
+        }`
+      : `focus-ring flex min-h-12 w-full items-center gap-3 rounded-full px-3 text-left text-sm font-extrabold transition motion-safe:active:scale-[0.985] ${
+          active
+            ? "bg-[var(--ink)] text-[var(--paper-soft)] shadow-[0_10px_24px_rgba(31,23,18,0.16)]"
+            : "text-[var(--ink-soft)] hover:bg-white/64 hover:text-[var(--ink)]"
+        }`;
+  const content = (
+    <>
+      <span className={mode === "desktop" ? "grid size-8 shrink-0 place-items-center rounded-full bg-white/10" : undefined}>
+        <Icon className={mode === "desktop" ? "size-4" : "size-[1.15rem]"} />
+      </span>
+      <span
+        className={
+          mode === "mobile"
+            ? "max-w-full whitespace-normal text-center leading-[1.05]"
+            : "truncate"
+        }
+      >
+        {item.label}
+      </span>
+    </>
+  );
+
+  if (item.kind === "link") {
+    return (
+      <a
+        href={item.href}
+        target={item.newTab ? "_blank" : undefined}
+        rel={item.newTab ? "noreferrer" : undefined}
+        className={className}
+      >
+        {content}
+      </a>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => onPanelChange(item.panel)}
+      aria-current={active ? "page" : undefined}
+      className={className}
+    >
+      {content}
+    </button>
+  );
+}
+
+function SecondaryAction({
+  icon: Icon,
+  label,
+  active = false,
+  onClick,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+  active?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-current={active ? "page" : undefined}
+      className={`focus-ring flex min-h-12 w-full items-center gap-3 rounded-full border px-4 text-left text-sm font-extrabold transition motion-safe:active:scale-[0.985] ${
+        active
+          ? "border-[rgba(139,107,63,0.32)] bg-[rgba(239,222,193,0.68)] text-[var(--ink)]"
+          : "border-transparent bg-white/38 text-[var(--ink-soft)] hover:border-[var(--line)] hover:bg-white/68 hover:text-[var(--ink)]"
+      }`}
+    >
+      <Icon className="size-4 shrink-0" />
+      <span className="truncate">{label}</span>
+    </button>
+  );
+}
+
+function SecondaryLink({
+  href,
+  icon: Icon,
+  label,
+}: {
+  href: string;
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="focus-ring flex min-h-12 w-full items-center gap-3 rounded-full border border-transparent bg-white/38 px-4 text-left text-sm font-extrabold text-[var(--ink-soft)] transition hover:border-[var(--line)] hover:bg-white/68 hover:text-[var(--ink)] motion-safe:active:scale-[0.985]"
+    >
+      <Icon className="size-4 shrink-0" />
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      <ExternalLink className="size-3.5 shrink-0 opacity-60" />
+    </a>
+  );
+}

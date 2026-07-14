@@ -44,10 +44,15 @@ operator tool, not a customer-facing screen.
 - Guest Memories keeps its thumbnail cache while couples move between studio
   panels or return from Flow Mode. The gallery uses sharp source previews and
   opens media at its natural aspect ratio.
+- Studio navigation is always discoverable: mobile uses a five-item floating
+  pill bar, while desktop uses the same hierarchy in a persistent left sidebar.
+  Storage, View Guest Page, Help, and Logout live under More.
 - Wedding Page clearly shows whether guest uploads are open; its demo keeps the
   profile action and guest message read-only. The demo guest page is also a
   safe, read-only preview and never stores a browser upload.
-- QR + Guest Link groups the QR preview and download actions together. Flow
+- QR + Guest Link groups the QR preview and download actions together. Its PNG
+  download is generated separately at 1600 × 1600 px for print while the screen
+  preview remains lightweight; SVG stays available for recolouring. Flow
   Mode presents mixed media in a square stage, advances photos every three
   seconds, and keeps each guest note attached to its own memory.
 - Login has compact actions and a login-only Privacy & data modal. There is no

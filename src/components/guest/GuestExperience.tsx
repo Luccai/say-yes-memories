@@ -12,6 +12,7 @@ import {
   type TurnstileGateHandle,
 } from "@/components/guest/TurnstileGate";
 import { localizedError, useCopy, useLocale } from "@/lib/i18n-client";
+import { formatWeddingDate } from "@/lib/wedding-date";
 import {
   ensureFreshDemoLocalState,
   getDemoGuestNote,
@@ -448,7 +449,7 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
               </h1>
               {displayWedding.eventDate ? (
                 <p className="mt-4 text-sm font-semibold tracking-wide text-[var(--ink-soft)]">
-                  {displayWedding.eventDate}
+                  {formatWeddingDate(displayWedding.eventDate, locale)}
                 </p>
               ) : null}
               <p className="mx-auto mt-5 max-w-sm text-pretty text-sm leading-relaxed text-[var(--ink-soft)]">

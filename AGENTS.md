@@ -149,10 +149,12 @@ Storage bucket:
 
 Admin ana ekranı mobilde sade kalmalıdır:
 
-- Üstte profil rozeti, taşmayan çift adı kapsülü ve hamburger menü.
+- Mobilde üstte profil rozeti ve taşmayan çift adı; altta tek elle erişilen floating pill navigasyon bulunur.
 - Varsayılan panel: Guest Memories.
-- Hamburger menü: Guest Memories, Private Storage, Wedding Page, QR + Guest Link, View Guest Page ve küçük Logout aksiyonu.
-- Logout menüde mini aksiyon gibi görünür ve `/login` sayfasına döndürür.
+- Mobil ana navigasyon: Memories, Flow Mode, Wedding Page, QR ve More. More içinde Storage, View Guest Page, Help ve Logout bulunur.
+- Masaüstünde aynı bilgi mimarisi sürekli görünen sol sidebar olarak sunulur; More bölümü açık kalır.
+- Help yalnız More içinde tutulur; eski hamburger menü ve üst başlıktaki ikinci Help düğmesi kullanılmaz.
+- Logout More bölümünde küçük aksiyon gibi görünür ve `/login` sayfasına döndürür.
 - View Guest Page yeni sekmede misafir sayfasını açar; QR panelinde ayrıca ikinci bir misafir sayfası butonu tutulmaz.
 
 Guest Memories:

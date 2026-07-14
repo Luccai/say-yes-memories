@@ -4,7 +4,6 @@ import {
   ChangeEvent,
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -25,17 +24,13 @@ import {
   LayoutGrid,
   Loader2,
   Lock,
-  LogOut,
-  Menu,
   Mic,
-  MonitorPlay,
   Play,
   QrCode,
   Settings2,
   Trash2,
   Unlock,
   X,
-  type LucideIcon,
 } from "lucide-react";
 import {
   AnimatePresence,
@@ -55,10 +50,20 @@ import {
   hasRetainedMediaSource,
   storeInstantMediaCache,
 } from "@/components/shared/CachedMediaImage";
-import { GuidanceDialog, HelpTriggerButton } from "@/components/shared/GuidanceDialog";
+import { GuidanceDialog } from "@/components/shared/GuidanceDialog";
 import { Button, buttonStyles } from "@/components/shared/Button";
 import { MediaOrb } from "@/components/shared/MediaOrb";
+import {
+  StudioNavigation,
+  type AdminPanel,
+} from "@/components/admin/StudioNavigation";
 import { localizedError, useCopy, useLocale } from "@/lib/i18n-client";
+import {
+  QR_PREVIEW_OPTIONS,
+  QR_PRINT_OPTIONS,
+  qrPrintFileName,
+} from "@/lib/qr-download";
+import { formatWeddingDate } from "@/lib/wedding-date";
 import { rememberMembership } from "@/lib/auth/device-hint";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import { useAccessibleDialog } from "@/lib/use-accessible-dialog";
@@ -95,7 +100,6 @@ type AdminExperienceProps = {
 };
 
 type FilterKey = "all" | MediaKind;
-type AdminPanel = "memories" | "storage" | "identity" | "qr";
 type MemoryGridLayout = "classic" | "story" | "compact";
 type CustomerWeddingPatch = Partial<Pick<Wedding, "welcomeNote" | "uploadLocked">>;
 type AdminCopy = ReturnType<typeof useCopy>["admin"];
@@ -342,7 +346,6 @@ export function AdminExperience({
   const [gridLayout, setGridLayout] = useState<MemoryGridLayout>("classic");
   const [gridLayoutHydrated, setGridLayoutHydrated] = useState(false);
   const [activePanel, setActivePanel] = useState<AdminPanel>("memories");
-  const [menuOpen, setMenuOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [profileUploading, setProfileUploading] = useState(false);
@@ -350,8 +353,6 @@ export function AdminExperience({
   const [logoutError, setLogoutError] = useState("");
   const demoHydratedRef = useRef(!demoMode);
   const [identitySaveConfirmed, setIdentitySaveConfirmed] = useState(false);
-  const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const [menuPosition, setMenuPosition] = useState({ top: 20, right: 16 });
   const reduceMotion = useReducedMotion();
   const text = useCopy();
   const adminText = text.admin;
@@ -364,8 +365,6 @@ export function AdminExperience({
   const presentationUrl = demoMode
     ? `/admin/${wedding.slug}/presentation`
     : "/admin/presentation";
-
-  useBodyScrollLock(menuOpen);
 
   useEffect(() => {
     queueMicrotask(() => setOrigin(window.location.origin));
@@ -396,51 +395,6 @@ export function AdminExperience({
 
     persistMemoryGridLayout(gridLayout);
   }, [gridLayout, gridLayoutHydrated]);
-
-  useLayoutEffect(() => {
-    if (!menuOpen) {
-      return;
-    }
-
-    const updateMenuPosition = () => {
-      const button = menuButtonRef.current;
-
-      if (!button) {
-        return;
-      }
-
-      const rect = button.getBoundingClientRect();
-      setMenuPosition({
-        top: Math.max(16, Math.round(rect.bottom + 10)),
-        right: Math.max(16, Math.round(window.innerWidth - rect.right)),
-      });
-    };
-
-    updateMenuPosition();
-    window.addEventListener("resize", updateMenuPosition);
-
-    return () => {
-      window.removeEventListener("resize", updateMenuPosition);
-    };
-  }, [menuOpen]);
-
-  useEffect(() => {
-    if (!menuOpen) {
-      return;
-    }
-
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setMenuOpen(false);
-      }
-    };
-
-    window.addEventListener("keydown", closeOnEscape);
-
-    return () => {
-      window.removeEventListener("keydown", closeOnEscape);
-    };
-  }, [menuOpen]);
 
   useEffect(() => {
     if (!demoMode) {
@@ -791,8 +745,21 @@ export function AdminExperience({
 
   return (
     <main className="min-h-[100dvh] overflow-x-clip text-[var(--ink)]">
-      <div className="mx-auto flex max-w-[96rem] min-w-0 flex-col gap-5 overflow-x-clip px-4 py-5 sm:px-6 lg:px-8">
-        <header className="paper-grain overflow-hidden rounded-[34px] border border-white/75 bg-[rgba(255,250,243,0.78)] p-5 shadow-none backdrop-blur-xl sm:p-7 sm:shadow-[var(--shadow-soft)]">
+      <div className="mx-auto grid max-w-[96rem] min-w-0 gap-5 overflow-x-clip px-4 py-5 sm:px-6 lg:grid-cols-[17rem_minmax(0,1fr)] lg:items-start lg:px-8">
+        <StudioNavigation
+          activePanel={activePanel}
+          wedding={wedding}
+          presentationUrl={presentationUrl}
+          eventUrl={eventUrl}
+          loggingOut={loggingOut}
+          logoutError={logoutError}
+          onPanelChange={setActivePanel}
+          onHelp={() => setHelpOpen(true)}
+          onLogout={() => void logout()}
+        />
+
+        <div className="min-w-0 pb-[calc(7rem+env(safe-area-inset-bottom))] lg:pb-0">
+        <header className="paper-grain mb-5 overflow-hidden rounded-[34px] border border-white/75 bg-[rgba(255,250,243,0.78)] p-5 shadow-none backdrop-blur-xl sm:p-7 sm:shadow-[var(--shadow-soft)] lg:hidden">
           <div className="relative z-20 flex items-center gap-4 sm:gap-5">
             <MediaOrb
               media={wedding.profileMedia}
@@ -804,131 +771,8 @@ export function AdminExperience({
                 {wedding.coupleName}
               </h1>
             </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <HelpTriggerButton
-                label={text.help}
-                onClick={() => setHelpOpen(true)}
-                mobileIconOnly
-              />
-              <Button
-                ref={menuButtonRef}
-                onClick={() => setMenuOpen((current) => !current)}
-                variant="paper"
-                size="icon"
-                aria-expanded={menuOpen}
-                aria-label={adminText.menu}
-              >
-                <Menu className="size-5" />
-              </Button>
-            </div>
           </div>
         </header>
-
-        <AnimatePresence>
-        {menuOpen ? (
-          <motion.div
-            className="fixed inset-0 z-50"
-            onClick={() => setMenuOpen(false)}
-            role="presentation"
-            initial={reduceMotion ? false : { opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: reduceMotion ? 0 : 0.16 }}
-          >
-            <button
-              type="button"
-              className="absolute inset-0 cursor-default bg-transparent"
-              aria-label={text.close}
-              onClick={() => setMenuOpen(false)}
-            />
-            <motion.nav
-              initial={reduceMotion ? false : { opacity: 0, y: -10, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6, scale: 0.985 }}
-              transition={{ duration: reduceMotion ? 0 : 0.2, ease: [0.22, 1, 0.36, 1] }}
-              className="fixed grid w-[min(calc(100vw-2rem),22rem)] gap-2 rounded-[30px] border border-white/80 bg-[rgba(255,250,243,0.92)] p-2.5 shadow-[0_18px_52px_rgba(58,40,25,0.16)] backdrop-blur-xl sm:shadow-[0_24px_70px_rgba(58,40,25,0.2)]"
-              style={{ top: menuPosition.top, right: menuPosition.right }}
-              aria-label={adminText.menu}
-              onClick={(event) => {
-                if (event.target === event.currentTarget) {
-                  setMenuOpen(false);
-                }
-              }}
-            >
-              <AdminMenuButton
-                active={activePanel === "memories"}
-                icon={ImageIcon}
-                label={adminText.memoryRoom}
-                onClick={() => {
-                  setActivePanel("memories");
-                  setMenuOpen(false);
-                }}
-              />
-              <AdminMenuLink
-                href={presentationUrl}
-                icon={MonitorPlay}
-                label={adminText.presentation}
-              />
-              <AdminMenuButton
-                active={activePanel === "storage"}
-                icon={HardDrive}
-                label={adminText.storageEyebrow}
-                onClick={() => {
-                  setActivePanel("storage");
-                  setMenuOpen(false);
-                }}
-              />
-              <AdminMenuButton
-                active={activePanel === "identity"}
-                icon={Settings2}
-                label={adminText.weddingPage}
-                onClick={() => {
-                  setActivePanel("identity");
-                  setMenuOpen(false);
-                }}
-              />
-              <AdminMenuButton
-                active={activePanel === "qr"}
-                icon={QrCode}
-                label={adminText.qrAndLink}
-                onClick={() => {
-                  setActivePanel("qr");
-                  setMenuOpen(false);
-                }}
-              />
-              <AdminMenuLink
-                href={eventUrl}
-                icon={ExternalLink}
-                label={adminText.openPage}
-                newTab
-              />
-              <div className="mt-1 flex justify-end border-t border-[var(--line)] pt-2">
-                <Button
-                  onClick={() => void logout()}
-                  disabled={loggingOut}
-                  loading={loggingOut}
-                  variant="danger"
-                  fullWidth
-                  className="justify-between px-3"
-                >
-                  <span className="inline-flex min-w-0 items-center gap-2">
-                    <span className="grid size-8 shrink-0 place-items-center rounded-full border border-[rgba(124,58,49,0.16)] bg-white/58">
-                      <LogOut className="size-3.5" />
-                    </span>
-                    <span className="truncate">{adminText.logout}</span>
-                  </span>
-                  <ChevronRight className="size-4 shrink-0 opacity-55" />
-                </Button>
-                {logoutError ? (
-                  <p role="alert" className="mt-2 text-xs font-semibold text-[var(--rosewood)]">
-                    {logoutError}
-                  </p>
-                ) : null}
-              </div>
-            </motion.nav>
-          </motion.div>
-        ) : null}
-        </AnimatePresence>
 
         <div className="grid">
           <motion.section
@@ -1011,6 +855,7 @@ export function AdminExperience({
             {adminText.pageSaved}
           </motion.p>
         ) : null}
+        </div>
       </div>
       <GuidanceDialog
         open={helpOpen}
@@ -1024,78 +869,6 @@ export function AdminExperience({
         footer={adminText.helpFooter}
       />
     </main>
-  );
-}
-
-function AdminMenuButton({
-  active,
-  icon: Icon,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  icon: LucideIcon;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <Button
-      onClick={onClick}
-      aria-current={active ? "page" : undefined}
-      variant={active ? "paper" : "quiet"}
-      fullWidth
-      className={`group justify-start gap-2.5 px-2.5 text-left text-[0.82rem] sm:text-[0.84rem] ${
-        active
-          ? "!border-[rgba(139,107,63,0.34)] !bg-[rgba(239,222,193,0.62)]"
-          : "!bg-white/32 text-[var(--ink)]"
-      }`}
-    >
-      <span
-        className={`grid size-8 shrink-0 place-items-center rounded-full border transition ${
-          active
-            ? "border-[rgba(139,107,63,0.26)] bg-[rgba(255,250,243,0.78)] text-[var(--champagne-deep)]"
-            : "border-[var(--line)] bg-white/62 text-[var(--ink-soft)] group-hover:text-[var(--ink)]"
-        }`}
-      >
-        <Icon className="size-3.5" />
-      </span>
-      <span className="min-w-0 flex-1 truncate">{label}</span>
-      {active ? (
-        <span className="grid size-5 shrink-0 place-items-center rounded-full bg-[var(--ink)] text-[var(--paper-soft)]">
-          <Check className="size-3" />
-        </span>
-      ) : (
-        <ChevronRight className="size-4 shrink-0 text-[var(--ink-soft)] opacity-50 transition group-hover:translate-x-0.5 group-hover:opacity-80" />
-      )}
-    </Button>
-  );
-}
-
-function AdminMenuLink({
-  href,
-  icon: Icon,
-  label,
-  newTab = false,
-}: {
-  href: string;
-  icon: LucideIcon;
-  label: string;
-  newTab?: boolean;
-}) {
-  return (
-    <a
-      href={href}
-      target={newTab ? "_blank" : undefined}
-      rel={newTab ? "noreferrer" : undefined}
-      data-app-button="quiet"
-      className={buttonStyles({ variant: "quiet", fullWidth: true, className: "group justify-start gap-2.5 !bg-white/32 px-2.5 text-left text-[0.82rem] text-[var(--ink)] sm:text-[0.84rem]" })}
-    >
-      <span className="grid size-8 shrink-0 place-items-center rounded-full border border-[var(--line)] bg-white/62 text-[var(--ink-soft)] transition group-hover:text-[var(--ink)]">
-        <Icon className="size-3.5" />
-      </span>
-      <span className="min-w-0 flex-1 truncate">{label}</span>
-      <ChevronRight className="size-4 shrink-0 text-[var(--ink-soft)] opacity-50 transition group-hover:translate-x-0.5 group-hover:opacity-80" />
-    </a>
   );
 }
 
@@ -1545,11 +1318,7 @@ function QrStudio({
   const locale = useLocale();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [copied, setCopied] = useState(false);
-  const eventDateLabel = wedding.eventDate
-    ? new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", year: "numeric" }).format(
-        new Date(`${wedding.eventDate}T12:00:00`),
-      )
-    : "";
+  const eventDateLabel = formatWeddingDate(wedding.eventDate, locale);
 
   useEffect(() => {
     if (!canvasRef.current || !eventUrl) {
@@ -1559,14 +1328,7 @@ function QrStudio({
     let active = true;
     void loadQrCode().then((QRCode) => {
       if (!active || !canvasRef.current) return;
-      return QRCode.toCanvas(canvasRef.current, eventUrl, {
-        width: 232,
-        margin: 1,
-        color: {
-          dark: "#1f1712",
-          light: "#fffaf3",
-        },
-      });
+      return QRCode.toCanvas(canvasRef.current, eventUrl, QR_PREVIEW_OPTIONS);
     });
     return () => {
       active = false;
@@ -1579,15 +1341,12 @@ function QrStudio({
     window.setTimeout(() => setCopied(false), 1600);
   }
 
-  function downloadPng() {
-    const canvas = canvasRef.current;
-
-    if (!canvas) {
-      return;
-    }
-
+  async function downloadPng() {
+    const QRCode = await loadQrCode();
+    const canvas = document.createElement("canvas");
+    await QRCode.toCanvas(canvas, eventUrl, QR_PRINT_OPTIONS);
     const link = document.createElement("a");
-    link.download = `${wedding.slug}-qr.png`;
+    link.download = qrPrintFileName(wedding.slug);
     link.href = canvas.toDataURL("image/png");
     link.click();
   }

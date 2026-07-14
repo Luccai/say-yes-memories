@@ -3,6 +3,7 @@ import { PresentationExperience } from "@/components/admin/PresentationExperienc
 import { demoMedia, demoWedding } from "@/lib/demo-content";
 import {
   chronologicalPresentationMedia,
+  presentationVisualMedia,
   toDemoPresentationMedia,
   toPresentationWedding,
 } from "@/lib/presentation/domain";
@@ -18,9 +19,9 @@ export default async function DemoPresentationPage({
     <PresentationExperience
       wedding={toPresentationWedding(demoWedding, { demo: true })}
       initialMedia={chronologicalPresentationMedia(
-        demoMedia.map(toDemoPresentationMedia),
+        presentationVisualMedia(demoMedia.map(toDemoPresentationMedia)),
       )}
-      initialTotal={demoMedia.length}
+      initialTotal={presentationVisualMedia(demoMedia).length}
       demoMode
     />
   );

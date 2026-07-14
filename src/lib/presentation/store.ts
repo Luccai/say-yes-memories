@@ -47,6 +47,7 @@ export async function listPresentationMediaPage(
     .from("wedding_media")
     .select(PRESENTATION_MEDIA_COLUMNS)
     .eq("wedding_id", weddingId)
+    .in("kind", ["image", "video"])
     .order("created_at", { ascending: true })
     .order("id", { ascending: true })
     .limit(PRESENTATION_PAGE_SIZE + 1);
@@ -63,7 +64,8 @@ export async function listPresentationMediaPage(
     supabase
       .from("wedding_media")
       .select("id", { count: "exact", head: true })
-      .eq("wedding_id", weddingId),
+      .eq("wedding_id", weddingId)
+      .in("kind", ["image", "video"]),
   ]);
 
   if (pageResult.error) {

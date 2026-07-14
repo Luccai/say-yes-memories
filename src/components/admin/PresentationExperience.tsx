@@ -17,7 +17,6 @@ import {
   Pause,
   Play,
   RotateCcw,
-  Volume2,
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Button } from "@/components/shared/Button";
@@ -30,6 +29,7 @@ import {
   createPhotoClock,
   mergePresentationMedia,
   pausePhotoClock,
+  presentationVisualMedia,
   presentationShortcutTargetIsInteractive,
   previousPresentationIndex,
   toDemoPresentationMedia,
@@ -125,8 +125,8 @@ export function PresentationExperience({
   const locale = useLocale();
   const text = useCopy().admin;
   const reduceMotion = useReducedMotion();
-  const initialCatalog = useMemo(
-    () => chronologicalPresentationMedia(initialMedia),
+  const initialCatalog = useMemo<PresentationMediaItem[]>(
+    () => chronologicalPresentationMedia(presentationVisualMedia(initialMedia)),
     [initialMedia],
   );
   const [media, setMedia] = useState(initialCatalog);
@@ -161,7 +161,7 @@ export function PresentationExperience({
   useBodyScrollLock(true);
 
   const replaceCatalog = useCallback((nextCatalog: PresentationMediaItem[]) => {
-    const next = chronologicalPresentationMedia(nextCatalog);
+    const next = chronologicalPresentationMedia(presentationVisualMedia(nextCatalog));
     const currentId = mediaRef.current[indexRef.current]?.id;
     mediaRef.current = next;
     setMedia(next);
@@ -227,7 +227,10 @@ export function PresentationExperience({
         }
 
         const previousLength = mediaRef.current.length;
-        const next = mergePresentationMedia(mediaRef.current, payload.media);
+        const next = mergePresentationMedia(
+          mediaRef.current,
+          presentationVisualMedia(payload.media),
+        );
         mediaRef.current = next;
         setMedia(next);
         setTotal(Math.max(payload.total, next.length));
@@ -399,10 +402,14 @@ export function PresentationExperience({
           storedMedia = null;
         }
 
-        const baseMedia = (storedMedia ?? demoContent.demoMedia).filter(
-          (item) => !demoSession.isDemoSessionMedia(item.id),
+        const baseMedia = presentationVisualMedia(
+          (storedMedia ?? demoContent.demoMedia).filter(
+            (item) => !demoSession.isDemoSessionMedia(item.id),
+          ),
         );
-        const sessionMedia = await demoSession.getDemoSessionMedia();
+        const sessionMedia = presentationVisualMedia(
+          await demoSession.getDemoSessionMedia(),
+        );
         if (!active) {
           for (const item of sessionMedia) {
             if (item.url.startsWith("blob:")) URL.revokeObjectURL(item.url);
@@ -536,9 +543,7 @@ export function PresentationExperience({
   const kindLabel = current
     ? current.kind === "image"
       ? text.presentationKindPhoto
-      : current.kind === "video"
-        ? text.presentationKindVideo
-        : text.presentationKindAudio
+      : text.presentationKindVideo
     : "";
   const liveStatus = current
     ? fillTemplate(text.presentationStatus, {
@@ -608,23 +613,34 @@ export function PresentationExperience({
             duration: reduceMotion ? 0 : PRESENTATION_TRANSITION_SECONDS,
             ease: "easeOut",
           }}
-          className="absolute inset-0 m-auto grid size-[min(100vw,100dvh)] place-items-center overflow-hidden bg-black"
+          className="absolute inset-0 grid place-items-center overflow-hidden bg-black"
           data-presentation-media-id={current.id}
         >
           {current.kind === "image" ? (
-            // Full-size memories deliberately bypass Cache API/blob buffering.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={current.contentUrl}
-              alt={current.note ?? current.fileName}
-              className="h-full w-full object-contain"
-              decoding="async"
-              fetchPriority="high"
-              onError={() => {
-                setPaused(true);
-                setPlaybackError(true);
-              }}
-            />
+            <>
+              {/* A softened copy fills portrait photo side space without cropping the memory. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={current.contentUrl}
+                alt=""
+                aria-hidden="true"
+                className="absolute inset-[-5%] h-[110%] w-[110%] scale-110 object-cover opacity-45 blur-3xl"
+              />
+              <div className="absolute inset-0 bg-black/28" />
+              {/* Full-size memories deliberately bypass Cache API/blob buffering. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={current.contentUrl}
+                alt={current.note ?? current.fileName}
+                className="relative z-10 h-full w-full object-contain"
+                decoding="async"
+                fetchPriority="high"
+                onError={() => {
+                  setPaused(true);
+                  setPlaybackError(true);
+                }}
+              />
+            </>
           ) : current.kind === "video" ? (
             <video
               ref={(node) => {
@@ -640,37 +656,7 @@ export function PresentationExperience({
                 setPlaybackError(true);
               }}
             />
-          ) : (
-            <div className="grid max-w-xl place-items-center gap-7 px-8 text-center">
-              <MediaOrb
-                media={wedding.profileMedia}
-                label={wedding.coupleName}
-                className="h-48 w-36"
-              />
-              <div>
-                <Volume2 aria-hidden="true" className="mx-auto size-8 text-[#d5b276]" />
-                <p className="mt-4 font-display text-4xl font-semibold">
-                  {current.guestName}
-                </p>
-                <p className="mt-3 text-base leading-7 text-white/65">
-                  {current.note || text.noNote}
-                </p>
-              </div>
-              <audio
-                ref={(node) => {
-                  playerRef.current = node;
-                }}
-                src={current.contentUrl}
-                preload="metadata"
-                aria-hidden="true"
-                onEnded={() => void showNext()}
-                onError={() => {
-                  setPaused(true);
-                  setPlaybackError(true);
-                }}
-              />
-            </div>
-          )}
+          ) : null}
         </motion.section>
       </AnimatePresence>
 

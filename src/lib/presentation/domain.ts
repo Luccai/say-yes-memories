@@ -13,6 +13,18 @@ export type PhotoClock = {
   deadlineMs: number | null;
 };
 
+export function isPresentationVisualMedia<T extends { kind: string }>(
+  item: T,
+): item is T & { kind: "image" | "video" } {
+  return item.kind === "image" || item.kind === "video";
+}
+
+export function presentationVisualMedia<T extends { kind: string }>(
+  media: readonly T[],
+) {
+  return media.filter(isPresentationVisualMedia);
+}
+
 export function createPhotoClock(
   startedAtMs: number,
   remainingMs = PHOTO_DURATION_MS,
@@ -45,9 +57,9 @@ export function chronologicalPresentationMedia<T extends { id: string; createdAt
   );
 }
 
-export function mergePresentationMedia(
-  existing: readonly PresentationMediaItem[],
-  incoming: readonly PresentationMediaItem[],
+export function mergePresentationMedia<T extends PresentationMediaItem>(
+  existing: readonly T[],
+  incoming: readonly T[],
 ) {
   const byId = new Map(existing.map((item) => [item.id, item]));
   for (const item of incoming) {

@@ -6,6 +6,7 @@ import {
   pausePhotoClock,
   presentationContentUrl,
   presentationShortcutTargetIsInteractive,
+  presentationVisualMedia,
   previousPresentationIndex,
 } from "@/lib/presentation/domain";
 import {
@@ -28,6 +29,19 @@ function item(id: string, createdAt: string): PresentationMediaItem {
 }
 
 describe("presentation domain", () => {
+  test("keeps voice notes out of the visual flow", () => {
+    expect(
+      presentationVisualMedia([
+        { id: "photo", kind: "image" as const },
+        { id: "voice", kind: "audio" as const },
+        { id: "video", kind: "video" as const },
+      ]),
+    ).toEqual([
+      { id: "photo", kind: "image" },
+      { id: "video", kind: "video" },
+    ]);
+  });
+
   test("orders memories oldest-first and uses id as a stable tie-breaker", () => {
     const media = [
       item("asset_c", "2026-07-12T10:00:00.000Z"),
