@@ -769,13 +769,14 @@ test("Help dialogs explain the real demo, Premium, and Flow controls", async ({ 
   await page.goto("/mary-john?demo=1");
   await page.getByRole("button", { name: "Help" }).click();
   const guestHelp = page.getByRole("dialog");
-  await expect(guestHelp).toContainText("This is a read-only preview.");
-  await expect(guestHelp).toContainText("files, recordings and sends stay disabled");
+  await expect(guestHelp).toContainText("Just having a look?");
+  await expect(guestHelp).toContainText("choosing files, recording a voice note and sending a memory");
   await page.keyboard.press("Escape");
 
   await page.goto("/admin/mary-john");
   await page.getByRole("button", { name: "Help" }).click();
   const adminHelp = page.getByRole("dialog");
+  await expect(adminHelp).toContainText("Take your time and explore the studio together.");
   await expect(adminHelp).toContainText("In a private studio, open Premium");
   await expect(adminHelp).toContainText("tap or click pauses or resumes");
 });
