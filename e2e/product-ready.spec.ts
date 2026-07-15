@@ -94,8 +94,10 @@ test("first setup verifies the Etsy token before asking for couple details", asy
 
   await page.goto("/login");
   const token = page.getByRole("textbox", { name: "Etsy token" });
+  const loginForm = page.locator("form").first();
   await expect(page.getByText("Step 1 of 2")).toBeVisible();
-  await expect(page.getByText("Example: SYD-ABCDE-FGHIJ-KLMNO-PQRST")).toBeVisible();
+  await expect(token).toHaveAttribute("placeholder", "SYD-ABCDE-FGHIJ-KLMNO-PQRST");
+  await expect(loginForm).not.toContainText("Example:");
   await token.fill("  syd-abcde-fghij-klmno-pqrst  ");
   await token.blur();
   await expect(token).toHaveValue("SYD-ABCDE-FGHIJ-KLMNO-PQRST");
@@ -278,6 +280,13 @@ test("studio navigation keeps destinations clear and animates panel changes", as
   await expect(qrPanel.locator('[data-guest-link-card="true"]').getByRole("button", { name: "PNG" })).toHaveCount(0);
   await expect(qrPanel.getByText(/Download PNG to print it as it is/i)).toBeVisible();
   await expect(qrPanel.getByRole("link", { name: "View guest page" })).toHaveCount(0);
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  const copyGuestLink = qrPanel.locator('[data-guest-link-card="true"]').getByRole("button", { name: "Copy" });
+  await copyGuestLink.click();
+  await expect(qrPanel.locator('[data-guest-link-card="true"]').getByRole("button", { name: "Copied" })).toHaveClass(/copy-btn/);
+  await expect(qrPanel.locator('[data-guest-link-card="true"]').getByRole("button", { name: "Copied" })).toHaveClass(/copied/);
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toMatch(/mary-john/);
+  await expect(qrPanel.locator('[data-guest-link-card="true"]').getByRole("button", { name: "Copy" })).toBeVisible({ timeout: 1_600 });
   const [qrBox, guestLinkBox] = await Promise.all([
     qrPanel.locator('[data-qr-card="true"]').boundingBox(),
     qrPanel.locator('[data-guest-link-card="true"]').boundingBox(),
@@ -437,7 +446,7 @@ test("mobile lightbox keeps the gallery at the selected memory", async ({ page }
   }
 });
 
-test("guest memories gives direct layout, count and chronological controls", async ({ page }) => {
+test("guest memories gives direct layout, count and chronological controls", async ({ page }, testInfo) => {
   await page.goto("/admin/mary-john");
   const layoutButton = page.getByRole("button", { name: /^Grid layout:/ });
   const widthBefore = (await layoutButton.boundingBox())?.width;
@@ -460,10 +469,28 @@ test("guest memories gives direct layout, count and chronological controls", asy
   expect(widthAfter).toBeDefined();
   expect(Math.abs((widthBefore ?? 0) - (widthAfter ?? 0))).toBeLessThanOrEqual(1);
 
-  await expect(page.getByRole("button", { name: "Everything · 7" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Photos · 7" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Videos · 0" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Voice · 0" })).toBeVisible();
+  const filterButtons = [
+    page.getByRole("button", { name: "All · 7" }),
+    page.getByRole("button", { name: "Photos · 7" }),
+    page.getByRole("button", { name: "Videos · 0" }),
+    page.getByRole("button", { name: "Voice · 0" }),
+  ];
+
+  for (const button of filterButtons) {
+    await expect(button).toBeVisible();
+  }
+
+  if (testInfo.project.name !== "desktop") {
+    const layoutWidth = (await layoutButton.boundingBox())?.width ?? 0;
+    const sortWidth = (await page.getByRole("button", { name: /^Sort memories:/ }).boundingBox())?.width ?? 0;
+    expect(layoutWidth).toBeGreaterThan(140);
+    expect(sortWidth).toBeGreaterThan(140);
+
+    for (const button of filterButtons) {
+      expect(await button.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+      await expect(button).toHaveCSS("border-radius", "16px");
+    }
+  }
 
   const sortButton = page.getByRole("button", { name: /^Sort memories:/ });
   await sortButton.click();

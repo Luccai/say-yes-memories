@@ -598,9 +598,6 @@ export function LoginExperience({
                             required
                             autoFocus={mode === "activate"}
                           />
-                          <span className="text-xs font-normal leading-5 text-[var(--ink-soft)]">
-                            {authText.tokenExample.replace("{token}", TOKEN_EXAMPLE)}
-                          </span>
                         </label>
                       ) : null}
 

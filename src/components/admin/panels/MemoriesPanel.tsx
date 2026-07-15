@@ -107,13 +107,13 @@ function MemoryControlMenu<T extends string>({
   };
 
   return (
-    <div ref={rootRef} className="relative">
+    <div ref={rootRef} className="relative min-w-0 flex-1 sm:flex-none">
       <Button
         ref={triggerRef}
         onClick={() => setOpen((current) => !current)}
         variant="paper"
         size="compact"
-        className="w-32 shrink-0 px-3"
+        className="w-full min-w-0 px-3 sm:w-32"
         aria-label={`${label}: ${selected?.label ?? ""}`}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -286,7 +286,7 @@ export function MemoriesPanel({
               {text.inbox}
             </p>
           </div>
-          <div className="flex min-w-0 items-center gap-2 self-end sm:self-auto">
+          <div className="flex w-full min-w-0 items-center gap-2 self-auto sm:w-auto">
             <MemoryControlMenu
               label={text.gridLayout}
               value={gridLayout}
@@ -304,7 +304,7 @@ export function MemoriesPanel({
           </div>
         </div>
 
-        <div className="mb-5 grid grid-cols-2 gap-2 min-[390px]:grid-cols-4">
+        <div className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {filters.map((item) => (
             <Button
               key={item.key}
@@ -312,7 +312,7 @@ export function MemoriesPanel({
               aria-pressed={filter === item.key}
               variant={filter === item.key ? "ink" : "paper"}
               size="compact"
-              className="w-full px-3"
+              className="min-h-12 w-full whitespace-nowrap !rounded-2xl px-3"
             >
               {item.label} · {item.count}
             </Button>
