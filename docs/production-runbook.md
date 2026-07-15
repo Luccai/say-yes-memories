@@ -60,9 +60,9 @@ Supabase SQL kontratları canlıda yalnız `BEGIN ... ROLLBACK` içinde çalış
 1. Push edilecek main commitinden oluşturulan Preview adresini doğrula.
 2. Benzersiz bir geçici token ve çift adı üret; ayrı `weddings/<temporary-id>/` R2 prefix'i kullan.
 3. Aktivasyon, aynı cihaz giriş, logout, tokenlı recovery, küçük upload ve multipart upload akışlarını doğrula.
-4. Geçici üyelikte Download all memories başlat; sayım/boyut ve ilerlemeyi gör, ZIP'in `Photos/`, `Videos/`, `Voice Notes/` ve `messages.csv` içerdiğini doğrula. İndirmeyi yalnız geçici session ile dene; gerçek müşteri ZIP'i üretme.
+4. Geçici üyelikte galeri içindeki tekil fotoğraf, video ve ses indirmelerini doğrula; gerçek müşteri dosyasını indirme.
 5. Owner aramasında geçici çifti bul; +50 GB/+6 ay paketini benzersiz işlem anahtarıyla uygula ve aynı anahtarın ikinci kez uygulanmadığını doğrula.
-6. Geçici kaydı owner temizlik akışıyla sil; `weddings/<temporary-id>/` ve `archives/<temporary-id>/` prefix'lerinin boşaldığını doğrula.
+6. Geçici kaydı owner temizlik akışıyla sil; `weddings/<temporary-id>/` prefix'inin boşaldığını doğrula.
 7. Gerçek iki test üyeliğini yalnız devre dışı bırak; dokuz eski medya kaydını kullanıcı açıkça kalıcı silme onayı verene kadar koru.
 
 ## 7. Production, owner kurulumu ve rollback
@@ -74,11 +74,8 @@ Supabase SQL kontratları canlıda yalnız `BEGIN ... ROLLBACK` içinde çalış
 5. Sorunda önceki Vercel deployment'ına rollback yap. Eklemeli Supabase alanları eski uygulamayı bozmamalıdır.
 6. Doğrulama tamamlanınca snapshot'taki eski kullanılmamış tokenlar hedefli işlemle iptal edilir; yeni üretilmiş tokenlara dokunulmaz.
 
-## 8. Archive runner deploy
+## 8. Bulk archive runner (satış sonrası)
 
-1. `workers/archive-runner` altında `bun install --frozen-lockfile` ve `bun run typecheck` çalıştır.
-2. Worker secret olarak `ARCHIVE_DISPATCH_SECRET`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` ve `R2_BUCKET` tanımla. `ARCHIVE_CALLBACK_SECRET` Worker'a verilmez.
-3. `bun run deploy` sonrasında çıkan HTTPS Worker URL'sini Vercel'deki `ARCHIVE_RUNNER_URL` değerine yaz.
-4. Vercel'e aynı dispatch secretını, bağımsız `ARCHIVE_CALLBACK_SECRET` kökünü ve path içermeyen production originini `ARCHIVE_APP_ORIGIN` olarak ekle.
-5. Worker her dispatchte yalnız DB'de atomik ayrılmış attempt için türetilmiş callback anahtarını alır. Geçici üyelik doğrulamasında eşzamanlı isteklerin aynı attempt'i kullandığını, eski/cross-job callback reddini, lease sonrası güvenli yeniden başlatmayı ve bütün job prefix'inin 24 saatlik cleanup'ını kontrol et.
-6. Cloudflare hesabının Containers desteğini doğrulamadan deploy etme; deployment bu repo push'undan ayrı operasyon adımıdır.
+Toplu ZIP indirme launch'ta kapalıdır; Cloudflare'ın ücretli Container planını
+gerektirir. Ürün satışa geçip bu kolaylık gerçek ihtiyaç olursa archive runner
+deploy akışı ayrıca planlanır ve geçici üyelikte uçtan uca doğrulanır.

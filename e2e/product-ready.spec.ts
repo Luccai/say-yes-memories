@@ -482,7 +482,7 @@ test("guest-memory thumbnails stay mounted while navigating between studio panel
   await expect(firstMemoryFade).toHaveAttribute("data-memory-blur-fade", "1");
 });
 
-test("demo storage keeps the archive action minimal without starting a real job", async ({ page }) => {
+test("demo storage keeps bulk archive downloads out of the launch experience", async ({ page }) => {
   const archiveRequests: string[] = [];
   page.on("request", (request) => {
     if (request.url().includes("/api/archives")) {
@@ -493,17 +493,7 @@ test("demo storage keeps the archive action minimal without starting a real job"
   await page.goto("/admin/mary-john");
   await openStudioPanel(page, "Storage");
 
-  const archiveAction = page.getByRole("button", {
-    name: "Download all memories",
-  });
-  await expect(archiveAction).toBeVisible();
-  await expect(archiveAction).toBeDisabled();
-  await expect(archiveAction).toHaveAttribute("data-app-button", "ink");
-  await expect(
-    page.getByText(
-      "Archive downloads are available in private studios and stay off in demo mode.",
-    ),
-  ).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Download all memories" })).toHaveCount(0);
   expect(archiveRequests).toEqual([]);
 });
 

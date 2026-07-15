@@ -98,19 +98,13 @@ Current product model:
 - Expired files are not deleted immediately; they become cleanup candidates
   after the 30-day grace window.
 
-### Download all memories
+### Bulk archive downloads
 
-Private Storage can prepare one downloadable ZIP for the couple. It contains
-`Photos/`, `Videos/`, `Voice Notes/`, and `messages.csv`. The job uses a fixed
-media snapshot, so uploads arriving later cannot change a ZIP already being
-prepared. Archive output is system storage and never consumes customer quota.
-
-- One queued, preparing, or unexpired ready archive is reused per couple.
-- Couples see the item count, source size, and preparation progress.
-- The ready ZIP is available through a session-checked URL for 24 hours; daily
-  maintenance then removes its private R2 object.
-- The browser never receives a raw archive R2 path. A separate Cloudflare
-  Worker + Container streams private media directly into a multipart ZIP.
+`Download all memories` is intentionally paused for launch: it would require a
+paid Cloudflare Container before the product has any sales. Couples can still
+download every photo, video and voice note individually from the gallery. The
+secure ZIP implementation remains in the repository for a future paid launch,
+but it is not exposed in Private Storage and its environment values stay unset.
 
 Premium Extension is applied manually from `/owner` after finding the membership
 by couple name. Customers copy only their couple name into Etsy personalization;
@@ -159,10 +153,6 @@ NEXT_PUBLIC_TURNSTILE_SITE_KEY=
 TURNSTILE_SECRET_KEY=
 TURNSTILE_EXPECTED_HOSTNAMES=
 CRON_SECRET=
-ARCHIVE_RUNNER_URL=
-ARCHIVE_APP_ORIGIN=
-ARCHIVE_DISPATCH_SECRET=
-ARCHIVE_CALLBACK_SECRET=
 ```
 
 Enable R2 in the Cloudflare dashboard before deploying, create the
@@ -190,18 +180,12 @@ Apply migrations in filename order. The product-ready tail is:
 7. `20260714133000_add_memory_archives.sql`
 
 The authenticated Vercel cron route at `/api/cron/daily-maintenance` expires
-upload reservations, removes expired 24-hour archives, processes owner-approved
+upload reservations, processes owner-approved
 deletion jobs, finalizes safe cleanup, and records Supabase/R2 health.
 
-The archive runner lives in `workers/archive-runner` and has its own Bun lock
-and TypeScript check. Vercel signs dispatches with `ARCHIVE_DISPATCH_SECRET`,
-uses `ARCHIVE_APP_ORIGIN` as the only callback origin, and derives a different
-callback credential for every archive attempt from `ARCHIVE_CALLBACK_SECRET`. The
-Worker receives only that attempt-scoped credential; the app reserves the attempt
-atomically so concurrent clicks reuse it, and a two-hour renewable lease lets a
-stalled attempt be replaced without accepting stale callbacks. Daily cleanup removes
-the whole job prefix, including any orphan left by a hard-stopped Container. It also needs private R2
-credentials as Cloudflare secrets. None of these values may use `NEXT_PUBLIC_`.
+The archive runner in `workers/archive-runner` is dormant until the product has
+sales that justify the paid Cloudflare Container plan. Do not configure its
+environment values or expose the bulk ZIP action before that launch decision.
 
 ## Verification notes
 
