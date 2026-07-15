@@ -17,6 +17,7 @@ import {
   Pause,
   Play,
   RotateCcw,
+  Volume2,
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Button } from "@/components/shared/Button";
@@ -29,7 +30,7 @@ import {
   createPhotoClock,
   mergePresentationMedia,
   pausePhotoClock,
-  presentationVisualMedia,
+  presentationFlowMedia,
   presentationShortcutTargetIsInteractive,
   previousPresentationIndex,
   toDemoPresentationMedia,
@@ -126,7 +127,7 @@ export function PresentationExperience({
   const text = useCopy().admin;
   const reduceMotion = useReducedMotion();
   const initialCatalog = useMemo<PresentationMediaItem[]>(
-    () => chronologicalPresentationMedia(presentationVisualMedia(initialMedia)),
+    () => chronologicalPresentationMedia(presentationFlowMedia(initialMedia)),
     [initialMedia],
   );
   const [media, setMedia] = useState(initialCatalog);
@@ -161,7 +162,7 @@ export function PresentationExperience({
   useBodyScrollLock(true);
 
   const replaceCatalog = useCallback((nextCatalog: PresentationMediaItem[]) => {
-    const next = chronologicalPresentationMedia(presentationVisualMedia(nextCatalog));
+    const next = chronologicalPresentationMedia(presentationFlowMedia(nextCatalog));
     const currentId = mediaRef.current[indexRef.current]?.id;
     mediaRef.current = next;
     setMedia(next);
@@ -229,7 +230,7 @@ export function PresentationExperience({
         const previousLength = mediaRef.current.length;
         const next = mergePresentationMedia(
           mediaRef.current,
-          presentationVisualMedia(payload.media),
+          presentationFlowMedia(payload.media),
         );
         mediaRef.current = next;
         setMedia(next);
@@ -402,12 +403,12 @@ export function PresentationExperience({
           storedMedia = null;
         }
 
-        const baseMedia = presentationVisualMedia(
+        const baseMedia = presentationFlowMedia(
           (storedMedia ?? demoContent.demoMedia).filter(
             (item) => !demoSession.isDemoSessionMedia(item.id),
           ),
         );
-        const sessionMedia = presentationVisualMedia(
+        const sessionMedia = presentationFlowMedia(
           await demoSession.getDemoSessionMedia(),
         );
         if (!active) {
@@ -449,14 +450,27 @@ export function PresentationExperience({
     return () => urls.forEach((url) => URL.revokeObjectURL(url));
   }, [demoMode, media]);
 
+  const requestCurrentMediaPlayback = useCallback(() => {
+    const player = playerRef.current;
+    if (!player) return;
+
+    void player.play().catch(() => {
+      setPaused(true);
+      setPlaybackError(true);
+    });
+  }, []);
+
   const togglePaused = useCallback(() => {
     if (!started) {
+      requestCurrentMediaPlayback();
       setStarted(true);
       setPaused(false);
       return;
     }
+
+    if (paused) requestCurrentMediaPlayback();
     setPaused((value) => !value);
-  }, [started]);
+  }, [paused, requestCurrentMediaPlayback, started]);
 
   useEffect(() => {
     if (!started) return;
@@ -543,7 +557,9 @@ export function PresentationExperience({
   const kindLabel = current
     ? current.kind === "image"
       ? text.presentationKindPhoto
-      : text.presentationKindVideo
+      : current.kind === "video"
+        ? text.presentationKindVideo
+        : text.presentationKindAudio
     : "";
   const liveStatus = current
     ? fillTemplate(text.presentationStatus, {
@@ -656,7 +672,39 @@ export function PresentationExperience({
                 setPlaybackError(true);
               }}
             />
-          ) : null}
+          ) : (
+            <section
+              className="relative z-10 w-[min(92vw,34rem)] rounded-[32px] border border-white/15 bg-[var(--paper-soft)] p-6 text-[var(--ink)] shadow-[0_28px_80px_rgba(0,0,0,0.34)] sm:p-8"
+              data-presentation-interactive="true"
+            >
+              <div className="mx-auto grid size-16 place-items-center rounded-full bg-[var(--champagne)] text-[var(--ink)]">
+                <Volume2 className="size-7" aria-hidden="true" />
+              </div>
+              <p className="mt-5 text-center text-xs font-extrabold uppercase tracking-[0.18em] text-[var(--champagne-deep)]">
+                {text.presentationKindAudio}
+              </p>
+              <p className="mt-2 text-center font-display text-3xl font-semibold">
+                {current.guestName}
+              </p>
+              <p className="mx-auto mt-3 max-w-md text-center text-sm leading-6 text-[var(--ink-soft)]">
+                {current.note || text.noNote}
+              </p>
+              <audio
+                ref={(node) => {
+                  playerRef.current = node;
+                }}
+                src={current.contentUrl}
+                className="mt-6 w-full"
+                controls
+                preload="metadata"
+                onEnded={() => void showNext()}
+                onError={() => {
+                  setPaused(true);
+                  setPlaybackError(true);
+                }}
+              />
+            </section>
+          )}
         </motion.section>
       </AnimatePresence>
 

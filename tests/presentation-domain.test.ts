@@ -5,8 +5,8 @@ import {
   createPhotoClock,
   pausePhotoClock,
   presentationContentUrl,
+  presentationFlowMedia,
   presentationShortcutTargetIsInteractive,
-  presentationVisualMedia,
   previousPresentationIndex,
 } from "@/lib/presentation/domain";
 import {
@@ -29,15 +29,16 @@ function item(id: string, createdAt: string): PresentationMediaItem {
 }
 
 describe("presentation domain", () => {
-  test("keeps voice notes out of the visual flow", () => {
+  test("keeps voice notes in the Flow Mode playlist", () => {
     expect(
-      presentationVisualMedia([
+      presentationFlowMedia([
         { id: "photo", kind: "image" as const },
         { id: "voice", kind: "audio" as const },
         { id: "video", kind: "video" as const },
       ]),
     ).toEqual([
       { id: "photo", kind: "image" },
+      { id: "voice", kind: "audio" },
       { id: "video", kind: "video" },
     ]);
   });

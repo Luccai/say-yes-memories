@@ -7,22 +7,25 @@ import type {
 export const PHOTO_DURATION_MS = 3_000;
 export const PRESENTATION_PAGE_SIZE = 12;
 export const PRESENTATION_PREFETCH_AHEAD = 3;
+export const PRESENTATION_MEDIA_KINDS = ["image", "video", "audio"] as const;
 
 export type PhotoClock = {
   remainingMs: number;
   deadlineMs: number | null;
 };
 
-export function isPresentationVisualMedia<T extends { kind: string }>(
+export function isPresentationFlowMedia<T extends { kind: string }>(
   item: T,
-): item is T & { kind: "image" | "video" } {
-  return item.kind === "image" || item.kind === "video";
+): item is T & { kind: (typeof PRESENTATION_MEDIA_KINDS)[number] } {
+  return PRESENTATION_MEDIA_KINDS.includes(
+    item.kind as (typeof PRESENTATION_MEDIA_KINDS)[number],
+  );
 }
 
-export function presentationVisualMedia<T extends { kind: string }>(
+export function presentationFlowMedia<T extends { kind: string }>(
   media: readonly T[],
 ) {
-  return media.filter(isPresentationVisualMedia);
+  return media.filter(isPresentationFlowMedia);
 }
 
 export function createPhotoClock(

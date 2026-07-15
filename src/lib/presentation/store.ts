@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import {
+  PRESENTATION_MEDIA_KINDS,
   PRESENTATION_PAGE_SIZE,
   presentationContentUrl,
 } from "@/lib/presentation/domain";
@@ -47,7 +48,7 @@ export async function listPresentationMediaPage(
     .from("wedding_media")
     .select(PRESENTATION_MEDIA_COLUMNS)
     .eq("wedding_id", weddingId)
-    .in("kind", ["image", "video"])
+    .in("kind", PRESENTATION_MEDIA_KINDS)
     .order("created_at", { ascending: true })
     .order("id", { ascending: true })
     .limit(PRESENTATION_PAGE_SIZE + 1);
@@ -65,7 +66,7 @@ export async function listPresentationMediaPage(
       .from("wedding_media")
       .select("id", { count: "exact", head: true })
       .eq("wedding_id", weddingId)
-      .in("kind", ["image", "video"]),
+      .in("kind", PRESENTATION_MEDIA_KINDS),
   ]);
 
   if (pageResult.error) {

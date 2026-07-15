@@ -185,6 +185,7 @@ Akış Modu:
 
 - Gerçek üyelik `/admin/presentation`, demo `/admin/mary-john/presentation` adresinden açılır.
 - Medyalar eskiden yeniye oynar; fotoğraf 3 saniye kalır, video/ses bitince ilerler ve liste döngüye girer.
+- Fotoğraf ve video tam viewport sahnede `object-contain` ile gösterilir; dikey içerikte aynı görselin yumuşak arka planı kullanılır. Ses kaydı sade, merkezlenmiş bir oynatıcı kartında kalır.
 - Dokunma/tıklama durdurur veya sürdürür; ok tuşları önceki/sonraki medyaya geçer ve tam ekran desteklenir.
 - Video/ses oynatma hatası görünür bir aksiyonla atlanabilir. `prefers-reduced-motion` ayarı korunur.
 

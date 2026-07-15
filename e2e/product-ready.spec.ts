@@ -980,6 +980,41 @@ test("flow mode gives photos and videos the full viewport stage", async ({ page 
   );
 });
 
+test("flow mode plays a voice note in its centered card", async ({ page }) => {
+  await page.goto("/admin/mary-john/presentation");
+  await page.evaluate(() => {
+    window.localStorage.setItem("sayyes.demo.content.version", "demo-couple-webp-v6");
+    window.localStorage.setItem(
+      "sayyes.demo.media",
+      JSON.stringify([
+        {
+          id: "demo-voice-note",
+          weddingId: "demo-wedding",
+          url: "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=",
+          kind: "audio",
+          mimeType: "audio/wav",
+          fileName: "a-voice-note.wav",
+          byteSize: 44,
+          createdAt: "2027-06-14T19:18:00.000Z",
+          guestName: "Sophia Reed",
+          note: "A little voice note from the dance floor.",
+          approved: true,
+          hidden: false,
+          favorite: false,
+        },
+      ]),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Start flow mode" }).click();
+
+  const stage = page.locator('[data-presentation-media-id="demo-voice-note"]');
+  await expect(stage).toBeVisible();
+  await expect(stage.getByText("voice note", { exact: true })).toBeVisible();
+  await expect(stage.getByText("Sophia Reed", { exact: true })).toBeVisible();
+  await expect(stage.locator("audio[controls]")).toHaveCount(1);
+});
+
 test("flow mode advances with its matching memory note", async ({ page }) => {
   await page.goto("/admin/mary-john/presentation");
   const startedAt = Date.now();

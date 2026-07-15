@@ -31,7 +31,7 @@ Generated raw tokens are written under `private/` and must never be committed.
 Login, admin, demo, and guest upload screens include contextual Help dialogs.
 They cover the token/login flow, private storage and Premium extension, Flow
 Mode controls, guest sharing/privacy, and the fact that the demo is strictly
-read-only. All fixed UI copy, including Help content, is served from
+for preview only. All fixed UI copy, including Help content, is served from
 `src/lib/i18n.ts` for `en`, `es`, `fr`, `de`, `pt`, and `zh`; unsupported
 browser languages fall back to English.
 
@@ -61,9 +61,11 @@ operator tool, not a customer-facing screen.
 - QR + Guest Link groups the QR preview and download actions together. Its PNG
   download is generated separately at 1600 × 1600 px for print while the screen
   preview remains lightweight; SVG keeps the same print-safe quiet zone and
-  stays available for recolouring. Flow
-  Mode presents mixed media in a square stage, advances photos every three
-  seconds, and keeps each guest note attached to its own memory.
+  stays available for recolouring. Flow Mode presents photos and videos across
+  the full viewport with `object-contain`, uses a soft matching background for
+  vertical media, and keeps voice notes in a centered player card. Photos
+  advance every three seconds and each guest note stays attached to its own
+  memory.
 - Login has compact actions and a login-only Privacy & data modal. There is no
   separate `/privacy` route; customer-facing copy remains available in all six
   supported languages.
