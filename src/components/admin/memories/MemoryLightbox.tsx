@@ -4,9 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
-  Download,
+  DownloadIcon,
   Mic,
-  Trash2,
   X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
@@ -242,7 +241,7 @@ export function MemoryLightbox({
                   </Button>
                 </div>
               ) : null}
-              <div className="ml-auto flex min-w-0 items-center gap-1.5">
+              <div className="ml-auto flex min-w-0 flex-wrap items-center gap-2">
                 <a
                   href={
                     demoMode
@@ -250,24 +249,21 @@ export function MemoryLightbox({
                       : `/api/media/${selectedMedia.id}/download`
                   }
                   download={selectedMedia.fileName}
-                  data-app-button="paper"
+                  data-app-button="ink"
                   className={buttonStyles({
-                    variant: "paper",
-                    size: "compact",
-                    className: "max-w-[8.5rem] gap-1.5 px-3",
+                    variant: "ink",
+                    className: "gap-2 whitespace-nowrap",
                   })}
                 >
-                  <Download className="size-3.5 shrink-0" />
-                  <span className="truncate">{text.download}</span>
+                  <DownloadIcon aria-hidden="true" className="size-4 shrink-0" />
+                  {text.download}
                 </a>
                 <Button
                   onClick={() => onRequestDelete(selectedMedia)}
                   variant="danger"
-                  size="compact"
-                  className="max-w-[8rem] gap-1.5 px-3 !border-[var(--rosewood)] !bg-[var(--rosewood)] !font-extrabold !text-white hover:!bg-[#6f332b]"
+                  className="gap-2 whitespace-nowrap !border-[var(--rosewood)] !bg-[var(--rosewood)] !font-extrabold !text-white hover:!bg-[#6f332b]"
                 >
-                  <Trash2 className="size-3.5 shrink-0" />
-                  <span className="truncate font-extrabold">{text.deleteMemory}</span>
+                  {text.deleteMemory}
                 </Button>
               </div>
             </div>

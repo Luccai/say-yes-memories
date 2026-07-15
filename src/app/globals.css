@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "react-day-picker/style.css";
 
 @theme inline {
   --font-sans: var(--font-body);
@@ -279,6 +280,23 @@ button:disabled {
   outline-offset: 3px;
 }
 
+.border-beam-mask {
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+@supports not ((-webkit-mask-composite: xor) or (mask-composite: exclude)) {
+  .border-beam-mask {
+    display: none;
+  }
+}
+
 @keyframes modal-shell-enter {
   from {
     opacity: 0;
@@ -316,4 +334,157 @@ button:disabled {
 .luxury-scroll::-webkit-scrollbar-thumb {
   background: rgba(139, 107, 63, 0.45);
   border-radius: 999px;
+}
+
+/* Shared calendar -------------------------------------------------------- */
+
+.studio-calendar {
+  width: min(100%, 22rem);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 0.8rem;
+  background: rgba(241, 232, 219, 0.72);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.84);
+}
+
+.studio-calendar-selected {
+  display: flex;
+  min-height: 2.4rem;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0 0 0.75rem;
+  padding: 0 0.75rem;
+  border: 1px solid rgba(139, 107, 63, 0.18);
+  border-radius: 14px;
+  background: rgba(255, 250, 243, 0.78);
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.studio-calendar-selected svg {
+  color: var(--champagne-deep);
+}
+
+.studio-calendar .rdp-root {
+  --rdp-accent-color: var(--champagne-deep);
+  --rdp-accent-background-color: rgba(199, 166, 111, 0.18);
+  --rdp-day-height: 2.35rem;
+  --rdp-day-width: 2.35rem;
+  --rdp-day_button-height: 2.15rem;
+  --rdp-day_button-width: 2.15rem;
+  --rdp-day_button-border: 1px solid transparent;
+  --rdp-day_button-border-radius: 13px;
+  --rdp-selected-border: 1px solid var(--ink);
+  --rdp-disabled-opacity: 0.34;
+  --rdp-outside-opacity: 0.34;
+  --rdp-today-color: var(--champagne-deep);
+  width: 100%;
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-body), system-ui, sans-serif;
+}
+
+.studio-calendar .rdp-months,
+.studio-calendar .rdp-month,
+.studio-calendar .rdp-month_grid {
+  width: 100%;
+  max-width: none;
+}
+
+.studio-calendar .rdp-month_caption {
+  height: auto;
+  margin: 0 0 0.55rem;
+}
+
+.studio-calendar .studio-calendar-dropdowns {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.studio-calendar .studio-calendar-select,
+.studio-calendar .rdp-dropdown {
+  position: static;
+  width: 100%;
+  min-width: 0;
+  min-height: 2.15rem;
+  margin: 0;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid rgba(139, 107, 63, 0.24);
+  border-radius: 11px;
+  opacity: 1;
+  appearance: auto;
+  background: rgba(255, 250, 243, 0.86);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.studio-calendar .studio-calendar-select:focus-visible,
+.studio-calendar .rdp-day_button:focus-visible {
+  outline: 2px solid rgba(139, 107, 63, 0.64);
+  outline-offset: 2px;
+}
+
+.studio-calendar .rdp-weekday {
+  padding: 0.2rem 0;
+  color: var(--ink-soft);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.studio-calendar .rdp-day {
+  width: 14.285%;
+}
+
+.studio-calendar .rdp-day_button {
+  margin: 0 auto;
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 700;
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.studio-calendar .rdp-day_button:not(:disabled):hover {
+  border-color: rgba(139, 107, 63, 0.38);
+  background: rgba(199, 166, 111, 0.2);
+}
+
+.studio-calendar .rdp-day_button:not(:disabled):active {
+  transform: scale(0.94);
+}
+
+.studio-calendar .rdp-selected .rdp-day_button {
+  background: var(--ink);
+  color: var(--paper-soft);
+}
+
+.studio-calendar .rdp-today:not(.rdp-selected) .rdp-day_button {
+  border-color: rgba(139, 107, 63, 0.38);
+  color: var(--champagne-deep);
+}
+
+@media (max-width: 380px) {
+  .studio-calendar {
+    padding: 0.65rem;
+  }
+
+  .studio-calendar .rdp-root {
+    --rdp-day-height: 2.15rem;
+    --rdp-day-width: 2.15rem;
+    --rdp-day_button-height: 1.98rem;
+    --rdp-day_button-width: 1.98rem;
+  }
 }

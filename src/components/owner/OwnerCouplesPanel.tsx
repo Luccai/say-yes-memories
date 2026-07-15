@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/shared/Button";
+import { CalendarDatePicker } from "@/components/shared/CalendarDatePicker";
 import {
   OwnerEmptyState,
   OwnerErrorState,
@@ -107,6 +108,12 @@ function CoupleDetail({
 
   async function updateIdentity(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (!eventDate) {
+      setError("Düğün tarihi seçilmeden kayıt yapılamaz.");
+      return;
+    }
+
     setSavingIdentity(true);
     setMessage("");
     setError("");
@@ -248,7 +255,18 @@ function CoupleDetail({
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <label className="grid gap-2 text-sm font-bold">Birinci isim<input className={ownerInputClass} value={brideName} onChange={(event) => setBrideName(event.target.value)} maxLength={80} required /></label>
             <label className="grid gap-2 text-sm font-bold">İkinci isim<input className={ownerInputClass} value={groomName} onChange={(event) => setGroomName(event.target.value)} maxLength={80} required /></label>
-            <label className="grid gap-2 text-sm font-bold">Düğün tarihi<input className={ownerInputClass} type="date" value={eventDate} onChange={(event) => setEventDate(event.target.value)} required /></label>
+            <div className="grid gap-2 text-sm font-bold">
+              <span>Düğün tarihi</span>
+              <CalendarDatePicker
+                label="Düğün tarihi"
+                locale="tr"
+                startMonth={new Date(1980, 6)}
+                endMonth={new Date(2100, 11)}
+                required
+                value={eventDate}
+                onChange={setEventDate}
+              />
+            </div>
             <label className="grid gap-2 text-sm font-bold">Saat dilimi<input className={ownerInputClass} value={timezone} onChange={(event) => setTimezone(event.target.value)} required /></label>
           </div>
           <label className="mt-3 grid gap-2 text-sm font-bold">Değişiklik nedeni<input className={ownerInputClass} value={identityNote} onChange={(event) => setIdentityNote(event.target.value)} maxLength={500} placeholder="Örn. Müşteri Etsy’den doğruladı" /></label>

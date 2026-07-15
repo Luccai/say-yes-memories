@@ -13,7 +13,6 @@ import {
   ArrowLeft,
   ArrowRight,
   Camera,
-  CalendarDays,
   CheckCircle2,
   Eye,
   EyeOff,
@@ -23,7 +22,9 @@ import {
 } from "lucide-react";
 import type { PublicWedding } from "@/lib/types";
 import { BrandMark } from "@/components/shared/BrandMark";
+import { BorderBeam } from "@/components/shared/BorderBeam";
 import { Button } from "@/components/shared/Button";
+import { CalendarDatePicker } from "@/components/shared/CalendarDatePicker";
 import {
   GuidanceDialog,
   GuidanceTriggerButton,
@@ -37,7 +38,8 @@ import {
   type RememberedMembership,
 } from "@/lib/auth/device-hint";
 import { normalizeEtsyToken } from "@/lib/auth/etsy-token";
-import { useAuthCopy, useCopy } from "@/lib/i18n-client";
+import { todayCalendarDate } from "@/lib/calendar-date";
+import { useAuthCopy, useCopy, useLocale } from "@/lib/i18n-client";
 
 type LoginMode = "activate" | "token" | "recover" | "remembered";
 type ActivationStep = "token" | "details";
@@ -108,14 +110,6 @@ function PasswordField({
   );
 }
 
-function localToday() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
 function createBrowserSecret() {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   const binary = Array.from(bytes, (value) => String.fromCharCode(value)).join("");
@@ -151,6 +145,7 @@ export function LoginExperience({
 }) {
   const text = useCopy();
   const authText = useAuthCopy();
+  const locale = useLocale();
   const [form, setForm] = useState<AuthForm>({
     brideName: "",
     groomName: "",
@@ -241,6 +236,12 @@ export function LoginExperience({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (mode === "activate" && activationStep === "details" && !form.eventDate) {
+      setError(errorMessage("INVALID_EVENT_DATE"));
+      return;
+    }
+
     setSubmitting(true);
     setError("");
 
@@ -327,7 +328,10 @@ export function LoginExperience({
       <div className="mx-auto flex min-h-[calc(100dvh-1.5rem)] max-w-[48rem] items-center justify-center overflow-hidden rounded-[30px] border border-white/65 bg-[rgba(255,250,243,0.74)] backdrop-blur-xl sm:min-h-[calc(100dvh-3rem)] sm:rounded-[38px]">
         <section className="w-full p-4 sm:p-8 lg:p-12">
           <div className="mx-auto w-full max-w-[34rem]">
-            <div className="mb-6 flex items-start justify-between gap-3 sm:mb-8 sm:items-center">
+            <div
+              data-login-header
+              className="mb-6 flex items-start justify-between gap-3 sm:mb-8 sm:items-center"
+            >
               <BrandMark />
               <div className="flex shrink-0 items-center gap-2">
                 <HelpTriggerButton
@@ -371,7 +375,11 @@ export function LoginExperience({
               <form
                 key={mode}
                 onSubmit={handleSubmit}
-                className="rounded-[30px] border border-white/80 bg-[var(--paper-soft)] p-5 shadow-[var(--shadow-soft)] sm:p-8"
+                className={`relative isolate overflow-hidden rounded-[30px] border border-white/80 bg-[var(--paper-soft)] p-5 shadow-[var(--shadow-soft)] sm:p-8 ${
+                  (mode === "activate" && activationStep === "token") || mode === "token"
+                    ? "min-h-[600px]"
+                    : ""
+                }`}
               >
                 {mode === "remembered" && remembered ? (
                   <>
@@ -455,15 +463,12 @@ export function LoginExperience({
                               ? authText.recoverTitle
                               : authText.returning}
                         </h1>
-                        <p className="mt-3 text-sm leading-6 text-[var(--ink-soft)]">
-                          {mode === "activate"
-                            ? activationStep === "token"
-                              ? authText.firstSetupBody
-                              : authText.detailsStepBody
-                            : mode === "recover"
-                              ? authText.recoverBody
-                              : authText.returningBody}
-                        </p>
+                        {mode === "recover" ||
+                        (mode === "activate" && activationStep === "details") ? (
+                          <p className="mt-3 text-sm leading-6 text-[var(--ink-soft)]">
+                            {mode === "recover" ? authText.recoverBody : authText.detailsStepBody}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
 
@@ -602,25 +607,22 @@ export function LoginExperience({
                       ) : null}
 
                       {mode === "activate" && activationStep === "details" ? (
-                        <label className="grid min-w-0 gap-2 text-sm font-semibold">
-                          {authText.eventDate}
-                          <span className="relative block min-w-0 max-w-full">
-                            <CalendarDays className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-[var(--champagne-deep)]" />
-                            <input
-                              className={`${inputClass} block min-w-0 w-full max-w-full pl-11`}
-                              type="date"
-                              min={localToday()}
-                              value={form.eventDate}
-                              onChange={(event) =>
-                                setForm((current) => ({ ...current, eventDate: event.target.value }))
-                              }
-                              required
-                            />
-                          </span>
+                        <div className="grid min-w-0 gap-2 text-sm font-semibold">
+                          <span>{authText.eventDate}</span>
+                          <CalendarDatePicker
+                            label={authText.eventDate}
+                            locale={locale}
+                            min={todayCalendarDate()}
+                            required
+                            value={form.eventDate}
+                            onChange={(eventDate) =>
+                              setForm((current) => ({ ...current, eventDate }))
+                            }
+                          />
                           <span className="text-xs font-normal leading-5 text-[var(--ink-soft)]">
                             {authText.uploadsOpen}
                           </span>
-                        </label>
+                        </div>
                       ) : null}
 
                       {mode !== "activate" || activationStep === "details" ? (
@@ -675,38 +677,47 @@ export function LoginExperience({
                       ) : null}
                     </motion.div>
 
-                    <Button
-                      type="submit"
-                      loading={submitting}
-                      disabled={
-                        (mode === "recover" ||
-                          (mode === "activate" && activationStep === "details")) &&
-                        passwordMatch === false
-                      }
-                      className={`mt-6 ${
-                        mode === "activate" ? "mx-auto !flex w-full max-w-[22rem]" : "min-w-[12.5rem] max-w-full"
-                      }`}
-                    >
-                      {mode === "activate"
-                        ? activationStep === "token"
-                          ? authText.continue
-                          : authText.activate
-                        : mode === "recover"
-                          ? authText.reset
-                          : authText.signIn}
-                      <ArrowRight className="size-4" />
-                    </Button>
-
                     {mode === "token" ? (
+                      <div className="mt-6 grid w-full justify-items-center gap-3">
+                        <Button
+                          type="submit"
+                          loading={submitting}
+                          className="mx-auto !flex w-full max-w-[22rem]"
+                        >
+                          {authText.signIn}
+                          <ArrowRight className="size-4" />
+                        </Button>
+                        <Button
+                          variant="paper"
+                          className="!flex w-full max-w-[22rem]"
+                          onClick={() => chooseMode("recover")}
+                        >
+                          {authText.forgot}
+                        </Button>
+                      </div>
+                    ) : (
                       <Button
-                        variant="paper"
-                        size="compact"
-                        className="mt-3 w-fit"
-                        onClick={() => chooseMode("recover")}
+                        type="submit"
+                        loading={submitting}
+                        disabled={
+                          (mode === "recover" ||
+                            (mode === "activate" && activationStep === "details")) &&
+                          passwordMatch === false
+                        }
+                        className={`mt-6 ${
+                          mode === "activate"
+                            ? "mx-auto !flex w-full max-w-[22rem]"
+                            : "min-w-[12.5rem] max-w-full"
+                        }`}
                       >
-                        {authText.forgot}
+                        {mode === "activate"
+                          ? activationStep === "token"
+                            ? authText.continue
+                            : authText.activate
+                          : authText.reset}
+                        <ArrowRight className="size-4" />
                       </Button>
-                    ) : null}
+                    )}
                   </>
                 )}
 
@@ -731,6 +742,7 @@ export function LoginExperience({
                     {text.login.demo}
                   </Link>
                 ) : null}
+                <BorderBeam duration={8} size={100} />
               </form>
             )}
           </div>

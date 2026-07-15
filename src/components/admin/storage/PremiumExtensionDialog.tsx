@@ -18,6 +18,7 @@ type PremiumExtensionDialogProps = {
   demoMode: boolean;
   purchaseAction: PremiumPurchaseAction;
   coupleNameCopied: boolean;
+  coupleNameCopyError: boolean;
   text: AdminCopy;
   onCopyCoupleName: () => void;
   onClose: () => void;
@@ -29,6 +30,7 @@ export function PremiumExtensionDialog({
   demoMode,
   purchaseAction,
   coupleNameCopied,
+  coupleNameCopyError,
   text,
   onCopyCoupleName,
   onClose,
@@ -74,37 +76,33 @@ export function PremiumExtensionDialog({
             aria-labelledby="premium-extension-title"
             tabIndex={-1}
           >
-            <Button
-              ref={closeRef}
-              onClick={onClose}
-              variant="paper"
-              size="icon"
-              className="absolute right-4 top-4 !size-10 !min-h-10"
-              aria-label={text.close}
-            >
-              <X className="size-4" />
-            </Button>
-            <p className="eyebrow flex items-center gap-2 text-[var(--champagne-deep)]">
-              <Crown className="size-4" />
-              {text.upgradePremium}
-            </p>
-            <h2
-              id="premium-extension-title"
-              className="mt-3 pr-10 font-display text-2xl font-semibold text-[var(--ink)]"
-            >
-              {text.premiumModalTitle}
-            </h2>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="eyebrow flex items-center gap-2 text-[var(--champagne-deep)]">
+                  <Crown className="size-4" />
+                  {text.upgradePremium}
+                </p>
+                <h2
+                  id="premium-extension-title"
+                  className="mt-3 font-display text-2xl font-semibold text-[var(--ink)]"
+                >
+                  {text.premiumModalTitle}
+                </h2>
+              </div>
+              <Button
+                ref={closeRef}
+                onClick={onClose}
+                variant="paper"
+                size="icon"
+                className="!size-11 !min-h-11"
+                aria-label={text.close}
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
             <p className="mt-3 text-sm leading-relaxed text-[var(--ink-soft)]">
               {text.premiumModalBody}
             </p>
-            {demoMode ? (
-              <p
-                data-demo-premium-notice="true"
-                className="mt-4 rounded-[20px] border border-[rgba(139,107,63,0.2)] bg-[rgba(239,222,193,0.48)] px-4 py-3 text-sm font-semibold leading-6 text-[var(--ink-soft)]"
-              >
-                {text.demoStorageNotice}
-              </p>
-            ) : null}
             <ol className="mt-5 grid gap-3 text-sm font-semibold text-[var(--ink)]">
               <li>{text.premiumStepCopy}</li>
               <li>{text.premiumStepBuy}</li>
@@ -129,6 +127,15 @@ export function PremiumExtensionDialog({
                   {coupleNameCopied ? text.copied : text.copyCoupleName}
                 </Button>
               </div>
+              {coupleNameCopyError ? (
+                <p
+                  className="mt-3 text-xs font-bold text-[var(--rosewood)]"
+                  role="status"
+                  aria-live="polite"
+                >
+                  {text.copyCoupleNameError}
+                </p>
+              ) : null}
             </div>
             {purchaseAction.kind === "demo" ? (
               <Button disabled variant="premium" className="mt-5 w-fit disabled:!opacity-75">

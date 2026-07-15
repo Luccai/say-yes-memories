@@ -219,8 +219,9 @@ export function StudioNavigation({
 
       <nav
         data-studio-navigation="mobile"
+        data-mobile-navigation-style="c"
         aria-label={text.navigation}
-        className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-[70] grid w-[min(calc(100vw-0.5rem),32rem)] -translate-x-1/2 grid-cols-5 gap-0.5 rounded-[28px] border border-white/80 bg-[rgba(255,250,243,0.9)] p-1 shadow-[0_18px_48px_rgba(58,40,25,0.2)] backdrop-blur-xl lg:hidden"
+        className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-[70] grid w-[min(calc(100vw-0.5rem),32rem)] -translate-x-1/2 grid-cols-5 rounded-[28px] border border-white/80 bg-[rgba(255,250,243,0.9)] px-2 py-1.5 shadow-[0_18px_48px_rgba(58,40,25,0.2)] backdrop-blur-xl lg:hidden"
       >
         {primaryItems.map((item) => (
           <NavigationControl
@@ -236,14 +237,14 @@ export function StudioNavigation({
           onClick={() => setMoreOpen(true)}
           aria-expanded={moreOpen}
           aria-current={activePanel === "storage" ? "page" : undefined}
-          className={`focus-ring flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-[20px] border px-0 text-[0.6rem] font-black tracking-[-0.02em] transition max-[374px]:text-[0.56rem] motion-safe:active:scale-[0.96] ${
+          className={`focus-ring flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-0 text-[0.6rem] font-black tracking-[-0.04em] transition max-[374px]:text-[0.54rem] motion-safe:active:scale-[0.96] ${
             activePanel === "storage"
-              ? "border-[var(--ink)] bg-[var(--ink)] text-[var(--paper-soft)] shadow-[0_8px_18px_rgba(31,23,18,0.2)]"
-              : "border-[rgba(139,107,63,0.16)] bg-[rgba(255,255,255,0.44)] text-[var(--ink)] shadow-[inset_0_1px_0_rgba(255,255,255,0.72)] hover:border-[rgba(139,107,63,0.28)] hover:bg-white/64"
+              ? "text-[var(--ink)]"
+              : "text-[var(--ink-soft)] opacity-70 hover:bg-white/36 hover:opacity-100"
           }`}
         >
-          <Menu className="size-[1.15rem]" />
-          <span className="line-clamp-2 min-h-[2.1em] max-w-full text-center font-extrabold leading-[1.05]">
+          <Menu className="size-5" />
+          <span className="max-w-full truncate text-center font-extrabold leading-none">
             {text.more}
           </span>
         </button>
@@ -342,10 +343,10 @@ function NavigationControl({
   const Icon = item.icon;
   const className =
     mode === "mobile"
-      ? `focus-ring flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-[20px] border px-0 text-[0.6rem] font-black tracking-[-0.02em] transition max-[374px]:text-[0.56rem] motion-safe:active:scale-[0.96] ${
+      ? `focus-ring flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-0 text-[0.6rem] font-black tracking-[-0.04em] transition max-[374px]:text-[0.54rem] motion-safe:active:scale-[0.96] ${
           active
-            ? "border-[var(--ink)] bg-[var(--ink)] text-[var(--paper-soft)] shadow-[0_8px_18px_rgba(31,23,18,0.2)]"
-            : "border-[rgba(139,107,63,0.16)] bg-[rgba(255,255,255,0.44)] text-[var(--ink)] shadow-[inset_0_1px_0_rgba(255,255,255,0.72)] hover:border-[rgba(139,107,63,0.28)] hover:bg-white/64"
+            ? "text-[var(--ink)]"
+            : "text-[var(--ink-soft)] opacity-70 hover:bg-white/36 hover:opacity-100"
         }`
       : `focus-ring flex min-h-12 w-full items-center gap-3 rounded-full px-3 text-left text-sm font-extrabold transition motion-safe:active:scale-[0.985] ${
           active
@@ -360,8 +361,8 @@ function NavigationControl({
       <span
         className={
           mode === "mobile"
-            ? "line-clamp-2 min-h-[2.1em] max-w-full text-center font-extrabold leading-[1.05]"
-            : "truncate"
+            ? "max-w-full truncate text-center font-extrabold leading-none"
+            : "truncate font-extrabold"
         }
       >
         {mode === "mobile" ? item.mobileLabel : item.label}
@@ -432,7 +433,7 @@ function SecondaryAction({
       }`}
     >
       <Icon className="size-4 shrink-0" />
-      <span className="truncate">{label}</span>
+      <span className="truncate font-extrabold">{label}</span>
     </button>
   );
 }
@@ -454,7 +455,7 @@ function SecondaryLink({
       className="focus-ring flex min-h-12 w-full items-center gap-3 rounded-full border border-transparent bg-white/38 px-4 text-left text-sm font-extrabold text-[var(--ink-soft)] transition hover:border-[var(--line)] hover:bg-white/68 hover:text-[var(--ink)] motion-safe:active:scale-[0.985]"
     >
       <Icon className="size-4 shrink-0" />
-      <span className="min-w-0 flex-1 truncate">{label}</span>
+      <span className="min-w-0 flex-1 truncate font-extrabold">{label}</span>
       <ExternalLink className="size-3.5 shrink-0 opacity-60" />
     </a>
   );

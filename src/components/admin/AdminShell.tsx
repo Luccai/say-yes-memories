@@ -15,7 +15,7 @@ type AdminShellProps = {
   eventUrl: string;
   loggingOut: boolean;
   logoutError: string;
-  memoriesPanel: ReactNode;
+  memoriesPanel: (entrySequence: number) => ReactNode;
   weddingPagePanel: ReactNode;
   qrPanel: ReactNode;
   storagePanel: ReactNode;
@@ -37,7 +37,15 @@ export function AdminShell({
   onLogout,
 }: AdminShellProps) {
   const [activePanel, setActivePanel] = useState<AdminPanel>("memories");
+  const [memoriesEntrySequence, setMemoriesEntrySequence] = useState(0);
   const reduceMotion = useReducedMotion();
+
+  function changePanel(panel: AdminPanel) {
+    if (panel === "memories" && activePanel !== "memories") {
+      setMemoriesEntrySequence((current) => current + 1);
+    }
+    setActivePanel(panel);
+  }
 
   const activeSecondaryPanel =
     activePanel === "identity"
@@ -58,7 +66,7 @@ export function AdminShell({
           eventUrl={eventUrl}
           loggingOut={loggingOut}
           logoutError={logoutError}
-          onPanelChange={setActivePanel}
+          onPanelChange={changePanel}
           onHelp={onHelp}
           onLogout={onLogout}
         />
@@ -83,7 +91,7 @@ export function AdminShell({
               }}
               className="[grid-area:1/1] grid gap-5"
             >
-              {memoriesPanel}
+              {memoriesPanel(memoriesEntrySequence)}
             </motion.section>
 
             <AnimatePresence mode="wait" initial={false}>

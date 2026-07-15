@@ -3,6 +3,7 @@
 import { type ChangeEvent, useState } from "react";
 import {
   Check,
+  CircleUserRound,
   ImagePlus,
   Loader2,
   Lock,
@@ -74,31 +75,60 @@ export function WeddingPagePanel({
 
       <div className="grid gap-5 sm:grid-cols-[9rem_1fr]">
         <div className="flex flex-col items-center">
-          <MediaOrb
-            media={wedding.profileMedia}
-            label={wedding.coupleName}
-            className="h-44 w-36"
-          />
-          <label
-            className={buttonStyles({
-              variant: "paper",
-              className: `mt-4 w-fit ${profileInputDisabled ? "cursor-not-allowed" : "cursor-pointer"}`,
-            })}
-          >
-            {profileUploading ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <ImagePlus className="size-4" />
-            )}
-            {text.upload}
-            <input
-              type="file"
-              accept="image/*"
-              className="sr-only"
-              disabled={profileInputDisabled}
-              onChange={profileInputDisabled ? undefined : onUploadProfileMedia}
-            />
-          </label>
+          {wedding.profileMedia ? (
+            <>
+              <MediaOrb
+                media={wedding.profileMedia}
+                label={wedding.coupleName}
+                className="h-44 w-36"
+              />
+              <label
+                className={buttonStyles({
+                  variant: "paper",
+                  className: `mt-4 w-fit ${profileInputDisabled ? "cursor-not-allowed" : "cursor-pointer"}`,
+                })}
+              >
+                {profileUploading ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <ImagePlus className="size-4" />
+                )}
+                {text.upload}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  disabled={profileInputDisabled}
+                  onChange={profileInputDisabled ? undefined : onUploadProfileMedia}
+                />
+              </label>
+            </>
+          ) : (
+            <label
+              aria-label={text.upload}
+              data-profile-media-empty-picker="true"
+              className={buttonStyles({
+                variant: "paper",
+                size: "icon",
+                className: `size-16 rounded-[22px] shadow-none ${
+                  profileInputDisabled ? "cursor-not-allowed" : "cursor-pointer"
+                }`,
+              })}
+            >
+              {profileUploading ? (
+                <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+              ) : (
+                <CircleUserRound aria-hidden="true" className="size-5 opacity-60" />
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                disabled={profileInputDisabled}
+                onChange={profileInputDisabled ? undefined : onUploadProfileMedia}
+              />
+            </label>
+          )}
         </div>
 
         <div className="grid gap-4">

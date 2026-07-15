@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Crown, HardDrive } from "lucide-react";
+import { Crown, HardDrive } from "lucide-react";
 import { PremiumExtensionDialog } from "@/components/admin/storage/PremiumExtensionDialog";
 import { MemoryArchiveDownload } from "@/components/admin/storage/MemoryArchiveDownload";
 import { StorageMeter } from "@/components/admin/storage/StorageMeter";
@@ -64,6 +64,7 @@ function storageStatusText(text: AdminCopy, wedding: Wedding) {
 export function StoragePanel({ wedding, demoMode, text }: StoragePanelProps) {
   const [premiumOpen, setPremiumOpen] = useState(false);
   const [coupleNameCopied, setCoupleNameCopied] = useState(false);
+  const [coupleNameCopyError, setCoupleNameCopyError] = useState(false);
   const premiumUpgradeUrl = process.env.NEXT_PUBLIC_ETSY_PREMIUM_UPGRADE_URL;
   const isDemoStorage = Boolean(demoMode || wedding.demo);
   const premiumPurchaseAction = resolvePremiumPurchaseAction({
@@ -86,15 +87,21 @@ export function StoragePanel({ wedding, demoMode, text }: StoragePanelProps) {
       return;
     }
 
-    await navigator.clipboard.writeText(wedding.coupleName);
-    setCoupleNameCopied(true);
-    window.setTimeout(() => setCoupleNameCopied(false), 1600);
+    try {
+      await navigator.clipboard.writeText(wedding.coupleName);
+      setCoupleNameCopyError(false);
+      setCoupleNameCopied(true);
+      window.setTimeout(() => setCoupleNameCopied(false), 1600);
+    } catch {
+      setCoupleNameCopied(false);
+      setCoupleNameCopyError(true);
+    }
   }
 
   return (
     <>
       <article className="overflow-hidden rounded-[34px] border border-white/75 bg-[rgba(255,250,243,0.84)] p-4 shadow-none backdrop-blur sm:p-6 sm:shadow-[0_20px_58px_rgba(58,40,25,0.1)]">
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)] lg:items-stretch">
+        <div className="flex flex-wrap items-start justify-between gap-5">
           <div className="min-w-0">
             <p className="eyebrow flex items-center gap-2 text-[var(--champagne-deep)]">
               <HardDrive className="size-4 shrink-0" />
@@ -113,38 +120,11 @@ export function StoragePanel({ wedding, demoMode, text }: StoragePanelProps) {
             />
           </div>
 
-          <div className="grid min-w-0 content-between gap-4 rounded-[26px] border border-[var(--line)] bg-white/46 p-4">
-            <div className="grid gap-3">
-              <div>
-                <p className="text-[0.68rem] font-bold uppercase text-[var(--ink-soft)]">
-                  {text.upgradeCoupleName}
-                </p>
-                <p className="mt-1 break-words font-display text-xl font-semibold text-[var(--ink)]">
-                  {wedding.coupleName}
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  onClick={copyCoupleName}
-                  disabled={isDemoStorage}
-                  title={isDemoStorage ? text.demoStorageNotice : undefined}
-                  variant="paper"
-                  size="compact"
-                >
-                  <Copy className="size-3.5" />
-                  <span>{coupleNameCopied ? text.copied : text.copyCoupleName}</span>
-                </Button>
-                <Button onClick={() => setPremiumOpen(true)} variant="premium" size="compact">
-                  <Crown className="size-3.5" />
-                  <span>{text.premiumPill}</span>
-                </Button>
-              </div>
-              {isDemoStorage ? (
-                <p className="rounded-[18px] border border-[rgba(139,107,63,0.18)] bg-[rgba(255,250,243,0.72)] px-3 py-2 text-xs font-bold leading-5 text-[var(--ink-soft)]">
-                  {text.demoStorageNotice}
-                </p>
-              ) : null}
-            </div>
+          <div className="grid shrink-0 justify-items-start gap-4 sm:justify-items-end">
+            <Button onClick={() => setPremiumOpen(true)} variant="premium" size="compact">
+              <Crown className="size-3.5" />
+              <span>{text.premiumPill}</span>
+            </Button>
             <p className="text-xs font-bold text-[var(--ink-soft)]">
               {remainingDays === null
                 ? text.storageNoDate
@@ -152,6 +132,11 @@ export function StoragePanel({ wedding, demoMode, text }: StoragePanelProps) {
             </p>
           </div>
         </div>
+        {isDemoStorage ? (
+          <p className="mt-5 rounded-[18px] border border-[rgba(139,107,63,0.18)] bg-[rgba(255,250,243,0.72)] px-3 py-2 text-xs font-bold leading-5 text-[var(--ink-soft)]">
+            {text.demoStorageNotice}
+          </p>
+        ) : null}
       </article>
 
       <MemoryArchiveDownload demoMode={isDemoStorage} text={text} />
@@ -162,9 +147,14 @@ export function StoragePanel({ wedding, demoMode, text }: StoragePanelProps) {
         demoMode={isDemoStorage}
         purchaseAction={premiumPurchaseAction}
         coupleNameCopied={coupleNameCopied}
+        coupleNameCopyError={coupleNameCopyError}
         text={text}
         onCopyCoupleName={copyCoupleName}
-        onClose={() => setPremiumOpen(false)}
+        onClose={() => {
+          setCoupleNameCopied(false);
+          setCoupleNameCopyError(false);
+          setPremiumOpen(false);
+        }}
       />
     </>
   );

@@ -3,6 +3,7 @@
 import { LayoutGroup, type Transition } from "motion/react";
 import type { WeddingMedia } from "@/lib/types";
 import { Button } from "@/components/shared/Button";
+import { BlurFade } from "@/components/shared/BlurFade";
 import { MemoryCard } from "@/components/admin/memories/MemoryCard";
 import type { AdminCopy, MemoryGridLayout } from "@/components/admin/types";
 
@@ -17,6 +18,8 @@ const memoryGridClasses: Record<MemoryGridLayout, string> = {
 type MemoryGridProps = {
   media: WeddingMedia[];
   gridLayout: MemoryGridLayout;
+  entrySequence: number;
+  enteredMediaIds: Set<string>;
   demoMode: boolean;
   hasMore: boolean;
   loadingMore: boolean;
@@ -30,6 +33,8 @@ type MemoryGridProps = {
 export function MemoryGrid({
   media,
   gridLayout,
+  entrySequence,
+  enteredMediaIds,
   demoMode,
   hasMore,
   loadingMore,
@@ -51,17 +56,24 @@ export function MemoryGrid({
                   item.byteSize <= STORY_ORIGINAL_IMAGE_MAX_BYTES));
 
             return (
-              <MemoryCard
+              <BlurFade
                 key={item.id}
-                item={item}
-                index={index}
-                gridLayout={gridLayout}
-                useOriginalImage={useOriginalImage}
-                layoutTransition={layoutTransition}
-                reduceMotion={reduceMotion}
-                onOpen={onOpen}
-                text={text}
-              />
+                replayKey={entrySequence}
+                replayOnMount={!enteredMediaIds.has(item.id)}
+                onEntered={() => enteredMediaIds.add(item.id)}
+                delay={0.15 + Math.min(index, 10) * 0.05}
+              >
+                <MemoryCard
+                  item={item}
+                  index={index}
+                  gridLayout={gridLayout}
+                  useOriginalImage={useOriginalImage}
+                  layoutTransition={layoutTransition}
+                  reduceMotion={reduceMotion}
+                  onOpen={onOpen}
+                  text={text}
+                />
+              </BlurFade>
             );
           })}
         </div>

@@ -566,24 +566,25 @@ export function AdminExperience({
         logoutError={logoutError}
         onHelp={() => setHelpOpen(true)}
         onLogout={() => void logout()}
-        memoriesPanel={
+        memoriesPanel={(entrySequence) => (
           <MemoriesPanel
-              filter={filter}
-              gridLayout={gridLayout}
-              media={filteredMedia}
-              mediaCounts={mediaCounts}
-              mediaOrder={mediaOrder}
-              hasMore={mediaHasMore}
-              loadingMore={loadingMoreMedia}
-              demoMode={demoMode}
-              onFilterChange={setFilter}
-              onGridLayoutChange={setGridLayout}
-              onMediaOrderChange={setMediaOrder}
-              onRemoveMedia={removeMedia}
-              onLoadMore={() => void loadMoreMedia()}
-              text={adminText}
-            />
-        }
+            entrySequence={entrySequence}
+            filter={filter}
+            gridLayout={gridLayout}
+            media={filteredMedia}
+            mediaCounts={mediaCounts}
+            mediaOrder={mediaOrder}
+            hasMore={mediaHasMore}
+            loadingMore={loadingMoreMedia}
+            demoMode={demoMode}
+            onFilterChange={setFilter}
+            onGridLayoutChange={setGridLayout}
+            onMediaOrderChange={setMediaOrder}
+            onRemoveMedia={removeMedia}
+            onLoadMore={() => void loadMoreMedia()}
+            text={adminText}
+          />
+        )}
         weddingPagePanel={
           <WeddingPagePanel
             key={`${wedding.brideName}|${wedding.groomName}|${wedding.eventDate ?? ""}|${wedding.welcomeNote}`}

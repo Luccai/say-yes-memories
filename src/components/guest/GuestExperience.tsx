@@ -1,7 +1,25 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Check, LockKeyhole, Mic, Pause, RotateCcw, UploadCloud, X } from "lucide-react";
+import {
+  ChangeEvent,
+  DragEvent,
+  FormEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  Check,
+  ImageIcon,
+  LoaderCircle,
+  LockKeyhole,
+  Mic,
+  Pause,
+  RotateCcw,
+  UploadCloud,
+  X,
+} from "lucide-react";
 import Image from "next/image";
 import type { MediaKind, PublicWedding } from "@/lib/types";
 import { Button } from "@/components/shared/Button";
@@ -116,6 +134,7 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
   );
   const [file, setFile] = useState<File | null>(null);
   const [filePreviewUrl, setFilePreviewUrl] = useState("");
+  const [fileDragging, setFileDragging] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
@@ -128,6 +147,7 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadFailed, setUploadFailed] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const turnstileRef = useRef<TurnstileGateHandle | null>(null);
   const recorderRef = useRef<VoiceRecorder | null>(null);
   const successHeadingRef = useRef<HTMLParagraphElement | null>(null);
@@ -204,13 +224,7 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
     [filePreviewUrl],
   );
 
-  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    if (demoMode) {
-      event.target.value = "";
-      return;
-    }
-
-    const selectedFile = event.target.files?.[0] ?? null;
+  function chooseFile(selectedFile: File | null) {
     setError("");
     setUploadFailed(false);
     setUploadProgress(0);
@@ -218,16 +232,15 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
       setFile(null);
       setFilePreviewUrl("");
       setError(text.guest.fileTooLarge);
-      event.target.value = "";
       return;
     }
     if (selectedFile && !mediaKindFor(selectedFile)) {
       setFile(null);
       setFilePreviewUrl("");
       setError(text.guest.unsupportedFile);
-      event.target.value = "";
       return;
     }
+
     setFile(selectedFile);
     setFilePreviewUrl(selectedFile ? URL.createObjectURL(selectedFile) : "");
     setRecordedBlob(null);
@@ -238,9 +251,48 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
     }
   }
 
-  function clearSelectedMedia() {
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    if (!demoMode) {
+      chooseFile(event.target.files?.[0] ?? null);
+    }
+
+    event.target.value = "";
+  }
+
+  function openFileDialog() {
+    if (!demoMode && !submitting && !recording) {
+      fileInputRef.current?.click();
+    }
+  }
+
+  function handleFileDragOver(event: DragEvent<HTMLDivElement>) {
+    if (demoMode || submitting || recording) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    setFileDragging(true);
+  }
+
+  function handleFileDragLeave(event: DragEvent<HTMLDivElement>) {
+    if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+      setFileDragging(false);
+    }
+  }
+
+  function handleFileDrop(event: DragEvent<HTMLDivElement>) {
+    if (demoMode || submitting || recording) return;
+    event.preventDefault();
+    setFileDragging(false);
+    chooseFile(event.dataTransfer.files?.[0] ?? null);
+  }
+
+  function clearSelectedFile() {
     setFile(null);
     setFilePreviewUrl("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function clearSelectedMedia() {
+    clearSelectedFile();
     setRecordedBlob(null);
     setRecordedUrl("");
   }
@@ -568,25 +620,100 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
 
               {uploadChoice === "file" ? (
                 <div data-guest-upload-panel="file" className="grid gap-3">
-                  <label
-                    className={`focus-ring grid min-h-28 place-content-center gap-2 rounded-[26px] border border-dashed border-[var(--line)] bg-white/58 p-5 text-center transition ${
-                      submitting || recording
-                        ? "cursor-not-allowed opacity-65"
-                        : "cursor-pointer hover:bg-white"
+                  <div
+                    aria-label={text.guest.choosePhotoVideo}
+                    data-dragging={fileDragging || undefined}
+                    data-guest-file-uploader="true"
+                    onDragEnter={handleFileDragOver}
+                    onDragLeave={handleFileDragLeave}
+                    onDragOver={handleFileDragOver}
+                    onDrop={handleFileDrop}
+                    className={`relative flex min-h-52 flex-col overflow-hidden rounded-[26px] border border-dashed border-[var(--line)] bg-white/58 p-4 transition-colors has-[input:focus]:border-[var(--champagne-deep)] has-[input:focus]:ring-2 has-[input:focus]:ring-[rgba(199,166,111,0.28)] data-[dragging=true]:bg-[rgba(199,166,111,0.12)] ${
+                      submitting || recording ? "cursor-not-allowed opacity-65" : "hover:bg-white"
                     }`}
                   >
-                    <UploadCloud className="size-7 text-[var(--champagne-deep)]" />
-                    <span className="text-sm font-bold">
-                      {file ? file.name : text.guest.choosePhotoVideo}
-                    </span>
                     <input
+                      ref={fileInputRef}
                       type="file"
                       accept="image/*,video/*"
+                      aria-label={text.guest.choosePhotoVideo}
                       className="sr-only"
                       onChange={handleFileChange}
-                      disabled={submitting || recording}
+                      disabled={demoMode || submitting || recording}
                     />
-                  </label>
+                    {file && filePreviewUrl ? (
+                      <div className="flex h-full w-full flex-col gap-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="min-w-0 truncate text-sm font-bold text-[var(--ink)]">
+                            {file.name}
+                          </p>
+                          <Button
+                            type="button"
+                            size="compact"
+                            variant="paper"
+                            onClick={openFileDialog}
+                            disabled={demoMode || submitting || recording}
+                            className="shrink-0 px-3"
+                          >
+                            <UploadCloud aria-hidden="true" className="size-3.5" />
+                            {text.guest.choosePhotoVideo}
+                          </Button>
+                        </div>
+                        <div className="relative min-h-36 flex-1 overflow-hidden rounded-[18px] bg-[rgba(31,23,18,0.08)]">
+                          {mediaKindFor(file) === "image" ? (
+                            <Image
+                              src={filePreviewUrl}
+                              alt={file.name}
+                              fill
+                              unoptimized
+                              sizes="(max-width: 544px) 100vw, 480px"
+                              className="object-cover"
+                            />
+                          ) : (
+                            <video
+                              src={filePreviewUrl}
+                              controls
+                              preload="metadata"
+                              className="absolute inset-0 h-full w-full bg-black object-contain"
+                            />
+                          )}
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ink"
+                            aria-label={text.guest.removeMedia}
+                            onClick={clearSelectedFile}
+                            disabled={demoMode || submitting || recording}
+                            className="absolute right-2 top-2 size-8 min-h-8 border-2 border-[var(--paper-soft)] p-0 shadow-none"
+                          >
+                            <X aria-hidden="true" className="size-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="m-auto flex max-w-sm flex-col items-center justify-center px-4 py-3 text-center">
+                        <div className="mb-3 grid size-11 place-items-center rounded-full border border-[var(--line)] bg-[var(--paper-soft)] text-[var(--champagne-deep)]">
+                          <ImageIcon aria-hidden="true" className="size-5" />
+                        </div>
+                        <p className="text-sm font-bold text-[var(--ink)]">
+                          {text.guest.dropPhotoVideo}
+                        </p>
+                        <p className="mt-1 text-xs text-[var(--ink-soft)]">
+                          {text.guest.photoVideoLimit}
+                        </p>
+                        <Button
+                          type="button"
+                          variant="paper"
+                          onClick={openFileDialog}
+                          disabled={demoMode || submitting || recording}
+                          className="mt-4"
+                        >
+                          <UploadCloud aria-hidden="true" className="size-4" />
+                          {text.guest.choosePhotoVideo}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ) : null}
 
@@ -620,7 +747,7 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
                 </div>
               ) : null}
 
-              {file && filePreviewUrl ? (
+              {file && filePreviewUrl && uploadChoice !== "file" ? (
                 <div className="overflow-hidden rounded-[24px] border border-[var(--line)] bg-black/5">
                   {mediaKindFor(file) === "image" ? (
                     <div className="relative aspect-[4/3]">
@@ -713,38 +840,58 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
                   ) : null}
 
                   {submitting ? (
-                <div className="grid gap-3" aria-live="polite">
-                  <div
-                    role="progressbar"
-                    aria-label={text.guest.uploadProgress}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-valuenow={uploadProgress}
-                    className="h-2.5 overflow-hidden rounded-full bg-black/10"
-                  >
-                    <div
-                      className="h-full rounded-full bg-[var(--ink)]"
-                      style={{ width: `${uploadProgress}%` }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between gap-3 text-xs font-bold text-[var(--ink-soft)]">
-                    <span>{text.guest.uploadProgress}</span>
-                    <span className="tabular-nums">{uploadProgress}%</span>
-                  </div>
-                  <Button
-                    variant="paper"
-                    onClick={cancelUpload}
-                    className="justify-self-start"
-                  >
-                    <X aria-hidden="true" className="size-4" />
-                    {text.guest.cancelUpload}
-                  </Button>
-                </div>
-              ) : (
+                    <div className="grid justify-items-center gap-3" aria-live="polite">
+                      <Button
+                        type="button"
+                        disabled
+                        aria-label={text.guest.send}
+                        aria-busy="true"
+                        data-guest-send-memory="loading"
+                        data-loading="true"
+                        className="group relative min-h-14 px-6 !font-extrabold uppercase !tracking-[0.08em] disabled:opacity-100"
+                      >
+                        <span className="flex items-center gap-2 group-data-[loading]:text-transparent">
+                          <Check aria-hidden="true" className="size-4" />
+                          {text.guest.send}
+                        </span>
+                        <span className="absolute inset-0 flex items-center justify-center">
+                          <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+                        </span>
+                      </Button>
+                      <div className="grid w-full gap-3">
+                        <div
+                          role="progressbar"
+                          aria-label={text.guest.uploadProgress}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                          aria-valuenow={uploadProgress}
+                          className="h-2.5 overflow-hidden rounded-full bg-black/10"
+                        >
+                          <div
+                            className="h-full rounded-full bg-[var(--ink)]"
+                            style={{ width: `${uploadProgress}%` }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between gap-3 text-xs font-bold text-[var(--ink-soft)]">
+                          <span>{text.guest.uploadProgress}</span>
+                          <span className="tabular-nums">{uploadProgress}%</span>
+                        </div>
+                        <Button
+                          variant="paper"
+                          onClick={cancelUpload}
+                          className="justify-self-start"
+                        >
+                          <X aria-hidden="true" className="size-4" />
+                          {text.guest.cancelUpload}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
                 <div className="grid justify-items-center gap-2">
                   <Button
                     type="submit"
                     disabled={demoMode || recording}
+                    data-guest-send-memory="ready"
                     className="min-h-14 px-6 !font-extrabold uppercase !tracking-[0.08em]"
                   >
                     {uploadFailed ? (

@@ -26,13 +26,21 @@ describe("mobile studio navigation", () => {
     }
   });
 
-  test("keeps five equal tactile controls without exposing shortened accessible names", () => {
+  test("uses the compact C-style navigation without exposing shortened accessible names", () => {
     expect(navigationSource).toContain("grid-cols-5");
+    expect(navigationSource).toContain('data-mobile-navigation-style="c"');
     expect(navigationSource).toContain("item.mobileLabel");
     expect(navigationSource).toContain('aria-label={mode === "mobile" ? item.label : undefined}');
-    expect(navigationSource).toContain("line-clamp-2");
+    expect(navigationSource).toContain("truncate text-center");
     expect(navigationSource).toContain("min-h-16");
-    expect(navigationSource).toContain("border-[rgba(139,107,63,0.16)]");
-    expect(navigationSource).toContain("shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]");
+    expect(navigationSource).toContain("text-[var(--ink-soft)] opacity-70");
+  });
+
+  test("keeps every desktop sidebar label at Flow mode's text weight", () => {
+    expect(navigationSource).toContain('"truncate font-extrabold"');
+    expect(navigationSource).toContain('<span className="truncate font-extrabold">{label}</span>');
+    expect(navigationSource).toContain(
+      '<span className="min-w-0 flex-1 truncate font-extrabold">{label}</span>',
+    );
   });
 });

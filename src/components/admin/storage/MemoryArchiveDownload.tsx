@@ -5,7 +5,6 @@ import { Download } from "lucide-react";
 import { Button, buttonStyles } from "@/components/shared/Button";
 import type { useCopy } from "@/lib/i18n-client";
 import { useLocale } from "@/lib/i18n-client";
-import { formatStorageBytes } from "@/lib/storage/quota";
 
 type AdminCopy = ReturnType<typeof useCopy>["admin"];
 
@@ -145,110 +144,79 @@ export function MemoryArchiveDownload({
       )
     : "";
 
+  const archiveError = error || (archive?.status === "failed" ? text.archiveUnavailable : "");
+
   return (
-    <section className="overflow-hidden rounded-[30px] border border-white/75 bg-[rgba(255,250,243,0.84)] p-4 shadow-none backdrop-blur sm:p-5 sm:shadow-[0_18px_48px_rgba(58,40,25,0.08)]">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <p className="eyebrow flex items-center gap-2 text-[var(--champagne-deep)]">
+    <section className="mx-auto w-full max-w-[30rem] rounded-[28px] border border-white/75 bg-[rgba(255,250,243,0.84)] p-4 shadow-none backdrop-blur sm:p-5 sm:shadow-[0_18px_48px_rgba(58,40,25,0.08)]">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <p className="eyebrow flex items-center gap-2 text-[var(--champagne-deep)]">
+          <Download className="size-4 shrink-0" />
+          {text.storageTitle}
+        </p>
+
+        {ready ? (
+          <a
+            className={buttonStyles({ variant: "ink", className: "gap-2 whitespace-nowrap" })}
+            href={archive?.downloadUrl ?? undefined}
+          >
             <Download className="size-4 shrink-0" />
-            {text.storageTitle}
-          </p>
-          {demoMode ? null : summary ? (
-            <>
-              <p className="mt-3 text-sm font-bold text-[var(--ink)]">
-                {fillTemplate(text.archiveSummary, {
-                  count: summary.mediaCount,
-                  size: formatStorageBytes(summary.totalBytes),
-                })}
-              </p>
-              <p className="mt-1 text-xs leading-5 text-[var(--ink-soft)]">
-                {fillTemplate(text.archiveBreakdown, {
-                  photos: summary.photoCount,
-                  videos: summary.videoCount,
-                  voice: summary.audioCount,
-                })}
-              </p>
-            </>
-          ) : (
-            <p className="mt-3 text-sm text-[var(--ink-soft)]">
-              {loading ? text.archivePreparing : text.archiveUnavailable}
-            </p>
-          )}
-        </div>
-
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          {ready ? (
-            <a
-              className={buttonStyles({ variant: "ink", size: "compact" })}
-              href={archive?.downloadUrl ?? undefined}
-            >
-              <Download className="size-3.5" />
-              {text.archiveDownloadReady}
-            </a>
-          ) : (
-            <Button
-              onClick={startArchive}
-              disabled={demoMode || preparing || !summary || summary.mediaCount === 0}
-              loading={starting || preparing}
-              variant="ink"
-              size="compact"
-              title={demoMode ? text.archiveDemoNotice : undefined}
-            >
-              <Download className="size-3.5" />
-              {archive?.status === "failed" ||
-              archive?.status === "expired" ||
-              archive?.retryStartAvailable
-                ? text.archiveTryAgain
-                : text.archiveDownloadAll}
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <div
-        className="mt-4 rounded-[20px] border border-[var(--line)] bg-white/48 px-3 py-3"
-        aria-live="polite"
-      >
-        {demoMode ? (
-          <p className="text-xs font-bold leading-5 text-[var(--ink-soft)]">
-            {text.archiveDemoNotice}
-          </p>
-        ) : showingProgress && archive ? (
-          <div>
-            <div className="flex items-center justify-between gap-3 text-xs font-bold text-[var(--ink-soft)]">
-              <span>{text.archivePreparing}</span>
-              <span>{Math.round(progress)}%</span>
-            </div>
-            <div
-              className="mt-2 h-2 overflow-hidden rounded-full bg-[rgba(139,107,63,0.14)]"
-              role="progressbar"
-              aria-label={text.archivePreparing}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={Math.round(progress)}
-            >
-              <div
-                className="h-full rounded-full bg-[var(--champagne-deep)] transition-[width] duration-500"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <p className="mt-2 text-xs text-[var(--ink-soft)]">
-              {fillTemplate(text.archiveProgress, {
-                completed: archive.preparedMediaCount,
-                total: archive.sourceMediaCount,
-              })}
-            </p>
-          </div>
-        ) : ready ? (
-          <p className="text-xs font-bold leading-5 text-[var(--ink-soft)]">
-            {fillTemplate(text.archiveReady, { date: readyUntil })}
-          </p>
-        ) : error ? (
-          <p className="text-xs font-bold leading-5 text-[var(--rosewood)]">{error}</p>
+            {text.archiveDownloadReady}
+          </a>
         ) : (
-          <p className="text-xs leading-5 text-[var(--ink-soft)]">{text.archiveIntro}</p>
+          <Button
+            onClick={startArchive}
+            disabled={demoMode || loading || preparing || !summary || summary.mediaCount === 0}
+            loading={starting || preparing}
+            variant="ink"
+            className="gap-2 whitespace-nowrap"
+          >
+            <Download className="size-4 shrink-0" />
+            {archive?.status === "failed" ||
+            archive?.status === "expired" ||
+            archive?.retryStartAvailable
+              ? text.archiveTryAgain
+              : text.archiveDownloadAll}
+          </Button>
         )}
       </div>
+
+      {!demoMode && (showingProgress || ready || archiveError) ? (
+        <div className="mt-4" aria-live="polite">
+          {showingProgress && archive ? (
+            <div>
+              <div className="flex items-center justify-between gap-3 text-xs font-bold text-[var(--ink-soft)]">
+                <span>{text.archivePreparing}</span>
+                <span>{Math.round(progress)}%</span>
+              </div>
+              <div
+                className="mt-2 h-2 overflow-hidden rounded-full bg-[rgba(139,107,63,0.14)]"
+                role="progressbar"
+                aria-label={text.archivePreparing}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(progress)}
+              >
+                <div
+                  className="h-full rounded-full bg-[var(--champagne-deep)] transition-[width] duration-500"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              <p className="mt-2 text-xs text-[var(--ink-soft)]">
+                {fillTemplate(text.archiveProgress, {
+                  completed: archive.preparedMediaCount,
+                  total: archive.sourceMediaCount,
+                })}
+              </p>
+            </div>
+          ) : ready ? (
+            <p className="text-xs font-bold leading-5 text-[var(--ink-soft)]">
+              {fillTemplate(text.archiveReady, { date: readyUntil })}
+            </p>
+          ) : (
+            <p className="text-xs font-bold leading-5 text-[var(--rosewood)]">{archiveError}</p>
+          )}
+        </div>
+      ) : null}
     </section>
   );
 }

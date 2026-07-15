@@ -130,7 +130,7 @@ export function MemoryCard({
       data-memory-id={item.id}
       aria-label={`${item.guestName}. ${item.note || text.noNote}`}
       onClick={() => onOpen(item)}
-      className={`focus-ring group min-w-0 max-w-full overflow-hidden border border-[var(--line)] bg-white/60 text-left hover:bg-white ${memoryCardClasses[gridLayout]}`}
+      className={`focus-ring group w-full min-w-0 max-w-full overflow-hidden border border-[var(--line)] bg-white/60 text-left hover:bg-white ${memoryCardClasses[gridLayout]}`}
     >
       <div
         className={`relative w-full min-w-0 max-w-full overflow-hidden bg-[#ede1d3] ${memoryMediaFrameClasses[gridLayout]}`}

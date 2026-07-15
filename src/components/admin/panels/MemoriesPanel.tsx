@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -174,6 +175,7 @@ function MemoryControlMenu<T extends string>({
 }
 
 type MemoriesPanelProps = {
+  entrySequence: number;
   filter: FilterKey;
   gridLayout: MemoryGridLayout;
   media: WeddingMedia[];
@@ -191,6 +193,7 @@ type MemoriesPanelProps = {
 };
 
 export function MemoriesPanel({
+  entrySequence,
   filter,
   gridLayout,
   media,
@@ -210,6 +213,7 @@ export function MemoriesPanel({
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [selectedMedia, setSelectedMedia] = useState<WeddingMedia | null>(null);
+  const enteredMediaIds = useMemo(() => new Set<string>(), [entrySequence]);
   const reduceMotion = useReducedMotion();
   const filters: { key: FilterKey; label: string; count: number }[] = [
     { key: "all", label: text.all, count: mediaCounts.all },
@@ -334,6 +338,8 @@ export function MemoriesPanel({
           <MemoryGrid
             media={media}
             gridLayout={gridLayout}
+            entrySequence={entrySequence}
+            enteredMediaIds={enteredMediaIds}
             demoMode={demoMode}
             hasMore={hasMore}
             loadingMore={loadingMore}

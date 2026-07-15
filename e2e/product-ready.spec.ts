@@ -39,6 +39,7 @@ test("login, studio navigation and mobile grid remain usable", async ({ page }) 
   await expect(demoLink).toBeVisible();
   await expect(primaryAction).toBeVisible();
   await expect(tokenInput).toBeVisible();
+  await expect(loginForm.locator("[data-border-beam='true']")).toBeVisible();
   await expect(page.locator('input[type="date"]')).toHaveCount(0);
   await expect
     .poll(async () => {
@@ -71,12 +72,38 @@ test("login, studio navigation and mobile grid remain usable", async ({ page }) 
   await expectNoHorizontalOverflow(page);
 });
 
-test("returning login hides the demo and gives password recovery a tangible button", async ({ page }) => {
+test("switching login paths keeps the header still and stacks returning actions", async ({ page }) => {
   await page.goto("/login");
+  const header = page.locator("[data-login-header]");
+  await expect(header).toBeVisible();
+  const headerBefore = await header.boundingBox();
   await page.getByRole("button", { name: "Returning" }).click();
 
+  const openStudio = page.getByRole("button", { name: "Open the studio" });
   const forgotPassword = page.getByRole("button", { name: "Forgot password?" });
+  await expect(openStudio).toBeVisible();
   await expect(forgotPassword).toHaveAttribute("data-app-button", "paper");
+  await expect
+    .poll(async () => {
+      const headerAfter = await header.boundingBox();
+      const openStudioBox = await openStudio.boundingBox();
+      const forgotPasswordBox = await forgotPassword.boundingBox();
+
+      return Boolean(
+        headerBefore &&
+          headerAfter &&
+          openStudioBox &&
+          forgotPasswordBox &&
+          Math.abs(headerAfter.y - headerBefore.y) <= 1 &&
+          Math.abs(openStudioBox.width - forgotPasswordBox.width) <= 1 &&
+          Math.abs(
+            openStudioBox.x + openStudioBox.width / 2 -
+              (forgotPasswordBox.x + forgotPasswordBox.width / 2),
+          ) <= 1 &&
+          forgotPasswordBox.y >= openStudioBox.y + openStudioBox.height + 8,
+      );
+    })
+    .toBe(true);
   await expect(page.getByRole("link", { name: /Mary & John demo/i })).toHaveCount(0);
   await expectNoHorizontalOverflow(page);
 });
@@ -106,6 +133,12 @@ test("first setup verifies the Etsy token before asking for couple details", asy
   await expect(page.getByText("Step 2 of 2")).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Bride's name" })).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Groom's name" })).toBeVisible();
+  const weddingCalendar = page.locator('[data-studio-calendar="true"]');
+  await expect(weddingCalendar).toBeVisible();
+  await expect(weddingCalendar.getByRole("combobox")).toHaveCount(2);
+  await expect(page.locator('input[type="date"]')).toHaveCount(0);
+  await weddingCalendar.locator(".rdp-day_button:not([disabled])").first().click();
+  await expect(weddingCalendar.locator(".rdp-selected .rdp-day_button")).toHaveCount(1);
 
   const password = page.getByLabel("Password", { exact: true });
   const passwordConfirm = page.getByLabel("Confirm password", { exact: true });
@@ -163,6 +196,7 @@ test("mobile studio navigation keeps five equal tactile controls without wrappin
   await page.goto("/admin/mary-john");
 
   const navigation = studioNavigation(page);
+  await expect(navigation).toHaveAttribute("data-mobile-navigation-style", "c");
   const controls = navigation.locator(":scope > :is(button, a)");
   await expect(controls).toHaveCount(5);
 
@@ -203,8 +237,8 @@ test("mobile studio navigation keeps five equal tactile controls without wrappin
     expect(Math.abs(item.width - firstWidth)).toBeLessThanOrEqual(1);
     expect(item.height).toBeGreaterThanOrEqual(64);
     expect(item.itemOverflows).toBe(false);
-    expect(item.labelOverflows, `${item.label} label overflows its pill`).toBe(false);
-    expect(item.labelHeight).toBeLessThanOrEqual(item.lineHeight * 2 + 1);
+    expect(item.labelOverflows, `${item.label} label overflows its navigation slot`).toBe(false);
+    expect(item.labelHeight).toBeLessThanOrEqual(item.lineHeight + 1);
   }
   expect(layout[0]?.fontWeight).toBeGreaterThanOrEqual(700);
   await expectNoHorizontalOverflow(page);
@@ -248,9 +282,13 @@ test("demo Premium dialog scrolls internally and keeps purchase actions disabled
   const dialog = page.getByRole("dialog", { name: "Premium Extension" });
   await expect(dialog).toBeVisible();
   await expect(dialog).toHaveCSS("overflow-y", "auto");
-  await expect
-    .poll(() => dialog.evaluate((element) => element.scrollHeight > element.clientHeight))
-    .toBe(true);
+  const closeButton = dialog.getByRole("button", { name: "Close" });
+  await expect(closeButton).toBeVisible();
+  const [dialogBox, closeBox] = await Promise.all([
+    dialog.boundingBox(),
+    closeButton.boundingBox(),
+  ]);
+  expect(closeBox?.x).toBeGreaterThan((dialogBox?.x ?? 0) + (dialogBox?.width ?? 0) * 0.7);
 
   const copyButton = dialog.getByRole("button", { name: "Copy couple name" });
   const purchaseButton = dialog.getByRole("button", {
@@ -313,7 +351,9 @@ test("studio navigation keeps destinations clear and animates panel changes", as
 test("guest-memory thumbnails stay mounted while navigating between studio panels", async ({ page }) => {
   await page.goto("/admin/mary-john");
   const firstThumbnail = page.locator('[data-memory-inbox="true"] img').first();
+  const firstMemoryFade = page.locator("[data-memory-blur-fade]").first();
   await expect(firstThumbnail).toBeVisible();
+  await expect(firstMemoryFade).toHaveAttribute("data-memory-blur-fade", "0");
   await firstThumbnail.evaluate((image) => {
     image.dataset.cacheProbe = "preserved";
   });
@@ -322,6 +362,12 @@ test("guest-memory thumbnails stay mounted while navigating between studio panel
   await expect(page.getByText(/8\.4 GB used of 50 GB/i)).toBeVisible();
   await expect(page.getByText("17%", { exact: true })).toBeVisible();
   await expect(page.getByText("74 days left", { exact: true })).toBeVisible();
+  await expect(page.getByText("Couple name", { exact: true })).toHaveCount(0);
+  await expect(
+    page.getByText(
+      "This is the public demo. Couple-name copying and real purchases stay disabled.",
+    ),
+  ).toBeVisible();
   await expect(page.getByRole("button", { name: "Premium" })).toHaveAttribute(
     "data-app-button",
     "premium",
@@ -332,7 +378,7 @@ test("guest-memory thumbnails stay mounted while navigating between studio panel
   const premiumDialog = page.getByRole("dialog", { name: "Premium Extension" });
   await expect(premiumDialog).toContainText("50 GB");
   await expect(premiumDialog).toContainText("6 extra months");
-  await expect(premiumDialog.locator('[data-demo-premium-notice="true"]')).toBeVisible();
+  await expect(premiumDialog.locator('[data-demo-premium-notice="true"]')).toHaveCount(0);
   await expect(
     premiumDialog.getByRole("button", { name: /Demo only.*Etsy purchase is disabled/i }),
   ).toBeDisabled();
@@ -341,9 +387,10 @@ test("guest-memory thumbnails stay mounted while navigating between studio panel
   await openStudioPanel(page, "Memories");
 
   await expect(firstThumbnail).toHaveAttribute("data-cache-probe", "preserved");
+  await expect(firstMemoryFade).toHaveAttribute("data-memory-blur-fade", "1");
 });
 
-test("demo storage explains archive downloads without starting a real job", async ({ page }) => {
+test("demo storage keeps the archive action minimal without starting a real job", async ({ page }) => {
   const archiveRequests: string[] = [];
   page.on("request", (request) => {
     if (request.url().includes("/api/archives")) {
@@ -359,11 +406,12 @@ test("demo storage explains archive downloads without starting a real job", asyn
   });
   await expect(archiveAction).toBeVisible();
   await expect(archiveAction).toBeDisabled();
+  await expect(archiveAction).toHaveAttribute("data-app-button", "ink");
   await expect(
     page.getByText(
       "Archive downloads are available in private studios and stay off in demo mode.",
     ),
-  ).toBeVisible();
+  ).toHaveCount(0);
   expect(archiveRequests).toEqual([]);
 });
 
@@ -402,6 +450,42 @@ test("guest-memory thumbnails return from the studio cache after a route visit",
     )
     .toBe(true);
   expect(initialThumbnailRequestCount).toBeGreaterThan(0);
+  expect(thumbnailRequests.length).toBe(initialThumbnailRequestCount);
+});
+
+test("guest-memory thumbnails stay cached and skip a second entrance after filter changes", async ({ page }) => {
+  const thumbnailRequests: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().includes("-thumb.webp")) {
+      thumbnailRequests.push(request.url());
+    }
+  });
+
+  await page.goto("/admin/mary-john");
+  const inbox = page.locator('[data-memory-inbox="true"]');
+  const thumbnails = inbox.locator("button img");
+  await expect
+    .poll(() =>
+      thumbnails.evaluateAll((images) =>
+        images.length > 1 && images.every((image) => image.getAttribute("src")?.startsWith("blob:")),
+      ),
+    )
+    .toBe(true);
+  const initialThumbnailRequestCount = thumbnailRequests.length;
+
+  await page.getByRole("button", { name: "Videos · 0" }).click();
+  await expect(inbox.getByText("No memories yet", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "All · 7" }).click();
+
+  const returnedThumbnails = inbox.locator("button img");
+  await expect
+    .poll(() =>
+      returnedThumbnails.evaluateAll((images) =>
+        images.length > 1 && images.every((image) => image.getAttribute("src")?.startsWith("blob:")),
+      ),
+    )
+    .toBe(true);
+  await expect(inbox.locator('[data-memory-replay="false"]')).toHaveCount(7);
   expect(thumbnailRequests.length).toBe(initialThumbnailRequestCount);
 });
 
@@ -526,14 +610,20 @@ test("lightbox screen arrows replace the selected photo, not only its counter", 
   await expect(dialog).toHaveAttribute("data-lightbox-media-id", firstCardId ?? "");
 });
 
-test("lightbox delete action keeps a bold destructive emphasis", async ({ page }) => {
+test("lightbox download and delete actions use primary and destructive pressable buttons", async ({ page }) => {
   await page.goto("/admin/mary-john");
   const inbox = page.locator('[data-memory-inbox="true"]');
   await inbox.locator("button").filter({ has: page.locator("img") }).first().click();
 
-  await expect(page.getByRole("dialog").getByRole("button", { name: "Delete" })).toHaveClass(
-    /!font-extrabold/,
-  );
+  const dialog = page.getByRole("dialog");
+  const download = dialog.getByRole("link", { name: "Download" });
+  const deleteAction = dialog.getByRole("button", { name: "Delete" });
+
+  await expect(download).toHaveAttribute("data-app-button", "ink");
+  await expect(deleteAction).toHaveAttribute("data-app-button", "danger");
+  await expect(deleteAction).toHaveClass(/!font-extrabold/);
+  await expect(download).toHaveClass(/motion-safe:active:scale-\[0\.975\]/);
+  await expect(deleteAction).toHaveClass(/motion-safe:active:scale-\[0\.975\]/);
 });
 
 test("demo guest is a read-only preview and cannot create browser uploads", async ({ page }) => {
@@ -647,6 +737,7 @@ test("studio and guest action buttons fit their content", async ({ page }) => {
   });
   expect(sendMemoryAlignment).toBeLessThanOrEqual(1);
   await expect(sendMemoryButton).toHaveClass(/!font-extrabold/);
+  await expect(sendMemoryButton).toHaveAttribute("data-guest-send-memory", "ready");
 });
 
 test("wedding page explains guest setup and makes upload availability unmistakable", async ({ page }) => {
@@ -677,6 +768,32 @@ test("wedding page explains guest setup and makes upload availability unmistakab
   await expect(uploadStatus).toHaveAttribute("data-guest-upload-status", "closed");
   await expect(uploadStatus).toContainText("Uploads paused");
   await expect(page.getByRole("button", { name: "Open uploads" })).toBeVisible();
+});
+
+test("an empty couple profile exposes the compact image picker", async ({ page }) => {
+  await page.goto("/admin/mary-john");
+  await expect
+    .poll(() => page.evaluate(() => Boolean(window.localStorage.getItem("sayyes.demo.wedding"))))
+    .toBe(true);
+  await page.evaluate(() => {
+    const storedWedding = window.localStorage.getItem("sayyes.demo.wedding");
+    if (!storedWedding) throw new Error("Demo wedding state is missing.");
+    const wedding = JSON.parse(storedWedding) as { profileMedia?: unknown };
+    // `localizeDemoWedding` merges the persisted state onto the seeded demo
+    // record. `undefined` disappears during JSON serialization, so `null` is
+    // required to deliberately override its seeded profile image.
+    wedding.profileMedia = null;
+    window.localStorage.setItem("sayyes.demo.wedding", JSON.stringify(wedding));
+  });
+  await page.reload();
+  await openStudioPanel(page, "Wedding page");
+
+  const profilePicker = page.locator('[data-profile-media-empty-picker="true"]');
+  await expect(profilePicker).toBeVisible();
+  await expect(profilePicker).toHaveClass(/size-16/);
+  await expect(profilePicker.locator("svg")).toBeVisible();
+  await expect(profilePicker.locator('input[type="file"]')).toHaveAttribute("accept", "image/*");
+  await expect(profilePicker.locator('input[type="file"]')).toBeDisabled();
 });
 
 test("flow mode supports touch and keyboard playback controls", async ({ page }) => {
