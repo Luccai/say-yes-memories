@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useEffectEvent, useRef, type ReactNode } from "react";
+import { useEffect, useEffectEvent, type ReactNode } from "react";
 import { motion, useAnimationControls, useReducedMotion } from "motion/react";
 
 type BlurFadeProps = {
@@ -25,9 +25,8 @@ export function BlurFade({
 }: BlurFadeProps) {
   const controls = useAnimationControls();
   const reduceMotion = useReducedMotion();
-  const delayRef = useRef(delay);
+  const getDelay = useEffectEvent(() => delay);
   const markEntered = useEffectEvent(() => onEntered?.());
-  delayRef.current = delay;
 
   useEffect(() => {
     if (reduceMotion) {
@@ -44,11 +43,11 @@ export function BlurFade({
     controls.set(hidden);
     markEntered();
     void controls.start(visible, {
-      delay: delayRef.current,
+      delay: getDelay(),
       duration: 0.34,
       ease: [0.22, 1, 0.36, 1],
     });
-  }, [controls, markEntered, reduceMotion, replayKey, replayOnMount]);
+  }, [controls, reduceMotion, replayKey, replayOnMount]);
 
   return (
     <motion.div

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { CalendarDays } from "lucide-react";
 import {
   DayPicker,
@@ -74,6 +74,64 @@ function formatSelectedDate(value: Date, locale: string) {
   return new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(value);
 }
 
+type CalendarMonthsProps = {
+  onChange: (value: string) => void;
+  locale: string;
+  disabled?: boolean;
+  required?: boolean;
+  selected: Date | undefined;
+  minDate: Date | undefined;
+  maxDate: Date | undefined;
+  firstMonth: Date;
+  lastMonth: Date;
+};
+
+function CalendarMonths({
+  onChange,
+  locale,
+  disabled = false,
+  required = false,
+  selected,
+  minDate,
+  maxDate,
+  firstMonth,
+  lastMonth,
+}: CalendarMonthsProps) {
+  const [month, setMonth] = useState(() => selected ?? minDate ?? new Date());
+  const disabledDays = [
+    ...(minDate ? [{ before: minDate }] : []),
+    ...(maxDate ? [{ after: maxDate }] : []),
+  ];
+
+  return (
+    <DayPicker
+      animate
+      captionLayout="dropdown"
+      className="w-full"
+      components={{ Dropdown: CalendarDropdown, DropdownNav: CalendarDropdownNav }}
+      disabled={disabled ? true : disabledDays}
+      endMonth={lastMonth}
+      hideNavigation
+      locale={resolveCalendarLocale(locale)}
+      mode="single"
+      month={month}
+      onMonthChange={setMonth}
+      onSelect={(nextDate) => {
+        if (!nextDate) {
+          if (!required) onChange("");
+          return;
+        }
+
+        setMonth(nextDate);
+        onChange(calendarDateToIso(nextDate));
+      }}
+      reverseYears
+      selected={selected}
+      startMonth={firstMonth}
+    />
+  );
+}
+
 export function CalendarDatePicker({
   value,
   onChange,
@@ -92,19 +150,6 @@ export function CalendarDatePicker({
   const maxDate = calendarDateFromIso(max);
   const firstMonth = startMonth ?? minDate ?? new Date(1980, 0, 1);
   const lastMonth = endMonth ?? maxDate ?? new Date(new Date().getFullYear() + 20, 11, 1);
-  const [month, setMonth] = useState(() => selected ?? minDate ?? new Date());
-
-  useEffect(() => {
-    if (selected) {
-      setMonth(selected);
-    }
-  }, [value]);
-
-  const disabledDays = [
-    ...(minDate ? [{ before: minDate }] : []),
-    ...(maxDate ? [{ after: maxDate }] : []),
-  ];
-
   return (
     <div
       aria-label={label}
@@ -115,30 +160,17 @@ export function CalendarDatePicker({
         <CalendarDays aria-hidden="true" className="size-4 shrink-0" />
         {selected ? formatSelectedDate(selected, locale) : label}
       </p>
-      <DayPicker
-        animate
-        captionLayout="dropdown"
-        className="w-full"
-        components={{ Dropdown: CalendarDropdown, DropdownNav: CalendarDropdownNav }}
-        disabled={disabled ? true : disabledDays}
-        endMonth={lastMonth}
-        hideNavigation
-        locale={resolveCalendarLocale(locale)}
-        mode="single"
-        month={month}
-        onMonthChange={setMonth}
-        onSelect={(nextDate) => {
-          if (!nextDate) {
-            if (!required) onChange("");
-            return;
-          }
-
-          setMonth(nextDate);
-          onChange(calendarDateToIso(nextDate));
-        }}
-        reverseYears
+      <CalendarMonths
+        key={value}
+        onChange={onChange}
+        locale={locale}
+        disabled={disabled}
+        required={required}
         selected={selected}
-        startMonth={firstMonth}
+        minDate={minDate}
+        maxDate={maxDate}
+        firstMonth={firstMonth}
+        lastMonth={lastMonth}
       />
     </div>
   );
