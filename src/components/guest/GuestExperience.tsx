@@ -514,7 +514,7 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
                 <HelpTriggerButton
                   label={text.help}
                   onClick={() => setHelpOpen(true)}
-                  mobileIconOnly
+                  iconOnly
                 />
               </div>
               <div className="mx-auto flex max-w-md items-center gap-4 text-left sm:-mt-5">
@@ -528,7 +528,7 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
                     className="size-full"
                   />
                 </div>
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 sm:pr-14">
                   <p className="eyebrow text-[var(--champagne-deep)]">
                     {text.guest.invited}
                   </p>

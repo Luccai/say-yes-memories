@@ -11,6 +11,7 @@ import {
 import type { Wedding, WeddingMedia } from "@/lib/types";
 import {
   clearRetainedMediaCache,
+  evictCachedMedia,
   storeInstantMediaCache,
 } from "@/components/shared/CachedMediaImage";
 import { GuidanceDialog } from "@/components/shared/GuidanceDialog";
@@ -24,6 +25,7 @@ import {
 } from "@/components/admin/panels/WeddingPagePanel";
 import { QrPanel } from "@/components/admin/panels/QrPanel";
 import { compressProfilePhoto } from "@/components/admin/profile-photo";
+import { requestProfileMediaRemoval } from "@/components/admin/profile-photo-removal";
 import type {
   FilterKey,
   MemoryGridLayout,
@@ -133,6 +135,7 @@ export function AdminExperience({
   const [helpOpen, setHelpOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [profileUploading, setProfileUploading] = useState(false);
+  const [profileRemoving, setProfileRemoving] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState("");
   const demoHydratedRef = useRef(!demoMode);
@@ -489,6 +492,38 @@ export function AdminExperience({
     }
   }
 
+  async function removeProfileMedia() {
+    if (demoMode || profileRemoving || !wedding.profileMedia) {
+      return false;
+    }
+
+    const removedProfileMedia = wedding.profileMedia;
+    setProfileRemoving(true);
+
+    try {
+      const updatedWedding = await requestProfileMediaRemoval();
+      await evictCachedMedia(removedProfileMedia.storagePath ?? removedProfileMedia.id);
+      setWedding(updatedWedding);
+      showToast(adminText.photoRemoved, "success");
+      return true;
+    } catch (error) {
+      const rawMessage = error instanceof Error ? error.message : undefined;
+      const alreadyLocalized = rawMessage === text.errors.profileRemoveFailed;
+
+      showToast(
+        localizedError(
+          rawMessage,
+          text.errors,
+          alreadyLocalized ? rawMessage : text.errors.profileRemoveFailed,
+        ),
+        "error",
+      );
+      return false;
+    } finally {
+      setProfileRemoving(false);
+    }
+  }
+
   async function removeMedia(mediaId: string) {
     const removedMedia = media.find((item) => item.id === mediaId);
     const removeFromCounts = () => {
@@ -588,7 +623,9 @@ export function AdminExperience({
             demoMode={demoMode}
             saving={saving}
             profileUploading={profileUploading}
+            profileRemoving={profileRemoving}
             onUploadProfileMedia={uploadProfileMedia}
+            onRemoveProfileMedia={removeProfileMedia}
             onDirty={dismissToast}
             onSave={saveIdentity}
             text={adminText}

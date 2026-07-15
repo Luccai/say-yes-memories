@@ -89,6 +89,42 @@ export function clearRetainedMediaCache() {
   retainedMediaBytes = 0;
 }
 
+export async function evictCachedMedia(cacheKey: string | undefined) {
+  if (!cacheKey || typeof window === "undefined") {
+    return;
+  }
+
+  const retainedPrefix = `media:${cacheKey}|source:`;
+  for (const cacheIdentity of [...retainedMediaBlobs.keys()]) {
+    if (cacheIdentity.startsWith(retainedPrefix)) {
+      removeRetainedMediaBlob(cacheIdentity);
+    }
+  }
+
+  try {
+    window.localStorage.removeItem(instantCacheKey(cacheKey));
+  } catch {
+    // Best effort only. Private sessions can reject localStorage access.
+  }
+
+  if (!("caches" in window)) {
+    return;
+  }
+
+  try {
+    const cache = await window.caches.open(MEDIA_CACHE_NAME);
+    const requestPath = `/__sayyes-media-cache/${encodeURIComponent(cacheKey)}`;
+    const requests = await cache.keys();
+    await Promise.all(
+      requests
+        .filter((request) => new URL(request.url).pathname === requestPath)
+        .map((request) => cache.delete(request)),
+    );
+  } catch {
+    // Best effort only. Cache Storage can be unavailable or blocked.
+  }
+}
+
 function mediaCacheRequest(cacheKey: string, src: string) {
   return new Request(
     `/__sayyes-media-cache/${encodeURIComponent(cacheKey)}?source=${encodeURIComponent(

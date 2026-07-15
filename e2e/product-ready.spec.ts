@@ -727,34 +727,48 @@ test("guest chooses a memory type before the upload and optional note details", 
   await expect(page.getByLabel("A note for the couple — optional")).toBeVisible();
 });
 
-test("guest Help uses the compact icon-only trigger on mobile", async ({ page }) => {
+test("guest Help uses the compact icon-only trigger at every viewport", async ({ page }) => {
   await page.goto("/mary-john?demo=1");
 
   const helpButton = page.getByRole("button", { name: "Help" });
   const helpLabel = helpButton.getByText("Help", { exact: true });
   await expect(helpButton).toBeVisible();
+  await expect(helpButton).toHaveClass(/size-12/);
+  await expect(helpLabel).toHaveClass(/sr-only/);
 
-  if ((page.viewportSize()?.width ?? 1024) < 640) {
-    await expect(helpButton).toHaveClass(/size-12/);
-    await expect(helpLabel).toBeHidden();
-
-    const [helpBox, invitationBox] = await Promise.all([
+  if ((page.viewportSize()?.width ?? 0) >= 640) {
+    const invitation = page.locator("section").first().locator(".eyebrow").first();
+    const coupleName = page.locator("section").first().getByRole("heading", { level: 1 });
+    await coupleName.evaluate((element) => {
+      element.textContent = "QA Aster & QA Rowan";
+    });
+    const textBounds = (selector: typeof invitation) =>
+      selector.evaluate((element) => {
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        const rect = range.getBoundingClientRect();
+        return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+      });
+    const [helpBox, invitationBox, coupleNameBox] = await Promise.all([
       helpButton.boundingBox(),
-      page.locator("section").first().locator(".eyebrow").first().boundingBox(),
+      textBounds(invitation),
+      textBounds(coupleName),
     ]);
     expect(helpBox).toBeTruthy();
     expect(invitationBox).toBeTruthy();
-    const overlapsInvitation = Boolean(
-      helpBox &&
-        invitationBox &&
-        helpBox.x < invitationBox.x + invitationBox.width &&
-        helpBox.x + helpBox.width > invitationBox.x &&
-        helpBox.y < invitationBox.y + invitationBox.height &&
-        helpBox.y + helpBox.height > invitationBox.y,
-    );
-    expect(overlapsInvitation).toBe(false);
-  } else {
-    await expect(helpLabel).toBeVisible();
+    expect(coupleNameBox).toBeTruthy();
+    const overlaps = (
+      first: NonNullable<typeof helpBox>,
+      second: NonNullable<typeof invitationBox>,
+    ) => {
+      const overlapWidth =
+        Math.min(first.x + first.width, second.x + second.width) - Math.max(first.x, second.x);
+      const overlapHeight =
+        Math.min(first.y + first.height, second.y + second.height) - Math.max(first.y, second.y);
+      return overlapWidth > 1 && overlapHeight > 1;
+    };
+    expect(overlaps(helpBox!, invitationBox!)).toBe(false);
+    expect(overlaps(helpBox!, coupleNameBox!)).toBe(false);
   }
 });
 
@@ -916,6 +930,35 @@ test("an empty couple profile exposes the compact image picker", async ({ page }
   await expect(profilePicker.locator("svg")).toBeVisible();
   await expect(profilePicker.locator('input[type="file"]')).toHaveAttribute("accept", "image/*");
   await expect(profilePicker.locator('input[type="file"]')).toBeDisabled();
+});
+
+test("an existing couple profile offers change and guarded remove actions", async ({ page }) => {
+  await page.goto("/admin/mary-john");
+  await openStudioPanel(page, "Wedding page");
+
+  const changePhoto = page.getByText("Change photo", { exact: true });
+  const removePhoto = page.getByRole("button", { name: "Remove photo" });
+
+  await expect(changePhoto).toBeVisible();
+  await expect(changePhoto.locator("input[type=file]")).toBeDisabled();
+  await expect(removePhoto).toBeVisible();
+  await expect(removePhoto).toBeDisabled();
+  await expect(page.getByText("Add photo", { exact: true })).toHaveCount(0);
+
+  const [changeBox, removeBox] = await Promise.all([
+    changePhoto.boundingBox(),
+    removePhoto.boundingBox(),
+  ]);
+  const viewport = page.viewportSize();
+
+  expect(changeBox).toBeTruthy();
+  expect(removeBox).toBeTruthy();
+  expect((changeBox?.x ?? 0) + (changeBox?.width ?? 0)).toBeLessThanOrEqual(
+    viewport?.width ?? Number.POSITIVE_INFINITY,
+  );
+  expect((removeBox?.x ?? 0) + (removeBox?.width ?? 0)).toBeLessThanOrEqual(
+    viewport?.width ?? Number.POSITIVE_INFINITY,
+  );
 });
 
 test("flow mode supports touch and keyboard playback controls", async ({ page }) => {

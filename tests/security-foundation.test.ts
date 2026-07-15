@@ -58,22 +58,44 @@ const mediaRow = {
 
 const storageCommands: unknown[] = [];
 const mediaUpdates: Record<string, unknown>[] = [];
+const weddingUpdates: Record<string, unknown>[] = [];
+const weddingFilters: Array<{ kind: "eq" | "is"; column: string; value: unknown }> = [];
 let addMediaError: string | null = null;
 let broadcastError: Error | null = null;
+let updatedWeddingRow = weddingRow;
+let weddingUpdateStarted = false;
 
 function queryResult<T>(data: T) {
   return Promise.resolve({ data, error: null });
 }
 
 const weddingsQuery = {
+  update(patch: Record<string, unknown>) {
+    weddingUpdates.push(patch);
+    updatedWeddingRow = { ...weddingRow, ...patch };
+    weddingUpdateStarted = true;
+    return this;
+  },
   select() {
     return this;
   },
-  eq() {
+  eq(column: string, value: unknown) {
+    if (weddingUpdateStarted) {
+      weddingFilters.push({ kind: "eq", column, value });
+    }
+    return this;
+  },
+  is(column: string, value: unknown) {
+    if (weddingUpdateStarted) {
+      weddingFilters.push({ kind: "is", column, value });
+    }
     return this;
   },
   maybeSingle() {
-    return queryResult(weddingRow);
+    return queryResult(weddingUpdateStarted ? updatedWeddingRow : weddingRow);
+  },
+  single() {
+    return queryResult(updatedWeddingRow);
   },
 };
 
@@ -174,15 +196,22 @@ const { POST: legacyPrepareUpload } = await import(
   "../src/app/api/uploads/[slug]/prepare/route"
 );
 const { PATCH: patchMedia } = await import("../src/app/api/media/[id]/route");
-const { getWeddingBySlug, getWeddingRecordBySlug } = await import(
-  "../src/lib/supabase-store"
-);
+const {
+  clearWeddingProfileMediaIfCurrent,
+  getWeddingBySlug,
+  getWeddingRecordBySlug,
+  restoreWeddingProfileMediaIfEmpty,
+} = await import("../src/lib/supabase-store");
 
 beforeEach(() => {
   storageCommands.length = 0;
   mediaUpdates.length = 0;
+  weddingUpdates.length = 0;
+  weddingFilters.length = 0;
   addMediaError = null;
   broadcastError = null;
+  updatedWeddingRow = weddingRow;
+  weddingUpdateStarted = false;
 });
 
 describe("retired direct upload boundary", () => {
@@ -207,6 +236,55 @@ test("public wedding profile DTO omits its internal R2 storage path", async () =
     `https://signed.example/${PROFILE_STORAGE_PATH}`,
   );
   expect(publicWedding?.profileMedia).not.toHaveProperty("storagePath");
+});
+
+test("clearing a profile photo uses its current id as a compare-and-set guard", async () => {
+  const wedding = await clearWeddingProfileMediaIfCurrent(
+    weddingRow.id,
+    weddingRow.profile_media_id,
+  );
+
+  expect(weddingUpdates).toEqual([
+    {
+      profile_media_id: null,
+      profile_media_path: null,
+      profile_media_kind: null,
+      profile_media_mime_type: null,
+      profile_media_file_name: null,
+      profile_media_byte_size: null,
+      profile_media_created_at: null,
+    },
+  ]);
+  expect(weddingFilters).toEqual([
+    { kind: "eq", column: "id", value: weddingRow.id },
+    {
+      kind: "eq",
+      column: "profile_media_id",
+      value: weddingRow.profile_media_id,
+    },
+  ]);
+  expect(wedding?.profileMedia).toBeUndefined();
+});
+
+test("restoring a profile photo only writes while the profile slot is empty", async () => {
+  const profileMedia = {
+    id: weddingRow.profile_media_id,
+    storagePath: weddingRow.profile_media_path,
+    url: `https://signed.example/${weddingRow.profile_media_path}`,
+    kind: weddingRow.profile_media_kind,
+    mimeType: weddingRow.profile_media_mime_type,
+    fileName: weddingRow.profile_media_file_name,
+    byteSize: weddingRow.profile_media_byte_size,
+    createdAt: weddingRow.profile_media_created_at,
+  };
+
+  const restored = await restoreWeddingProfileMediaIfEmpty(weddingRow.id, profileMedia);
+
+  expect(restored).toBeTrue();
+  expect(weddingFilters).toEqual([
+    { kind: "eq", column: "id", value: weddingRow.id },
+    { kind: "is", column: "profile_media_id", value: null },
+  ]);
 });
 
 test("PATCH media endpoint rejects protected fields without reaching the store", async () => {

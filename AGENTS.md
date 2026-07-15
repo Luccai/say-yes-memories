@@ -91,6 +91,7 @@ API route'ları:
 - `/api/weddings/current/media`: admin memory inbox listesini döner.
 - `/api/weddings/current/profile-media/prepare`: admin profil fotoğrafı için R2 presigned PUT hedefi üretir.
 - `/api/weddings/current/profile-media/complete`: profil fotoğrafını doğrular ve wedding kaydına bağlar.
+- `DELETE /api/weddings/current/profile-media`: mevcut profil fotoğrafını onaylı arayüz akışından kaldırır; beklenen `profile_media_id` değişmişse yeni fotoğrafa dokunmaz, R2 silme başarısız olursa metadata'yı yalnız profil alanı hâlâ boşken geri yüklemeyi dener.
 - `/api/media/[id]`: admin media update/delete işlemleri.
 - `/api/media/[id]/download`: admin indirme için kısa süreli signed download URL'ye redirect eder.
 
@@ -210,6 +211,7 @@ Owner Kokpiti:
 Wedding Page:
 
 - Profil fotoğrafı upload eder. Video PP kullanılmaz.
+- Profil fotoğrafı varsa `Add photo` yerine `Change photo` ve onay isteyen `Remove photo` aksiyonları görünür; kaldırma metadata kaydını, R2 objesini ve cihazdaki instant/cache kopyasını temizler, eşzamanlı fotoğraf değişimini ezmez ve masaüstü/mobilde aynı davranır.
 - Profil yükleme ve sayfa kaydetme hataları native tarayıcı alert'i açmaz; ortak, erişilebilir uygulama toast'ında gösterilir. Alan doğrulama hataları bağlamını kaybetmemek için inline kalır.
 - Upload durumu pulse veya glow kullanmaz; açık durumda statik sage noktalı, hafif yüzeyli küçük bir pill ile gösterilir.
 - Profil fotoğrafı client-side sıkıştırılır ve API tarafında 500 KB üstü profil fotoğrafı kabul edilmez.
@@ -244,7 +246,7 @@ Demo:
 Misafir sayfası `/{coupleSlug}` ile açılır.
 
 - Üstte çiftin profil fotoğrafı rozeti, çift adı ve tarih görünür; welcome note aynı hero kartının içinde ayrı inset paper kartında okunur. Send memory, koyu ink pill ve gönderme ikonu kullanır.
-- Misafir sayfasında Help butonu vardır; bu modal QR ile gelen misafire ne gönderebileceğini, yüklemenin özel kaldığını ve sorun olursa dosya seçebileceğini anlatır.
+- Misafir sayfasındaki Help, her ekran genişliğinde yalnız ikon olarak görünür; yerelleştirilmiş erişilebilir adı korunur ve uzun çift adının üstüne taşmaz. Açtığı modal QR ile gelen misafire ne gönderebileceğini, yüklemenin özel kaldığını ve sorun olursa dosya seçebileceğini anlatır.
 - Misafir adını, opsiyonel notu ve foto/video/ses dosyasını gönderir.
 - Upload; dosya seçimi/önizleme, Turnstile, kota reservation'ı, ilerleme, iptal/yeniden dene ve başarı adımlarını izler.
 - Büyük uploadlarda eksik multipart parçaları yeniden seçilen aynı dosyayla sürdürülebilir; mobilde en fazla üç parça aynı anda gider.

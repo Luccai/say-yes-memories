@@ -16,6 +16,10 @@ const qrPanelSource = readFileSync(
   new URL("panels/QrPanel.tsx", adminRoot),
   "utf8",
 );
+const profileRemoveDialogSource = readFileSync(
+  new URL("panels/ProfilePhotoRemoveDialog.tsx", adminRoot),
+  "utf8",
+);
 
 function readAdminTsxSources(directory: string): string[] {
   return readdirSync(directory).flatMap((entry) => {
@@ -51,5 +55,12 @@ describe("admin feedback", () => {
   test("exposes the QR preview as an accessible image", () => {
     expect(qrPanelSource).toContain('role="img"');
     expect(qrPanelSource).toContain("QR_SVG_OPTIONS");
+  });
+
+  test("guards profile removal with an accessible, scroll-locked confirmation", () => {
+    expect(profileRemoveDialogSource).toContain('role="dialog"');
+    expect(profileRemoveDialogSource).toContain("aria-describedby");
+    expect(profileRemoveDialogSource).toContain("initialFocusRef: cancelRef");
+    expect(profileRemoveDialogSource).toContain("useBodyScrollLock(open)");
   });
 });

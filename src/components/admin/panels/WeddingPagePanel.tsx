@@ -8,9 +8,11 @@ import {
   Loader2,
   Lock,
   Settings2,
+  Trash2,
   Unlock,
 } from "lucide-react";
 import { motion } from "motion/react";
+import { ProfilePhotoRemoveDialog } from "@/components/admin/panels/ProfilePhotoRemoveDialog";
 import type { AdminCopy } from "@/components/admin/types";
 import { Button, buttonStyles } from "@/components/shared/Button";
 import { MediaOrb } from "@/components/shared/MediaOrb";
@@ -27,7 +29,9 @@ type WeddingPagePanelProps = {
   demoMode: boolean;
   saving: boolean;
   profileUploading: boolean;
+  profileRemoving: boolean;
   onUploadProfileMedia: (event: ChangeEvent<HTMLInputElement>) => void;
+  onRemoveProfileMedia: () => Promise<boolean>;
   onDirty: () => void;
   onSave: (patch: CustomerWeddingPatch) => Promise<void>;
   text: AdminCopy;
@@ -38,18 +42,27 @@ export function WeddingPagePanel({
   demoMode,
   saving,
   profileUploading,
+  profileRemoving,
   onUploadProfileMedia,
+  onRemoveProfileMedia,
   onDirty,
   onSave,
   text,
 }: WeddingPagePanelProps) {
   const locale = useLocale();
   const [welcomeNote, setWelcomeNote] = useState(wedding.welcomeNote);
+  const [removePhotoOpen, setRemovePhotoOpen] = useState(false);
   const eventDateLabel = formatWeddingDate(wedding.eventDate, locale);
-  const profileInputDisabled = demoMode || profileUploading;
+  const profileInputDisabled = demoMode || profileUploading || profileRemoving;
 
   async function handleSaveIdentity() {
     await onSave({ welcomeNote });
+  }
+
+  async function handleRemoveProfileMedia() {
+    if (await onRemoveProfileMedia()) {
+      setRemovePhotoOpen(false);
+    }
   }
 
   return (
@@ -82,26 +95,42 @@ export function WeddingPagePanel({
                 label={wedding.coupleName}
                 className="h-44 w-36"
               />
-              <label
-                className={buttonStyles({
-                  variant: "paper",
-                  className: `mt-4 w-fit ${profileInputDisabled ? "cursor-not-allowed" : "cursor-pointer"}`,
-                })}
+              <div
+                data-profile-media-actions="true"
+                className="mt-4 flex max-w-full flex-wrap justify-center gap-2"
               >
-                {profileUploading ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <ImagePlus className="size-4" />
-                )}
-                {text.upload}
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="sr-only"
+                <label
+                  className={buttonStyles({
+                    variant: "paper",
+                    size: "compact",
+                    className: `w-fit ${profileInputDisabled ? "cursor-not-allowed" : "cursor-pointer"}`,
+                  })}
+                >
+                  {profileUploading ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <ImagePlus className="size-4" />
+                  )}
+                  {text.changePhoto}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    disabled={profileInputDisabled}
+                    onChange={profileInputDisabled ? undefined : onUploadProfileMedia}
+                  />
+                </label>
+                <Button
+                  variant="danger"
+                  size="compact"
                   disabled={profileInputDisabled}
-                  onChange={profileInputDisabled ? undefined : onUploadProfileMedia}
-                />
-              </label>
+                  onClick={() => setRemovePhotoOpen(true)}
+                  className="w-fit"
+                >
+                  <Trash2 aria-hidden="true" className="size-4" />
+                  {text.removePhoto}
+                </Button>
+              </div>
             </>
           ) : (
             <label
@@ -232,6 +261,13 @@ export function WeddingPagePanel({
           </div>
         </div>
       </div>
+      <ProfilePhotoRemoveDialog
+        open={removePhotoOpen}
+        removing={profileRemoving}
+        onCancel={() => setRemovePhotoOpen(false)}
+        onConfirm={() => void handleRemoveProfileMedia()}
+        text={text}
+      />
     </motion.article>
   );
 }

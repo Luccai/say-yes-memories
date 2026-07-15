@@ -27,6 +27,7 @@ const requiredModules = [
   "src/components/admin/panels/StoragePanel.tsx",
   "src/components/admin/panels/WeddingPagePanel.tsx",
   "src/components/admin/panels/QrPanel.tsx",
+  "src/components/admin/panels/ProfilePhotoRemoveDialog.tsx",
   "src/components/admin/memories/MemoryGrid.tsx",
   "src/components/admin/memories/MemoryCard.tsx",
   "src/components/admin/memories/MemoryLightbox.tsx",

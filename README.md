@@ -31,7 +31,9 @@ Generated raw tokens are written under `private/` and must never be committed.
 Login, admin, demo, and guest upload screens include contextual Help dialogs.
 They cover the token/login flow, private storage and Premium extension, Flow
 Mode controls, guest sharing/privacy, and the fact that the demo is strictly
-for preview only. All fixed UI copy, including Help content, is served from
+for preview only. The guest trigger stays icon-only at every viewport so long
+couple names retain their space; its localized accessible name remains intact.
+All fixed UI copy, including Help content, is served from
 `src/lib/i18n.ts` for `en`, `es`, `fr`, `de`, `pt`, and `zh`; unsupported
 browser languages fall back to English.
 
@@ -50,9 +52,13 @@ operator tool, not a customer-facing screen.
   pill bar, while desktop uses the same hierarchy in a persistent left sidebar.
   Storage, View Guest Page, and Logout live under More; the compact Help
   control sits beside the couple name.
-- Wedding Page clearly shows whether guest uploads are open; its demo keeps the
-  profile action and guest message read-only. The demo guest page is also a
-  safe, read-only preview and never stores a browser upload.
+- Wedding Page clearly shows whether guest uploads are open. An existing
+  profile photo exposes `Change photo` and a confirmed `Remove photo` action on
+  desktop and mobile; removal clears metadata, the private R2 object, and the
+  device's instant/cache copy. A profile-ID compare-and-set prevents a stale
+  tab from deleting or restoring over a newer photo.
+  The demo keeps these profile actions and the guest message read-only. The demo
+  guest page is also a safe, read-only preview and never stores a browser upload.
 - Wedding Page save/profile failures use the shared accessible toast instead of
   native browser alerts. Upload availability uses a static sage status pill
   without pulse or glow.

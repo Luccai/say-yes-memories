@@ -605,6 +605,62 @@ export async function updateWedding(
   return weddingFromRow(data);
 }
 
+export async function clearWeddingProfileMediaIfCurrent(
+  weddingId: string,
+  expectedProfileMediaId: string,
+) {
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("weddings")
+    .update({
+      profile_media_id: null,
+      profile_media_path: null,
+      profile_media_kind: null,
+      profile_media_mime_type: null,
+      profile_media_file_name: null,
+      profile_media_byte_size: null,
+      profile_media_created_at: null,
+    })
+    .eq("id", weddingId)
+    .eq("profile_media_id", expectedProfileMediaId)
+    .select("*")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data ? weddingFromRow(data) : null;
+}
+
+export async function restoreWeddingProfileMediaIfEmpty(
+  weddingId: string,
+  profileMedia: StoredMediaObject,
+) {
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("weddings")
+    .update({
+      profile_media_id: profileMedia.id,
+      profile_media_path: profileMedia.storagePath,
+      profile_media_kind: profileMedia.kind,
+      profile_media_mime_type: profileMedia.mimeType,
+      profile_media_file_name: profileMedia.fileName,
+      profile_media_byte_size: profileMedia.byteSize,
+      profile_media_created_at: profileMedia.createdAt,
+    })
+    .eq("id", weddingId)
+    .is("profile_media_id", null)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return Boolean(data);
+}
+
 export async function listWeddingMedia(weddingId: string) {
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
