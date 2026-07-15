@@ -27,7 +27,8 @@ describe("memory filter thumbnail retention", () => {
 
   test("starts a fresh entrance only after returning to Memories from another panel", () => {
     expect(memoriesPanelSource).toContain(
-      "const enteredMediaIds = useMemo(() => new Set<string>(), [entrySequence]);",
+      "() => ({ entrySequence, ids: new Set<string>() }),",
     );
+    expect(memoriesPanelSource).toContain("const enteredMediaIds = enteredMediaCache.ids;");
   });
 });
