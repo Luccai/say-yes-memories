@@ -384,6 +384,9 @@ test("demo Premium dialog scrolls internally and keeps purchase actions disabled
 });
 
 test("studio navigation keeps destinations clear and animates panel changes", async ({ page }) => {
+  // QR PNG generation draws a 1600 px canvas. Under the full four-viewport
+  // suite, iPhone emulation can take longer than the default interaction budget.
+  test.slow();
   await page.addInitScript(() => {
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
