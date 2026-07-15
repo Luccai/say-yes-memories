@@ -17,6 +17,7 @@ import {
   Mic,
   Pause,
   RotateCcw,
+  Send,
   UploadCloud,
   X,
 } from "lucide-react";
@@ -510,14 +511,23 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
           >
             <div className="relative z-10">
               <div className="flex justify-end">
-                <HelpTriggerButton label={text.help} onClick={() => setHelpOpen(true)} />
-              </div>
-              <div className="mx-auto -mt-4 flex max-w-md items-center gap-4 text-left sm:-mt-5">
-                <MediaOrb
-                  media={displayWedding.profileMedia}
-                  label={displayWedding.coupleName}
-                  className="h-20 w-16 shrink-0 sm:h-24 sm:w-20"
+                <HelpTriggerButton
+                  label={text.help}
+                  onClick={() => setHelpOpen(true)}
+                  mobileIconOnly
                 />
+              </div>
+              <div className="mx-auto flex max-w-md items-center gap-4 text-left sm:-mt-5">
+                <div
+                  data-guest-profile-orb="true"
+                  className="h-[5.5rem] w-[4.5rem] shrink-0 sm:h-28 sm:w-24"
+                >
+                  <MediaOrb
+                    media={displayWedding.profileMedia}
+                    label={displayWedding.coupleName}
+                    className="size-full"
+                  />
+                </div>
                 <div className="min-w-0 flex-1">
                   <p className="eyebrow text-[var(--champagne-deep)]">
                     {text.guest.invited}
@@ -532,9 +542,14 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
                   ) : null}
                 </div>
               </div>
-              <p className="mx-auto mt-4 max-w-md text-pretty text-sm leading-6 text-[var(--ink-soft)]">
-                {displayWedding.welcomeNote}
-              </p>
+              <div
+                data-guest-welcome-note="true"
+                className="mx-auto mt-5 max-w-md rounded-[24px] border border-[rgba(139,107,63,0.18)] bg-[rgba(239,225,207,0.58)] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.76),0_10px_24px_rgba(58,40,25,0.06)] sm:px-5"
+              >
+                <p className="text-pretty text-sm leading-6 text-[var(--ink-soft)]">
+                  {displayWedding.welcomeNote}
+                </p>
+              </div>
             </div>
           </section>
 
@@ -848,10 +863,10 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
                         aria-busy="true"
                         data-guest-send-memory="loading"
                         data-loading="true"
-                        className="group relative min-h-14 px-6 !font-extrabold uppercase !tracking-[0.08em] disabled:opacity-100"
+                        className="group relative gap-2 whitespace-nowrap disabled:opacity-100"
                       >
                         <span className="flex items-center gap-2 group-data-[loading]:text-transparent">
-                          <Check aria-hidden="true" className="size-4" />
+                          <Send aria-hidden="true" className="size-4 shrink-0" />
                           {text.guest.send}
                         </span>
                         <span className="absolute inset-0 flex items-center justify-center">
@@ -892,12 +907,12 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
                     type="submit"
                     disabled={demoMode || recording}
                     data-guest-send-memory="ready"
-                    className="min-h-14 px-6 !font-extrabold uppercase !tracking-[0.08em]"
+                    className="gap-2 whitespace-nowrap"
                   >
                     {uploadFailed ? (
                       <RotateCcw aria-hidden="true" className="size-4" />
                     ) : (
-                      <Check aria-hidden="true" className="size-4" />
+                      <Send aria-hidden="true" className="size-4 shrink-0" />
                     )}
                     {uploadFailed ? text.guest.retryUpload : text.guest.send}
                   </Button>

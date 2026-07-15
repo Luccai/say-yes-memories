@@ -63,8 +63,6 @@ function storageStatusText(text: AdminCopy, wedding: Wedding) {
 
 export function StoragePanel({ wedding, demoMode, text }: StoragePanelProps) {
   const [premiumOpen, setPremiumOpen] = useState(false);
-  const [coupleNameCopied, setCoupleNameCopied] = useState(false);
-  const [coupleNameCopyError, setCoupleNameCopyError] = useState(false);
   const premiumUpgradeUrl = process.env.NEXT_PUBLIC_ETSY_PREMIUM_UPGRADE_URL;
   const isDemoStorage = Boolean(demoMode || wedding.demo);
   const premiumPurchaseAction = resolvePremiumPurchaseAction({
@@ -81,22 +79,6 @@ export function StoragePanel({ wedding, demoMode, text }: StoragePanelProps) {
   const remainingDays = isDemoStorage ? 74 : daysUntil(wedding.accessExpiresAt);
   const status = isDemoStorage ? text.storageHealthy : storageStatusText(text, wedding);
   const planLabel = isDemoStorage ? "Classic" : wedding.plan === "premium" ? "Premium" : "Classic";
-
-  async function copyCoupleName() {
-    if (isDemoStorage) {
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(wedding.coupleName);
-      setCoupleNameCopyError(false);
-      setCoupleNameCopied(true);
-      window.setTimeout(() => setCoupleNameCopied(false), 1600);
-    } catch {
-      setCoupleNameCopied(false);
-      setCoupleNameCopyError(true);
-    }
-  }
 
   return (
     <>
@@ -146,15 +128,8 @@ export function StoragePanel({ wedding, demoMode, text }: StoragePanelProps) {
         wedding={wedding}
         demoMode={isDemoStorage}
         purchaseAction={premiumPurchaseAction}
-        coupleNameCopied={coupleNameCopied}
-        coupleNameCopyError={coupleNameCopyError}
         text={text}
-        onCopyCoupleName={copyCoupleName}
-        onClose={() => {
-          setCoupleNameCopied(false);
-          setCoupleNameCopyError(false);
-          setPremiumOpen(false);
-        }}
+        onClose={() => setPremiumOpen(false)}
       />
     </>
   );

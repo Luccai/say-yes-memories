@@ -121,12 +121,6 @@ body {
   letter-spacing: 0;
 }
 
-button,
-input,
-textarea {
-  font: inherit;
-}
-
 @media (max-width: 640px) {
   :root {
     --shadow-soft: none;

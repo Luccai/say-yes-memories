@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Check, Copy, Download, QrCode } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { Download, QrCode } from "lucide-react";
 import { motion } from "motion/react";
 import type { AdminCopy } from "@/components/admin/types";
-import { Button, buttonStyles } from "@/components/shared/Button";
+import { Button } from "@/components/shared/Button";
+import { CopyButton } from "@/components/shared/CopyButton";
 import { MediaOrb } from "@/components/shared/MediaOrb";
 import { useLocale } from "@/lib/i18n-client";
 import {
@@ -29,61 +30,6 @@ type QrPanelProps = {
   eventUrl: string;
   text: AdminCopy;
 };
-
-function CopyButton({
-  text,
-  copyLabel,
-  copiedLabel,
-}: {
-  text: string;
-  copyLabel: string;
-  copiedLabel: string;
-}) {
-  const [copied, setCopied] = useState(false);
-  const copiedTimer = useRef<number | null>(null);
-
-  useEffect(
-    () => () => {
-      if (copiedTimer.current !== null) {
-        window.clearTimeout(copiedTimer.current);
-      }
-    },
-    [],
-  );
-
-  const copy = async () => {
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    if (copiedTimer.current !== null) {
-      window.clearTimeout(copiedTimer.current);
-    }
-    copiedTimer.current = window.setTimeout(() => setCopied(false), 1400);
-  };
-
-  return (
-    <button
-      type="button"
-      className={buttonStyles({
-        className: `copy-btn w-fit shrink-0 ${copied ? "copied" : ""}`,
-      })}
-      onClick={() => void copy()}
-    >
-      <span className="copy-icon relative grid size-4 place-items-center" aria-hidden="true">
-        <Copy
-          className={`ic-copy absolute size-4 transition-all duration-200 ${
-            copied ? "scale-75 opacity-0" : "scale-100 opacity-100"
-          }`}
-        />
-        <Check
-          className={`ic-check absolute size-4 transition-all duration-200 ${
-            copied ? "scale-100 opacity-100" : "scale-75 opacity-0"
-          }`}
-        />
-      </span>
-      <span>{copied ? copiedLabel : copyLabel}</span>
-    </button>
-  );
-}
 
 export function QrPanel({ wedding, eventUrl, text }: QrPanelProps) {
   const locale = useLocale();
@@ -215,7 +161,12 @@ export function QrPanel({ wedding, eventUrl, text }: QrPanelProps) {
                 {eventUrl}
               </p>
             </div>
-            <CopyButton text={eventUrl} copyLabel={text.copy} copiedLabel={text.copied} />
+            <CopyButton
+              text={eventUrl}
+              copyLabel={text.copy}
+              copiedLabel={text.copied}
+              className="w-fit shrink-0"
+            />
           </div>
         </div>
       </div>

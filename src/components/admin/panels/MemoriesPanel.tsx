@@ -213,7 +213,15 @@ export function MemoriesPanel({
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [selectedMedia, setSelectedMedia] = useState<WeddingMedia | null>(null);
-  const enteredMediaIds = useMemo(() => new Set<string>(), [entrySequence]);
+  const enteredMediaCache = useMemo(
+    () => ({ entrySequence, ids: new Set<string>() }),
+    [entrySequence],
+  );
+  const enteredMediaIds = enteredMediaCache.ids;
+  const visibleMedia = useMemo(
+    () => (filter === "all" ? media : media.filter((item) => item.kind === filter)),
+    [filter, media],
+  );
   const reduceMotion = useReducedMotion();
   const filters: { key: FilterKey; label: string; count: number }[] = [
     { key: "all", label: text.all, count: mediaCounts.all },
@@ -238,23 +246,23 @@ export function MemoriesPanel({
 
   const showPreviousMedia = useCallback(() => {
     setSelectedMedia((current) => {
-      if (!current || media.length === 0) return current;
+      if (!current || visibleMedia.length === 0) return current;
 
-      const currentIndex = media.findIndex((item) => item.id === current.id);
-      const nextIndex = currentIndex <= 0 ? media.length - 1 : currentIndex - 1;
-      return media[nextIndex] ?? current;
+      const currentIndex = visibleMedia.findIndex((item) => item.id === current.id);
+      const nextIndex = currentIndex <= 0 ? visibleMedia.length - 1 : currentIndex - 1;
+      return visibleMedia[nextIndex] ?? current;
     });
-  }, [media]);
+  }, [visibleMedia]);
 
   const showNextMedia = useCallback(() => {
     setSelectedMedia((current) => {
-      if (!current || media.length === 0) return current;
+      if (!current || visibleMedia.length === 0) return current;
 
-      const currentIndex = media.findIndex((item) => item.id === current.id);
-      const nextIndex = currentIndex >= media.length - 1 ? 0 : currentIndex + 1;
-      return media[nextIndex] ?? current;
+      const currentIndex = visibleMedia.findIndex((item) => item.id === current.id);
+      const nextIndex = currentIndex >= visibleMedia.length - 1 ? 0 : currentIndex + 1;
+      return visibleMedia[nextIndex] ?? current;
     });
-  }, [media]);
+  }, [visibleMedia]);
 
   const closeDeleteDialog = useCallback(() => {
     setDeleteTarget(null);
@@ -335,26 +343,41 @@ export function MemoriesPanel({
             </div>
           </div>
         ) : (
-          <MemoryGrid
-            media={media}
-            gridLayout={gridLayout}
-            entrySequence={entrySequence}
-            enteredMediaIds={enteredMediaIds}
-            demoMode={demoMode}
-            hasMore={hasMore}
-            loadingMore={loadingMore}
-            reduceMotion={Boolean(reduceMotion)}
-            layoutTransition={layoutTransition}
-            onOpen={setSelectedMedia}
-            onLoadMore={onLoadMore}
-            text={text}
-          />
+          <>
+            <MemoryGrid
+              media={media}
+              filter={filter}
+              gridLayout={gridLayout}
+              entrySequence={entrySequence}
+              enteredMediaIds={enteredMediaIds}
+              demoMode={demoMode}
+              hasMore={hasMore}
+              loadingMore={loadingMore}
+              reduceMotion={Boolean(reduceMotion)}
+              layoutTransition={layoutTransition}
+              onOpen={setSelectedMedia}
+              onLoadMore={onLoadMore}
+              text={text}
+            />
+            {visibleMedia.length === 0 ? (
+              <div className="mt-5 grid min-h-[18rem] place-items-center rounded-[30px] border border-dashed border-[var(--line)] bg-white/45 p-8 text-center">
+                <div>
+                  <p className="font-display text-fluid-heading font-semibold text-[var(--ink)]">
+                    {text.noMemories}
+                  </p>
+                  <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-[var(--ink-soft)]">
+                    {text.noMemoriesBody}
+                  </p>
+                </div>
+              </div>
+            ) : null}
+          </>
         )}
       </article>
 
       <MemoryLightbox
         selectedMedia={selectedMedia}
-        media={media}
+        media={visibleMedia}
         demoMode={demoMode}
         reduceMotion={Boolean(reduceMotion)}
         onClose={() => setSelectedMedia(null)}

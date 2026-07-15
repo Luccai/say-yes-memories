@@ -21,6 +21,7 @@ Arayüz sakin, sıcak ve premium hissettirmeli. Ürün ucuz SaaS dashboard gibi 
 - Kaçınılacaklar: ağır pembe/teal gradient, emoji kalabalığı, marketing popup, sert dashboard gridleri, gereksiz landing anlatımı.
 - Mobil öncelik: misafir upload ekranı tek elle kullanılabilir olmalı; form, dosya seçimi, ses kaydı ve gönder butonu taşmamalı.
 - Yardım deneyimi: Login, admin ve misafir QR sayfalarında aynı görsel dilde Help butonu ve bağlama özel yardım modalı bulunur. Bu metinler sabit İngilizce yazılmamalı; `src/lib/i18n.ts` üzerinden tüm desteklenen dillere bağlanmalıdır.
+- Kopyalama aksiyonları ortak `CopyButton` ile çalışır: ikon ve metin `Copy`den `Copied`e 1.4 saniye geçer; her ekranda ayrı clipboard state’i yazılmaz.
 
 ## Teknoloji
 
@@ -159,9 +160,9 @@ Admin ana ekranı mobilde sade kalmalıdır:
 
 - Mobilde üstte profil rozeti ve taşmayan çift adı; altta tek elle erişilen floating pill navigasyon bulunur.
 - Varsayılan panel: Guest Memories.
-- Mobil ana navigasyon: Memories, Flow Mode, Wedding Page, QR ve More. More içinde Storage, View Guest Page, Help ve Logout bulunur.
+- Mobil ana navigasyon: Memories, Flow Mode, Wedding Page, QR ve More. More içinde Storage, View Guest Page ve Logout bulunur.
 - Masaüstünde aynı bilgi mimarisi sürekli görünen sol sidebar olarak sunulur; More bölümü açık kalır.
-- Help yalnız More içinde tutulur; eski hamburger menü ve üst başlıktaki ikinci Help düğmesi kullanılmaz.
+- Help, çift adının sağ üstündeki kompakt ikon düğmesidir; More içinde tekrar edilmez.
 - Logout More bölümünde küçük aksiyon gibi görünür ve `/login` sayfasına döndürür.
 - View Guest Page yeni sekmede misafir sayfasını açar; QR panelinde ayrıca ikinci bir misafir sayfası butonu tutulmaz.
 - `AdminExperience.tsx` yalnız veri, realtime/demo senkronu ve API callback orkestrasyonunu tutar. Shell, header, paneller, galeri, lightbox, silme ve Premium parçaları `src/components/admin/` altındaki ayrı bileşenlerde kalmalıdır; bu sorumluluklar yeniden tek dosyada birleştirilmemelidir.
@@ -235,15 +236,15 @@ Demo:
 - `useLocale()` tarayıcı dilinden `en`, `es`, `fr`, `de`, `pt`, `zh` dillerini seçer; desteklenmeyen diller İngilizceye düşer.
 - Customer-facing login/admin/guest metinleri bu 6 dile bağlı kalmalıdır; owner panel bilinçli olarak Türkçe-only iç araçtır.
 - Login Help: Etsy token'ın nerede bulunacağı, isimlerin tokenla ilişkisi, studio açıldıktan sonra yapılacaklar ve gizlilik bilgisini anlatır.
-- Admin Help: Guest Memories, Wedding Page, QR + Guest Link ve View Guest Page bölümlerini açıklar.
-- Guest Help: QR sonrası misafirin fotoğraf, video, ses ve not gönderme akışını, gizliliği ve uygulama gerekmediğini anlatır.
+- Admin Help: Guest Memories, Wedding Page, QR + Guest Link, Private Storage/Premium akışı, View Guest Page ve Flow Mode kontrollerini açıklar.
+- Guest Help: QR sonrası misafirin fotoğraf, video, ses ve not gönderme akışını, gizliliği ve uygulama gerekmediğini anlatır; demo açıklaması bunun salt okunur önizleme olduğunu ve hiçbir dosyanın yüklenmediğini netleştirir.
 - Yeni sabit arayüz metni eklenirse tek dile gömülmemeli; tüm desteklenen dillerde aynı anahtar setiyle `src/lib/i18n.ts` içine eklenmelidir.
 
 ## Misafir Sayfası
 
 Misafir sayfası `/{coupleSlug}` ile açılır.
 
-- Üstte çiftin profil fotoğrafı rozeti, çift adı, tarih ve welcome note görünür.
+- Üstte çiftin profil fotoğrafı rozeti, çift adı ve tarih görünür; welcome note aynı hero kartının içinde ayrı inset paper kartında okunur. Send memory, koyu ink pill ve gönderme ikonu kullanır.
 - Misafir sayfasında Help butonu vardır; bu modal QR ile gelen misafire ne gönderebileceğini, yüklemenin özel kaldığını ve sorun olursa dosya seçebileceğini anlatır.
 - Misafir adını, opsiyonel notu ve foto/video/ses dosyasını gönderir.
 - Upload; dosya seçimi/önizleme, Turnstile, kota reservation'ı, ilerleme, iptal/yeniden dene ve başarı adımlarını izler.

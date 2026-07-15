@@ -29,9 +29,11 @@ Generated raw tokens are written under `private/` and must never be committed.
 ## Help and localization
 
 Login, admin, demo, and guest upload screens include contextual Help dialogs.
-All fixed UI copy, including Help content, is served from `src/lib/i18n.ts`
-for `en`, `es`, `fr`, `de`, `pt`, and `zh`; unsupported browser languages
-fall back to English.
+They cover the token/login flow, private storage and Premium extension, Flow
+Mode controls, guest sharing/privacy, and the fact that the demo is strictly
+read-only. All fixed UI copy, including Help content, is served from
+`src/lib/i18n.ts` for `en`, `es`, `fr`, `de`, `pt`, and `zh`; unsupported
+browser languages fall back to English.
 
 The owner cockpit is intentionally Turkish-only because it is an internal
 operator tool, not a customer-facing screen.
@@ -46,7 +48,8 @@ operator tool, not a customer-facing screen.
   opens media at its natural aspect ratio.
 - Studio navigation is always discoverable: mobile uses a five-item floating
   pill bar, while desktop uses the same hierarchy in a persistent left sidebar.
-  Storage, View Guest Page, Help, and Logout live under More.
+  Storage, View Guest Page, and Logout live under More; the compact Help
+  control sits beside the couple name.
 - Wedding Page clearly shows whether guest uploads are open; its demo keeps the
   profile action and guest message read-only. The demo guest page is also a
   safe, read-only preview and never stores a browser upload.

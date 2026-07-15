@@ -253,9 +253,6 @@ export function AdminExperience({
     let active = true;
     const syncMedia = async () => {
       const searchParams = new URLSearchParams({ order: mediaOrder });
-      if (filter !== "all") {
-        searchParams.set("kind", filter);
-      }
       const response = await fetch(`/api/weddings/current/media?${searchParams}`, {
         cache: "no-store",
       });
@@ -317,7 +314,7 @@ export function AdminExperience({
       document.removeEventListener("visibilitychange", syncIfVisible);
       removeRealtimeChannel?.();
     };
-  }, [demoMode, filter, mediaOrder, wedding.realtimeTopic]);
+  }, [demoMode, mediaOrder, wedding.realtimeTopic]);
 
   async function loadMoreMedia() {
     if (demoMode || loadingMoreMedia || !mediaHasMore) return;
@@ -328,7 +325,6 @@ export function AdminExperience({
           offset: String(mediaNextOffset),
           limit: "48",
           order: mediaOrder,
-          ...(filter === "all" ? {} : { kind: filter }),
         })}`,
         { cache: "no-store" },
       );
@@ -351,10 +347,10 @@ export function AdminExperience({
     }
   }
 
-  const filteredMedia = useMemo(() => {
-    const matchingMedia = filter === "all" ? media : media.filter((item) => item.kind === filter);
-    return sortMediaLibrary(matchingMedia, mediaOrder);
-  }, [filter, media, mediaOrder]);
+  const orderedMedia = useMemo(
+    () => sortMediaLibrary(media, mediaOrder),
+    [media, mediaOrder],
+  );
 
   async function saveIdentity(patch: CustomerWeddingPatch) {
     dismissToast();
@@ -571,7 +567,7 @@ export function AdminExperience({
             entrySequence={entrySequence}
             filter={filter}
             gridLayout={gridLayout}
-            media={filteredMedia}
+            media={orderedMedia}
             mediaCounts={mediaCounts}
             mediaOrder={mediaOrder}
             hasMore={mediaHasMore}

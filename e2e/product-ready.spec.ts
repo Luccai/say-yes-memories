@@ -162,25 +162,42 @@ test("responsive studio navigation exposes the couple's primary tasks", async ({
   await expect(navigation.getByRole("button", { name: "Wedding page" })).toBeVisible();
   await expect(navigation.getByRole("button", { name: "QR + guest link" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Studio menu" })).toHaveCount(0);
-  await expect(page.locator("header").getByRole("button", { name: "Help" })).toHaveCount(0);
+  const helpButton = page.getByRole("button", { name: "Help" });
+  await expect(helpButton).toHaveCount(1);
 
   if ((page.viewportSize()?.width ?? 1024) < 1024) {
     await expect(navigation).toHaveAttribute("data-studio-navigation", "mobile");
+    const studioIdentity = page.locator("[data-studio-identity='mobile']");
+    const identityHelp = studioIdentity.getByRole("button", { name: "Help" });
+    await expect(identityHelp).toBeVisible();
+    await expect(identityHelp).toHaveClass(/size-12/);
+    await identityHelp.click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toBeHidden();
     await navigation.getByRole("button", { name: "More" }).click();
     const moreActions = page.getByRole("dialog", { name: "More" });
     await expect(moreActions.getByRole("button", { name: "Storage" })).toBeVisible();
     await expect(moreActions.getByRole("link", { name: "View guest page" })).toBeVisible();
-    await expect(moreActions.getByRole("button", { name: "Help" })).toBeVisible();
+    await expect(moreActions.getByRole("button", { name: "Help" })).toHaveCount(0);
     await expect(moreActions.getByRole("button", { name: "Logout" })).toHaveAttribute(
       "data-app-button",
       "quiet",
     );
   } else {
     await expect(navigation).toHaveAttribute("data-studio-navigation", "desktop");
+    const studioIdentity = page.locator("[data-studio-identity='desktop']");
+    const identityHelp = studioIdentity.getByRole("button", { name: "Help" });
+    await expect(identityHelp).toBeVisible();
+    await expect(identityHelp).toHaveClass(/size-12/);
+    await identityHelp.click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toBeHidden();
     await expect(navigation.getByText("More", { exact: true })).toBeVisible();
     await expect(navigation.getByRole("button", { name: "Storage" })).toBeVisible();
     await expect(navigation.getByRole("link", { name: "View guest page" })).toBeVisible();
-    await expect(navigation.getByRole("button", { name: "Help" })).toBeVisible();
+    await expect(navigation.getByRole("button", { name: "Help" })).toHaveCount(0);
     await expect(navigation.getByRole("button", { name: "Logout" })).toHaveAttribute(
       "data-app-button",
       "quiet",
@@ -269,6 +286,69 @@ test("mobile More stays usable on short screens and releases its lock at desktop
   await expect.poll(() => page.evaluate(() => document.body.style.overflow)).not.toBe("hidden");
 });
 
+test("mobile More applies its blur immediately, keeps Flow typography, and marks logout red", async ({ page }) => {
+  if ((page.viewportSize()?.width ?? 1024) >= 1024) {
+    test.skip();
+  }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/admin/mary-john");
+
+  const navigation = studioNavigation(page);
+  const controls = navigation.locator(":scope > :is(button, a)");
+  const labelStyles = await controls.evaluateAll((items) =>
+    items.map((item) => {
+      const label = item.querySelector(":scope > span:last-child");
+      if (!(label instanceof HTMLElement)) {
+        throw new Error("Mobile navigation label is missing.");
+      }
+
+      const style = getComputedStyle(label);
+      return {
+        label: label.textContent?.trim(),
+        fontFamily: style.fontFamily,
+        fontSize: style.fontSize,
+        fontWeight: style.fontWeight,
+        letterSpacing: style.letterSpacing,
+        lineHeight: style.lineHeight,
+      };
+    }),
+  );
+  const flowStyle = labelStyles.find((item) => item.label === "Flow");
+  expect(flowStyle).toBeTruthy();
+  for (const style of labelStyles) {
+    expect(style).toEqual({ ...flowStyle, label: style.label });
+  }
+
+  await navigation.getByRole("button", { name: "More" }).click();
+  const backdrop = page.locator("[data-mobile-more-backdrop='true']");
+  await expect(backdrop).toBeVisible();
+  const visualState = await backdrop.evaluate((element) => {
+    const layer = document.querySelector<HTMLElement>("[data-mobile-more-layer='true']");
+    if (!layer) {
+      return null;
+    }
+
+    return {
+      backdropFilter: getComputedStyle(element).backdropFilter,
+      layerOpacity: getComputedStyle(layer).opacity,
+    };
+  });
+
+  expect(visualState).toEqual({ backdropFilter: "blur(2px)", layerOpacity: "1" });
+
+  const moreDialog = page.getByRole("dialog", { name: "More" });
+  await expect(moreDialog).toBeVisible();
+  const logout = moreDialog.getByRole("button", { name: "Logout" });
+  await expect(logout).toHaveClass(/!text-red-600/);
+  const [logoutColor, logoutIconColor] = await Promise.all([
+    logout.evaluate((element) => getComputedStyle(element).color),
+    logout.locator("svg").evaluate((element) => getComputedStyle(element).color),
+  ]);
+  expect(logoutIconColor).toBe(logoutColor);
+  expect(logoutColor).not.toBe("rgb(31, 23, 18)");
+});
+
 test("demo Premium dialog scrolls internally and keeps purchase actions disabled on a short screen", async ({ page }) => {
   if ((page.viewportSize()?.width ?? 1024) >= 1024) {
     test.skip();
@@ -304,6 +384,16 @@ test("demo Premium dialog scrolls internally and keeps purchase actions disabled
 });
 
 test("studio navigation keeps destinations clear and animates panel changes", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async (value: string) => {
+          document.documentElement.dataset.testClipboard = value;
+        },
+      },
+    });
+  });
   await page.goto("/admin/mary-john");
 
   await openStudioPanel(page, "QR + guest link");
@@ -318,12 +408,11 @@ test("studio navigation keeps destinations clear and animates panel changes", as
   await expect(qrPanel.locator('[data-guest-link-card="true"]').getByRole("button", { name: "PNG" })).toHaveCount(0);
   await expect(qrPanel.getByText(/Download PNG to print it as it is/i)).toBeVisible();
   await expect(qrPanel.getByRole("link", { name: "View guest page" })).toHaveCount(0);
-  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
   const copyGuestLink = qrPanel.locator('[data-guest-link-card="true"]').getByRole("button", { name: "Copy" });
   await copyGuestLink.click();
   await expect(qrPanel.locator('[data-guest-link-card="true"]').getByRole("button", { name: "Copied" })).toHaveClass(/copy-btn/);
   await expect(qrPanel.locator('[data-guest-link-card="true"]').getByRole("button", { name: "Copied" })).toHaveClass(/copied/);
-  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toMatch(/mary-john/);
+  await expect.poll(() => page.locator("html").getAttribute("data-test-clipboard")).toMatch(/mary-john/);
   await expect(qrPanel.locator('[data-guest-link-card="true"]').getByRole("button", { name: "Copy" })).toBeVisible({ timeout: 1_600 });
   const [qrBox, guestLinkBox] = await Promise.all([
     qrPanel.locator('[data-qr-card="true"]').boundingBox(),
@@ -453,40 +542,24 @@ test("guest-memory thumbnails return from the studio cache after a route visit",
   expect(thumbnailRequests.length).toBe(initialThumbnailRequestCount);
 });
 
-test("guest-memory thumbnails stay cached and skip a second entrance after filter changes", async ({ page }) => {
-  const thumbnailRequests: string[] = [];
-  page.on("request", (request) => {
-    if (request.url().includes("-thumb.webp")) {
-      thumbnailRequests.push(request.url());
-    }
-  });
-
+test("guest-memory cards stay mounted while switching filters", async ({ page }) => {
   await page.goto("/admin/mary-john");
   const inbox = page.locator('[data-memory-inbox="true"]');
-  const thumbnails = inbox.locator("button img");
-  await expect
-    .poll(() =>
-      thumbnails.evaluateAll((images) =>
-        images.length > 1 && images.every((image) => image.getAttribute("src")?.startsWith("blob:")),
-      ),
-    )
-    .toBe(true);
-  const initialThumbnailRequestCount = thumbnailRequests.length;
+  const firstMemory = inbox.locator('[data-memory-id="demo-photo-1"]');
+  await expect(firstMemory).toBeVisible();
+  await firstMemory.evaluate((element) => {
+    element.setAttribute("data-filter-cache-probe", "preserved");
+  });
 
   await page.getByRole("button", { name: "Videos · 0" }).click();
   await expect(inbox.getByText("No memories yet", { exact: true })).toBeVisible();
+  await expect(firstMemory).toHaveCount(1);
+  await expect(firstMemory).toBeHidden();
+  await expect(firstMemory).toHaveAttribute("data-filter-cache-probe", "preserved");
   await page.getByRole("button", { name: "All · 7" }).click();
 
-  const returnedThumbnails = inbox.locator("button img");
-  await expect
-    .poll(() =>
-      returnedThumbnails.evaluateAll((images) =>
-        images.length > 1 && images.every((image) => image.getAttribute("src")?.startsWith("blob:")),
-      ),
-    )
-    .toBe(true);
-  await expect(inbox.locator('[data-memory-replay="false"]')).toHaveCount(7);
-  expect(thumbnailRequests.length).toBe(initialThumbnailRequestCount);
+  await expect(firstMemory).toBeVisible();
+  await expect(firstMemory).toHaveAttribute("data-filter-cache-probe", "preserved");
 });
 
 test("mobile lightbox keeps the gallery at the selected memory", async ({ page }, testInfo) => {
@@ -620,8 +693,8 @@ test("lightbox download and delete actions use primary and destructive pressable
   const deleteAction = dialog.getByRole("button", { name: "Delete" });
 
   await expect(download).toHaveAttribute("data-app-button", "ink");
-  await expect(deleteAction).toHaveAttribute("data-app-button", "danger");
-  await expect(deleteAction).toHaveClass(/!font-extrabold/);
+  await expect(deleteAction).toHaveAttribute("data-app-button", "destructive");
+  await expect(deleteAction).toHaveClass(/bg-red-600/);
   await expect(download).toHaveClass(/motion-safe:active:scale-\[0\.975\]/);
   await expect(deleteAction).toHaveClass(/motion-safe:active:scale-\[0\.975\]/);
 });
@@ -659,6 +732,52 @@ test("guest chooses a memory type before the upload and optional note details", 
   expect(nameInput).toBeTruthy();
   expect(fileChoice?.y).toBeLessThan(nameInput?.y ?? 0);
   await expect(page.getByLabel("A note for the couple — optional")).toBeVisible();
+});
+
+test("guest Help uses the compact icon-only trigger on mobile", async ({ page }) => {
+  await page.goto("/mary-john?demo=1");
+
+  const helpButton = page.getByRole("button", { name: "Help" });
+  const helpLabel = helpButton.getByText("Help", { exact: true });
+  await expect(helpButton).toBeVisible();
+
+  if ((page.viewportSize()?.width ?? 1024) < 640) {
+    await expect(helpButton).toHaveClass(/size-12/);
+    await expect(helpLabel).toBeHidden();
+
+    const [helpBox, invitationBox] = await Promise.all([
+      helpButton.boundingBox(),
+      page.locator("section").first().locator(".eyebrow").first().boundingBox(),
+    ]);
+    expect(helpBox).toBeTruthy();
+    expect(invitationBox).toBeTruthy();
+    const overlapsInvitation = Boolean(
+      helpBox &&
+        invitationBox &&
+        helpBox.x < invitationBox.x + invitationBox.width &&
+        helpBox.x + helpBox.width > invitationBox.x &&
+        helpBox.y < invitationBox.y + invitationBox.height &&
+        helpBox.y + helpBox.height > invitationBox.y,
+    );
+    expect(overlapsInvitation).toBe(false);
+  } else {
+    await expect(helpLabel).toBeVisible();
+  }
+});
+
+test("Help dialogs explain the real demo, Premium, and Flow controls", async ({ page }) => {
+  await page.goto("/mary-john?demo=1");
+  await page.getByRole("button", { name: "Help" }).click();
+  const guestHelp = page.getByRole("dialog");
+  await expect(guestHelp).toContainText("This is a read-only preview.");
+  await expect(guestHelp).toContainText("files, recordings and sends stay disabled");
+  await page.keyboard.press("Escape");
+
+  await page.goto("/admin/mary-john");
+  await page.getByRole("button", { name: "Help" }).click();
+  const adminHelp = page.getByRole("dialog");
+  await expect(adminHelp).toContainText("In a private studio, open Premium");
+  await expect(adminHelp).toContainText("tap or click pauses or resumes");
 });
 
 test("help dialog traps focus and restores it on close", async ({ page }, testInfo) => {
@@ -713,6 +832,14 @@ test("studio and guest action buttons fit their content", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Save the page" })).toHaveClass(/w-fit/);
 
   await page.goto("/mary-john?demo=1");
+  const guestProfile = page.locator("[data-guest-profile-orb='true']");
+  const guestWelcomeNote = page.locator("[data-guest-welcome-note='true']");
+  await expect(guestProfile).toBeVisible();
+  await expect(guestWelcomeNote).toBeVisible();
+  await expect(guestWelcomeNote).toHaveClass(/rounded-\[24px\]/);
+  const guestProfileBox = await guestProfile.boundingBox();
+  expect(guestProfileBox?.width).toBeGreaterThanOrEqual(72);
+  expect(guestProfileBox?.height).toBeGreaterThanOrEqual(88);
   const guestUploadChoices = page.locator('[data-guest-upload-choice]');
   await expect(guestUploadChoices).toHaveCount(2);
   await expect(guestUploadChoices.first()).toHaveAttribute("data-guest-upload-choice", "file");
@@ -736,7 +863,8 @@ test("studio and guest action buttons fit their content", async ({ page }) => {
     );
   });
   expect(sendMemoryAlignment).toBeLessThanOrEqual(1);
-  await expect(sendMemoryButton).toHaveClass(/!font-extrabold/);
+  await expect(sendMemoryButton).toHaveClass(/whitespace-nowrap/);
+  await expect(sendMemoryButton.locator("svg")).toHaveClass(/lucide-send/);
   await expect(sendMemoryButton).toHaveAttribute("data-guest-send-memory", "ready");
 });
 

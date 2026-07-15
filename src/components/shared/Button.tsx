@@ -3,7 +3,7 @@
 import { forwardRef, type ButtonHTMLAttributes } from "react";
 import { Loader2 } from "lucide-react";
 
-export type ButtonVariant = "ink" | "paper" | "quiet" | "premium" | "danger";
+export type ButtonVariant = "ink" | "paper" | "quiet" | "premium" | "danger" | "destructive";
 export type ButtonSize = "default" | "compact" | "icon";
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -24,6 +24,8 @@ const variants: Record<ButtonVariant, string> = {
     "border-[rgba(139,107,63,0.44)] bg-[var(--champagne)] text-[var(--ink)] shadow-[inset_0_1px_0_rgba(255,255,255,0.48),0_12px_28px_rgba(139,107,63,0.22)] hover:border-[rgba(139,107,63,0.64)] hover:bg-[var(--champagne)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.58),0_16px_34px_rgba(139,107,63,0.28)]",
   danger:
     "border-[rgba(140,81,68,0.24)] bg-[rgba(255,250,243,0.82)] text-[var(--rosewood)] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_10px_24px_rgba(98,47,39,0.08)] hover:border-[rgba(140,81,68,0.42)] hover:bg-[#fff8f4]",
+  destructive:
+    "border-red-600 bg-red-600 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_12px_26px_rgba(185,28,28,0.22)] hover:border-red-700 hover:bg-red-700 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_16px_34px_rgba(185,28,28,0.28)]",
 };
 
 const sizes: Record<ButtonSize, string> = {

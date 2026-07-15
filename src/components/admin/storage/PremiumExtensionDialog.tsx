@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef } from "react";
-import { Copy, Crown, X } from "lucide-react";
+import { useRef, useState } from "react";
+import { Crown, X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Button, buttonStyles } from "@/components/shared/Button";
+import { CopyButton } from "@/components/shared/CopyButton";
 import type { useCopy } from "@/lib/i18n-client";
 import type { PremiumPurchaseAction } from "@/lib/premium-purchase";
 import type { Wedding } from "@/lib/types";
@@ -17,10 +18,7 @@ type PremiumExtensionDialogProps = {
   wedding: Wedding;
   demoMode: boolean;
   purchaseAction: PremiumPurchaseAction;
-  coupleNameCopied: boolean;
-  coupleNameCopyError: boolean;
   text: AdminCopy;
-  onCopyCoupleName: () => void;
   onClose: () => void;
 };
 
@@ -29,22 +27,25 @@ export function PremiumExtensionDialog({
   wedding,
   demoMode,
   purchaseAction,
-  coupleNameCopied,
-  coupleNameCopyError,
   text,
-  onCopyCoupleName,
   onClose,
 }: PremiumExtensionDialogProps) {
   const reduceMotion = useReducedMotion();
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const [coupleNameCopyError, setCoupleNameCopyError] = useState(false);
+
+  function closeDialog() {
+    setCoupleNameCopyError(false);
+    onClose();
+  }
 
   useBodyScrollLock(open);
   useAccessibleDialog({
     open,
     containerRef: dialogRef,
     initialFocusRef: closeRef,
-    onClose,
+    onClose: closeDialog,
   });
 
   return (
@@ -61,7 +62,7 @@ export function PremiumExtensionDialog({
             type="button"
             aria-label={text.close}
             className="absolute inset-0 cursor-default"
-            onClick={onClose}
+            onClick={closeDialog}
           />
           <motion.div
             ref={dialogRef}
@@ -91,7 +92,7 @@ export function PremiumExtensionDialog({
               </div>
               <Button
                 ref={closeRef}
-                onClick={onClose}
+                onClick={closeDialog}
                 variant="paper"
                 size="icon"
                 className="!size-11 !min-h-11"
@@ -116,16 +117,17 @@ export function PremiumExtensionDialog({
                 <span className="break-words font-display text-xl font-semibold text-[var(--ink)]">
                   {wedding.coupleName}
                 </span>
-                <Button
-                  onClick={onCopyCoupleName}
+                <CopyButton
+                  text={wedding.coupleName}
+                  copyLabel={text.copyCoupleName}
+                  copiedLabel={text.copied}
                   disabled={demoMode}
                   title={demoMode ? text.demoStorageNotice : undefined}
                   variant="paper"
                   size="compact"
-                >
-                  <Copy className="size-4" />
-                  {coupleNameCopied ? text.copied : text.copyCoupleName}
-                </Button>
+                  onCopied={() => setCoupleNameCopyError(false)}
+                  onCopyError={() => setCoupleNameCopyError(true)}
+                />
               </div>
               {coupleNameCopyError ? (
                 <p

@@ -72,7 +72,7 @@ export function AdminShell({
         />
 
         <div className="min-w-0 pb-[calc(7rem+env(safe-area-inset-bottom))] lg:pb-0">
-          <StudioHeader wedding={wedding} />
+          <StudioHeader wedding={wedding} onHelp={onHelp} />
 
           <div className="grid">
             <motion.section

@@ -155,7 +155,7 @@ export const copy = {
       ],
       demoHelpCard: {
         title: "Demo mode",
-        body: "Demo uploads stay on this device and only show how the flow works.",
+        body: "This is a read-only preview. You can look through the flow here, but files, recordings and sends stay disabled and nothing is uploaded.",
       },
       helpFooter: "If sharing is taking a little pause, this page will gently let you know before you choose a file.",
     },
@@ -303,7 +303,7 @@ export const copy = {
       helpTitle: "Set it up, then enjoy the moments.",
       helpBody:
         "Make the space feel like yours before the wedding, share your QR, then come back here to enjoy every photo, video, voice note and sweet message.",
-      helpSteps: ["Guest Memories keeps each new photo, video, voice note and message in one private inbox. Use Classic, Story or Compact to browse it.", "Private Storage starts at 50 GB. Guest uploads open at local midnight on the wedding day and Classic access lasts three calendar months; Premium adds 50 GB and six months.", "Wedding Page manages your profile photo, welcome note and upload switch. Only the owner can change names or the wedding date.", "QR + guest link gives you a premium QR card: copy the link or download PNG/SVG for tables and signs.", "Flow Mode is always in your main navigation. It plays memories oldest to newest in a full-screen presentation.", "View Guest Page under More opens your real guest page in a new tab. Your printed QR and link stay valid after a name change."],
+      helpSteps: ["Guest Memories keeps each new photo, video, voice note and message in one private inbox. Use Classic, Story or Compact to browse it.", "Private Storage starts at 50 GB. Guest uploads open at local midnight on the wedding day and Classic access lasts three calendar months; Premium adds 50 GB and six months.", "Wedding Page manages your profile photo, welcome note and upload switch. Only the owner can change names or the wedding date.", "QR + guest link gives you a premium QR card: copy the link or download PNG/SVG for tables and signs.", "Flow Mode is always in your main navigation. It plays memories oldest to newest in full screen; tap or click pauses or resumes, use the arrow keys to move, and choose full screen when your device supports it.", "View Guest Page under More opens your real guest page in a new tab. Your printed QR and link stay valid after a name change."],
       helpCards: [
         {
           title: "Just the two of you",
@@ -312,6 +312,10 @@ export const copy = {
         {
           title: "Plenty of time to keep it close",
           body: "When the sharing window ends, you still have 30 days to download everything and keep it safe.",
+        },
+        {
+          title: "A little more room",
+          body: "In a private studio, open Premium, copy the couple name, buy the Etsy extension and enter that name in the personalization field. It adds 50 GB and six months.",
         },
       ],
       demoHelpCard: {
@@ -459,7 +463,7 @@ export const copy = {
       ],
       demoHelpCard: {
         title: "Modo demo",
-        body: "Las cargas de demo quedan en este dispositivo y solo muestran cómo funciona el flujo.",
+        body: "Esta es una vista previa de solo lectura. Puedes recorrer el flujo, pero los archivos, las grabaciones y los envíos están desactivados y no se sube nada.",
       },
       helpFooter: "Si compartir está en pausa, esta página te lo contará con cariño antes de elegir un archivo.",
     },
@@ -606,7 +610,7 @@ export const copy = {
       helpTitle: "Prepárenlo y disfruten cada momento.",
       helpBody:
         "Hagan suyo este espacio antes de la boda, compartan el QR y vuelvan aquí para disfrutar cada foto, vídeo, nota de voz y mensaje bonito.",
-      helpSteps: ["Recuerdos de invitados reúne cada foto, vídeo, nota de voz y mensaje en una bandeja privada. Usa Clásico, Historia o Compacto para explorarlos.", "Almacenamiento privado comienza con 50 GB. Las cargas se abren a medianoche local el día de la boda y el acceso Classic dura tres meses naturales; Premium añade 50 GB y seis meses.", "Página de la boda gestiona la foto de perfil, el mensaje y el interruptor de cargas. Solo el propietario puede cambiar nombres o fecha.", "QR + enlace ofrece una tarjeta QR premium: copia el enlace o descarga PNG/SVG para mesas y carteles.", "El Modo secuencia siempre está en la navegación principal. Reproduce los recuerdos del más antiguo al más nuevo a pantalla completa.", "Abrir página de invitados, dentro de Más, abre la página real en una pestaña nueva. El QR y enlace impresos siguen funcionando tras cambiar un nombre."],
+      helpSteps: ["Recuerdos de invitados reúne cada foto, vídeo, nota de voz y mensaje en una bandeja privada. Usa Clásico, Historia o Compacto para explorarlos.", "Almacenamiento privado comienza con 50 GB. Las cargas se abren a medianoche local el día de la boda y el acceso Classic dura tres meses naturales; Premium añade 50 GB y seis meses.", "Página de la boda gestiona la foto de perfil, el mensaje y el interruptor de cargas. Solo el propietario puede cambiar nombres o fecha.", "QR + enlace ofrece una tarjeta QR premium: copia el enlace o descarga PNG/SVG para mesas y carteles.", "El Modo secuencia siempre está en la navegación principal. Reproduce los recuerdos del más antiguo al más nuevo a pantalla completa; toca o haz clic para pausar o reanudar, usa las flechas para avanzar y elige pantalla completa si tu dispositivo la admite.", "Abrir página de invitados, dentro de Más, abre la página real en una pestaña nueva. El QR y enlace impresos siguen funcionando tras cambiar un nombre."],
       helpCards: [
         {
           title: "Solo ustedes dos",
@@ -615,6 +619,10 @@ export const copy = {
         {
           title: "Tiempo para guardarlo todo",
           body: "Cuando termina el tiempo para compartir, aún tienen 30 días para descargarlo todo y guardarlo con cariño.",
+        },
+        {
+          title: "Un poco más de espacio",
+          body: "En un estudio privado, abre Premium, copia el nombre de la pareja, compra la extensión en Etsy e introduce ese nombre en el campo de personalización. Añade 50 GB y seis meses.",
         },
       ],
       demoHelpCard: {
@@ -762,7 +770,7 @@ export const copy = {
       ],
       demoHelpCard: {
         title: "Mode démo",
-        body: "Les envois de démo restent sur cet appareil et montrent seulement le fonctionnement.",
+        body: "C’est un aperçu en lecture seule. Vous pouvez parcourir le flux, mais les fichiers, les enregistrements et les envois sont désactivés : rien n’est téléversé.",
       },
       helpFooter: "Si le partage fait une petite pause, cette page vous le dira doucement avant le choix du fichier.",
     },
@@ -909,7 +917,7 @@ export const copy = {
       helpTitle: "Préparez-le, puis savourez chaque instant.",
       helpBody:
         "Faites de cet espace le vôtre avant le mariage, partagez le QR puis revenez ici pour savourer chaque photo, vidéo, message vocal et petit mot.",
-      helpSteps: ["Souvenirs invités rassemble chaque photo, vidéo, message vocal et note dans une boîte privée. Utilisez Classique, Story ou Compact pour les parcourir.", "Le Stockage privé commence à 50 Go. Les envois s’ouvrent à minuit, heure locale, le jour du mariage et l’accès Classic dure trois mois calendaires ; Premium ajoute 50 Go et six mois.", "Page du mariage gère la photo de profil, le message d’accueil et l’interrupteur des envois. Seul le propriétaire peut changer les prénoms ou la date.", "QR + lien propose une carte QR premium : copiez le lien ou téléchargez un PNG/SVG pour les tables et affiches.", "Le Mode défilement reste toujours dans la navigation principale. Il lit les souvenirs du plus ancien au plus récent, en plein écran.", "Ouvrir la page invités, sous Plus, ouvre votre vraie page invités dans un nouvel onglet. Le QR et le lien imprimés restent valides après un changement de prénom."],
+      helpSteps: ["Souvenirs invités rassemble chaque photo, vidéo, message vocal et note dans une boîte privée. Utilisez Classique, Story ou Compact pour les parcourir.", "Le Stockage privé commence à 50 Go. Les envois s’ouvrent à minuit, heure locale, le jour du mariage et l’accès Classic dure trois mois calendaires ; Premium ajoute 50 Go et six mois.", "Page du mariage gère la photo de profil, le message d’accueil et l’interrupteur des envois. Seul le propriétaire peut changer les prénoms ou la date.", "QR + lien propose une carte QR premium : copiez le lien ou téléchargez un PNG/SVG pour les tables et affiches.", "Le Mode défilement reste toujours dans la navigation principale. Il lit les souvenirs du plus ancien au plus récent en plein écran ; touchez ou cliquez pour mettre en pause ou reprendre, utilisez les flèches pour naviguer et choisissez le plein écran si votre appareil le permet.", "Ouvrir la page invités, sous Plus, ouvre votre vraie page invités dans un nouvel onglet. Le QR et le lien imprimés restent valides après un changement de prénom."],
       helpCards: [
         {
           title: "Rien que pour vous deux",
@@ -918,6 +926,10 @@ export const copy = {
         {
           title: "Le temps de tout garder",
           body: "Quand le partage se termine, vous avez encore 30 jours pour tout télécharger et le garder précieusement.",
+        },
+        {
+          title: "Un peu plus d’espace",
+          body: "Dans un studio privé, ouvrez Premium, copiez le nom du couple, achetez l’extension Etsy puis saisissez ce nom dans le champ de personnalisation. Elle ajoute 50 Go et six mois.",
         },
       ],
       demoHelpCard: {
@@ -1065,7 +1077,7 @@ export const copy = {
       ],
       demoHelpCard: {
         title: "Demo-Modus",
-        body: "Demo-Uploads bleiben auf diesem Gerät und zeigen nur, wie der Ablauf funktioniert.",
+        body: "Dies ist eine schreibgeschützte Vorschau. Du kannst den Ablauf ansehen, aber Dateien, Aufnahmen und Senden sind deaktiviert; es wird nichts hochgeladen.",
       },
       helpFooter: "Macht das Teilen eine kleine Pause, sagt dir diese Seite vor der Dateiauswahl freundlich Bescheid.",
     },
@@ -1212,7 +1224,7 @@ export const copy = {
       helpTitle: "Richtet es ein und genießt jeden Moment.",
       helpBody:
         "Macht diesen Ort vor der Hochzeit zu eurem, teilt euren QR und kommt hierher zurück, um jedes Foto, Video, jede Sprachnachricht und jede liebe Nachricht zu genießen.",
-      helpSteps: ["Gäste-Erinnerungen sammelt jedes neue Foto, Video, jede Sprachnachricht und Nachricht in einem privaten Postfach. Nutzt Klassisch, Story oder Kompakt zum Durchsehen.", "Privater Speicher startet mit 50 GB. Uploads öffnen am Hochzeitstag um Mitternacht Ortszeit und Classic-Zugang dauert drei Kalendermonate; Premium fügt 50 GB und sechs Monate hinzu.", "Hochzeitsseite verwaltet Profilfoto, Willkommensnachricht und Upload-Schalter. Nur der Eigentümer kann Namen oder Hochzeitsdatum ändern.", "QR + Link bietet eine hochwertige QR-Karte: Kopiert den Link oder ladet PNG/SVG für Tische und Schilder herunter.", "Der Ablaufmodus bleibt immer in der Hauptnavigation sichtbar. Er spielt Erinnerungen von alt nach neu im Vollbild ab.", "Gästeseite öffnen unter Mehr öffnet eure echte Gästeseite in einem neuen Tab. Gedruckter QR und Link bleiben nach einer Namensänderung gültig."],
+      helpSteps: ["Gäste-Erinnerungen sammelt jedes neue Foto, Video, jede Sprachnachricht und Nachricht in einem privaten Postfach. Nutzt Klassisch, Story oder Kompakt zum Durchsehen.", "Privater Speicher startet mit 50 GB. Uploads öffnen am Hochzeitstag um Mitternacht Ortszeit und Classic-Zugang dauert drei Kalendermonate; Premium fügt 50 GB und sechs Monate hinzu.", "Hochzeitsseite verwaltet Profilfoto, Willkommensnachricht und Upload-Schalter. Nur der Eigentümer kann Namen oder Hochzeitsdatum ändern.", "QR + Link bietet eine hochwertige QR-Karte: Kopiert den Link oder ladet PNG/SVG für Tische und Schilder herunter.", "Der Ablaufmodus bleibt immer in der Hauptnavigation sichtbar. Er spielt Erinnerungen von alt nach neu im Vollbild ab; Tippen oder Klicken pausiert oder setzt fort, mit den Pfeiltasten wechselst du, und bei unterstützten Geräten kannst du Vollbild wählen.", "Gästeseite öffnen unter Mehr öffnet eure echte Gästeseite in einem neuen Tab. Gedruckter QR und Link bleiben nach einer Namensänderung gültig."],
       helpCards: [
         {
           title: "Nur ihr zwei",
@@ -1221,6 +1233,10 @@ export const copy = {
         {
           title: "Zeit, alles zu bewahren",
           body: "Wenn das Teilen endet, habt ihr noch 30 Tage, alles herunterzuladen und sicher zu bewahren.",
+        },
+        {
+          title: "Ein wenig mehr Platz",
+          body: "Öffne in einem privaten Studio Premium, kopiere den Paarnamen, kaufe die Etsy-Erweiterung und trage diesen Namen im Personalisierungsfeld ein. Sie fügt 50 GB und sechs Monate hinzu.",
         },
       ],
       demoHelpCard: {
@@ -1368,7 +1384,7 @@ export const copy = {
       ],
       demoHelpCard: {
         title: "Modo demo",
-        body: "Os envios de demo ficam neste dispositivo e só mostram como o fluxo funciona.",
+        body: "Esta é uma prévia somente leitura. Você pode conhecer o fluxo, mas arquivos, gravações e envios ficam desativados e nada é enviado.",
       },
       helpFooter: "Se o compartilhamento estiver em uma pequena pausa, esta página vai avisar com carinho antes de você escolher um arquivo.",
     },
@@ -1515,7 +1531,7 @@ export const copy = {
       helpTitle: "Preparem e aproveitem cada momento.",
       helpBody:
         "Deixem este espaço com a cara de vocês antes do casamento, compartilhem o QR e voltem aqui para curtir cada foto, vídeo, mensagem de voz e recadinho.",
-      helpSteps: ["Memórias dos convidados reúne cada foto, vídeo, mensagem de voz e texto em uma caixa privada. Use Clássico, História ou Compacto para navegar.", "O Armazenamento privado começa com 50 GB. Os envios abrem à meia-noite local no dia do casamento e o acesso Classic dura três meses-calendário; Premium adiciona 50 GB e seis meses.", "Página do casamento gerencia a foto de perfil, a mensagem e o controle de envios. Só o proprietário pode mudar nomes ou a data do casamento.", "QR + link oferece um cartão QR premium: copie o link ou baixe PNG/SVG para mesas e placas.", "O Modo sequência fica sempre na navegação principal. Ele reproduz as memórias da mais antiga à mais nova em tela cheia.", "Abrir página dos convidados, em Mais, abre a página real em uma nova aba. O QR e link impressos continuam válidos depois de mudar um nome."],
+      helpSteps: ["Memórias dos convidados reúne cada foto, vídeo, mensagem de voz e texto em uma caixa privada. Use Clássico, História ou Compacto para navegar.", "O Armazenamento privado começa com 50 GB. Os envios abrem à meia-noite local no dia do casamento e o acesso Classic dura três meses-calendário; Premium adiciona 50 GB e seis meses.", "Página do casamento gerencia a foto de perfil, a mensagem e o controle de envios. Só o proprietário pode mudar nomes ou a data do casamento.", "QR + link oferece um cartão QR premium: copie o link ou baixe PNG/SVG para mesas e placas.", "O Modo sequência fica sempre na navegação principal. Ele reproduz as memórias da mais antiga à mais nova em tela cheia; toque ou clique para pausar ou retomar, use as setas para avançar e escolha a tela cheia se o dispositivo oferecer suporte.", "Abrir página dos convidados, em Mais, abre a página real em uma nova aba. O QR e link impressos continuam válidos depois de mudar um nome."],
       helpCards: [
         {
           title: "Só vocês dois",
@@ -1524,6 +1540,10 @@ export const copy = {
         {
           title: "Tempo para guardar tudo",
           body: "Quando o período de compartilhamento termina, vocês ainda têm 30 dias para baixar tudo e guardar com carinho.",
+        },
+        {
+          title: "Um pouco mais de espaço",
+          body: "Em um estúdio privado, abra o Premium, copie o nome do casal, compre a extensão na Etsy e informe esse nome no campo de personalização. Ela adiciona 50 GB e seis meses.",
         },
       ],
       demoHelpCard: {
@@ -1671,7 +1691,7 @@ export const copy = {
       ],
       demoHelpCard: {
         title: "演示模式",
-        body: "演示上传只保存在这台设备上，用来展示流程如何工作。",
+        body: "这是只读预览。你可以查看流程，但文件、录音和发送均已禁用，且不会上传任何内容。",
       },
       helpFooter: "如果分享暂时休息一下，选文件前页面会温柔地告诉你。",
     },
@@ -1816,7 +1836,7 @@ export const copy = {
       helpTitle: "准备好，然后享受每一个瞬间。",
       helpBody:
         "婚礼前把这个空间布置成你们喜欢的样子，分享二维码，然后回到这里享受每张照片、每段视频、语音和暖心留言。",
-      helpSteps: ["宾客回忆会把每张新照片、视频、语音和留言汇集到一个私密收件箱。可用经典、故事或紧凑布局浏览。", "私人存储起始为 50 GB。婚礼当天当地时间零点开放上传，Classic 访问期为三个自然月；Premium 增加 50 GB 和六个月。", "婚礼页面管理头像、欢迎语和上传开关。只有所有者可以更改姓名或婚礼日期。", "二维码 + 链接提供高级二维码卡：复制链接，或下载 PNG/SVG 用于桌卡和标牌。", "回忆播放模式始终显示在主导航中，会按从旧到新的顺序全屏播放回忆。", "“更多”中的“打开宾客页面”会在新标签页打开真实宾客页面。改名后，已打印的二维码和链接仍然有效。"],
+      helpSteps: ["宾客回忆会把每张新照片、视频、语音和留言汇集到一个私密收件箱。可用经典、故事或紧凑布局浏览。", "私人存储起始为 50 GB。婚礼当天当地时间零点开放上传，Classic 访问期为三个自然月；Premium 增加 50 GB 和六个月。", "婚礼页面管理头像、欢迎语和上传开关。只有所有者可以更改姓名或婚礼日期。", "二维码 + 链接提供高级二维码卡：复制链接，或下载 PNG/SVG 用于桌卡和标牌。", "回忆播放模式始终显示在主导航中，会按从旧到新的顺序全屏播放回忆；轻点或点击可暂停或继续，使用方向键切换，设备支持时可进入全屏。", "“更多”中的“打开宾客页面”会在新标签页打开真实宾客页面。改名后，已打印的二维码和链接仍然有效。"],
       helpCards: [
         {
           title: "只属于你们两人",
@@ -1825,6 +1845,10 @@ export const copy = {
         {
           title: "有时间好好珍藏",
           body: "分享期结束后，你们还有 30 天可以下载全部内容，好好保存。",
+        },
+        {
+          title: "多一点空间",
+          body: "在私人工作室中打开 Premium，复制新人姓名，在 Etsy 购买扩展后将该姓名填入个性化字段。它会增加 50 GB 和 6 个月。",
         },
       ],
       demoHelpCard: {

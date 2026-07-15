@@ -5,7 +5,6 @@ import { useEffect, useRef, useState, type ComponentType } from "react";
 import {
   ExternalLink,
   HardDrive,
-  HelpCircle,
   Image as ImageIcon,
   LogOut,
   Menu,
@@ -14,8 +13,9 @@ import {
   Settings2,
   X,
 } from "lucide-react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { Button } from "@/components/shared/Button";
+import { HelpTriggerButton } from "@/components/shared/GuidanceDialog";
 import { MediaOrb } from "@/components/shared/MediaOrb";
 import { useCopy } from "@/lib/i18n-client";
 import type { Wedding } from "@/lib/types";
@@ -52,6 +52,20 @@ type NavigationItem =
       icon: ComponentType<{ className?: string }>;
       newTab?: boolean;
     };
+
+const mobileNavigationLabelClass =
+  "max-w-full truncate text-center text-[0.6rem] font-extrabold leading-none tracking-[-0.04em] max-[374px]:text-[0.54rem]";
+
+function mobileNavigationControlClass(active: boolean) {
+  return `focus-ring flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-0 font-black transition motion-safe:active:scale-[0.96] ${
+    active
+      ? "text-[var(--ink)]"
+      : "text-[var(--ink-soft)] opacity-70 hover:bg-white/36 hover:opacity-100"
+  }`;
+}
+
+const logoutButtonClass =
+  "justify-start px-4 !text-red-600 hover:bg-red-50 hover:!text-red-700";
 
 export function StudioNavigation({
   activePanel,
@@ -140,19 +154,25 @@ export function StudioNavigation({
   return (
     <>
       <aside className="hidden lg:sticky lg:top-6 lg:flex lg:h-[calc(100dvh-3rem)] lg:min-h-[38rem] lg:flex-col lg:rounded-[34px] lg:border lg:border-white/75 lg:bg-[rgba(255,250,243,0.8)] lg:p-4 lg:shadow-[var(--shadow-soft)] lg:backdrop-blur-xl">
-        <div className="flex items-center gap-3 border-b border-[var(--line)] px-2 pb-4 pt-1">
+        <div
+          data-studio-identity="desktop"
+          className="flex items-center gap-3 border-b border-[var(--line)] px-2 pb-4 pt-1"
+        >
           <MediaOrb
             media={wedding.profileMedia}
             label={wedding.coupleName}
             className="h-[4.25rem] w-[3.4rem] shrink-0"
           />
-          <div className="min-w-0">
+          <div className="relative min-w-0 flex-1 pr-12">
             <p className="text-[0.64rem] font-black uppercase tracking-[0.2em] text-[var(--champagne-deep)]">
               {text.studioGroup}
             </p>
             <h1 className="mt-1 truncate font-serif text-xl font-bold text-[var(--ink)]">
               {wedding.coupleName}
             </h1>
+            <div className="absolute right-0 top-0">
+              <HelpTriggerButton label={copy.help} onClick={openHelp} iconOnly />
+            </div>
           </div>
         </div>
 
@@ -189,11 +209,6 @@ export function StudioNavigation({
               icon={ExternalLink}
               label={text.openPage}
             />
-            <SecondaryAction
-              icon={HelpCircle}
-              label={copy.help}
-              onClick={openHelp}
-            />
           </div>
 
           <div className="mt-auto pt-4">
@@ -203,7 +218,7 @@ export function StudioNavigation({
               loading={loggingOut}
               variant="quiet"
               fullWidth
-              className="justify-start px-4"
+              className={logoutButtonClass}
             >
               <LogOut className="size-4" />
               {text.logout}
@@ -237,47 +252,36 @@ export function StudioNavigation({
           onClick={() => setMoreOpen(true)}
           aria-expanded={moreOpen}
           aria-current={activePanel === "storage" ? "page" : undefined}
-          className={`focus-ring flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-0 text-[0.6rem] font-black tracking-[-0.04em] transition max-[374px]:text-[0.54rem] motion-safe:active:scale-[0.96] ${
-            activePanel === "storage"
-              ? "text-[var(--ink)]"
-              : "text-[var(--ink-soft)] opacity-70 hover:bg-white/36 hover:opacity-100"
-          }`}
+          className={mobileNavigationControlClass(activePanel === "storage")}
         >
           <Menu className="size-5" />
-          <span className="max-w-full truncate text-center font-extrabold leading-none">
+          <span className={mobileNavigationLabelClass}>
             {text.more}
           </span>
         </button>
       </nav>
 
-      <AnimatePresence>
-        {moreOpen ? (
+      {moreOpen ? (
+        <div data-mobile-more-layer="true" className="fixed inset-0 z-[75] lg:hidden">
+          <button
+            type="button"
+            aria-label={close}
+            data-mobile-more-backdrop="true"
+            className="absolute inset-0 bg-[rgba(31,23,18,0.22)] backdrop-blur-[2px]"
+            onClick={() => setMoreOpen(false)}
+          />
           <motion.div
-            className="fixed inset-0 z-[75] lg:hidden"
-            initial={reduceMotion ? false : { opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: reduceMotion ? 0 : 0.18 }}
+            ref={moreDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={text.more}
+            tabIndex={-1}
+            initial={reduceMotion ? false : { opacity: 0, y: 24, scale: 0.985 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: reduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
+            data-scroll-lock-allow="true"
+            className="absolute bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+5.25rem)] left-1/2 max-h-[calc(100dvh-6.25rem-env(safe-area-inset-bottom))] w-[min(calc(100vw-1rem),32rem)] -translate-x-1/2 overflow-y-auto overscroll-contain rounded-[30px] border border-white/80 bg-[rgba(255,250,243,0.96)] p-3 shadow-[0_24px_70px_rgba(58,40,25,0.24)] backdrop-blur-xl"
           >
-            <button
-              type="button"
-              aria-label={close}
-              className="absolute inset-0 bg-[rgba(31,23,18,0.22)] backdrop-blur-[2px]"
-              onClick={() => setMoreOpen(false)}
-            />
-            <motion.div
-              ref={moreDialogRef}
-              role="dialog"
-              aria-modal="true"
-              aria-label={text.more}
-              tabIndex={-1}
-              initial={reduceMotion ? false : { opacity: 0, y: 24, scale: 0.985 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 18, scale: 0.99 }}
-              transition={{ duration: reduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
-              data-scroll-lock-allow="true"
-              className="absolute bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+5.25rem)] left-1/2 max-h-[calc(100dvh-6.25rem-env(safe-area-inset-bottom))] w-[min(calc(100vw-1rem),32rem)] -translate-x-1/2 overflow-y-auto overscroll-contain rounded-[30px] border border-white/80 bg-[rgba(255,250,243,0.96)] p-3 shadow-[0_24px_70px_rgba(58,40,25,0.24)] backdrop-blur-xl"
-            >
               <div className="mb-2 flex items-center justify-between px-2 py-1">
                 <p className="font-serif text-2xl font-bold text-[var(--ink)]">{text.more}</p>
                 <Button
@@ -303,14 +307,13 @@ export function StudioNavigation({
                   icon={ExternalLink}
                   label={text.openPage}
                 />
-                <SecondaryAction icon={HelpCircle} label={copy.help} onClick={openHelp} />
                 <Button
                   onClick={onLogout}
                   disabled={loggingOut}
                   loading={loggingOut}
                   variant="quiet"
                   fullWidth
-                  className="justify-start px-4"
+                  className={logoutButtonClass}
                 >
                   <LogOut className="size-4" />
                   {text.logout}
@@ -321,10 +324,9 @@ export function StudioNavigation({
                   </p>
                 ) : null}
               </div>
-            </motion.div>
           </motion.div>
-        ) : null}
-      </AnimatePresence>
+        </div>
+      ) : null}
     </>
   );
 }
@@ -343,11 +345,7 @@ function NavigationControl({
   const Icon = item.icon;
   const className =
     mode === "mobile"
-      ? `focus-ring flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-0 text-[0.6rem] font-black tracking-[-0.04em] transition max-[374px]:text-[0.54rem] motion-safe:active:scale-[0.96] ${
-          active
-            ? "text-[var(--ink)]"
-            : "text-[var(--ink-soft)] opacity-70 hover:bg-white/36 hover:opacity-100"
-        }`
+      ? mobileNavigationControlClass(active)
       : `focus-ring flex min-h-12 w-full items-center gap-3 rounded-full px-3 text-left text-sm font-extrabold transition motion-safe:active:scale-[0.985] ${
           active
             ? "bg-[var(--ink)] text-[var(--paper-soft)] shadow-[0_10px_24px_rgba(31,23,18,0.16)]"
@@ -361,7 +359,7 @@ function NavigationControl({
       <span
         className={
           mode === "mobile"
-            ? "max-w-full truncate text-center font-extrabold leading-none"
+            ? mobileNavigationLabelClass
             : "truncate font-extrabold"
         }
       >

@@ -5,7 +5,7 @@ import type { WeddingMedia } from "@/lib/types";
 import { Button } from "@/components/shared/Button";
 import { BlurFade } from "@/components/shared/BlurFade";
 import { MemoryCard } from "@/components/admin/memories/MemoryCard";
-import type { AdminCopy, MemoryGridLayout } from "@/components/admin/types";
+import type { AdminCopy, FilterKey, MemoryGridLayout } from "@/components/admin/types";
 
 const STORY_ORIGINAL_IMAGE_MAX_BYTES = 12 * 1024 * 1024;
 
@@ -17,6 +17,7 @@ const memoryGridClasses: Record<MemoryGridLayout, string> = {
 
 type MemoryGridProps = {
   media: WeddingMedia[];
+  filter: FilterKey;
   gridLayout: MemoryGridLayout;
   entrySequence: number;
   enteredMediaIds: Set<string>;
@@ -32,6 +33,7 @@ type MemoryGridProps = {
 
 export function MemoryGrid({
   media,
+  filter,
   gridLayout,
   entrySequence,
   enteredMediaIds,
@@ -49,6 +51,7 @@ export function MemoryGrid({
       <LayoutGroup id="memory-grid-layout">
         <div className={memoryGridClasses[gridLayout]}>
           {media.map((item, index) => {
+            const matchesFilter = filter === "all" || item.kind === filter;
             const useOriginalImage =
               item.kind === "image" &&
               ((demoMode && item.url.startsWith("/demo/")) ||
@@ -62,6 +65,7 @@ export function MemoryGrid({
                 replayOnMount={!enteredMediaIds.has(item.id)}
                 onEntered={() => enteredMediaIds.add(item.id)}
                 delay={0.15 + Math.min(index, 10) * 0.05}
+                className={matchesFilter ? undefined : "hidden"}
               >
                 <MemoryCard
                   item={item}

@@ -260,8 +260,8 @@ export function MemoryLightbox({
                 </a>
                 <Button
                   onClick={() => onRequestDelete(selectedMedia)}
-                  variant="danger"
-                  className="gap-2 whitespace-nowrap !border-[var(--rosewood)] !bg-[var(--rosewood)] !font-extrabold !text-white hover:!bg-[#6f332b]"
+                  variant="destructive"
+                  className="gap-2 whitespace-nowrap"
                 >
                   {text.deleteMemory}
                 </Button>

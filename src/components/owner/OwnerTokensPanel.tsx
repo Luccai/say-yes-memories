@@ -1,8 +1,9 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
-import { Check, Copy, KeyRound, RefreshCw, ShieldX, X } from "lucide-react";
+import { KeyRound, RefreshCw, ShieldX, X } from "lucide-react";
 import { Button } from "@/components/shared/Button";
+import { CopyButton } from "@/components/shared/CopyButton";
 import { useAccessibleDialog } from "@/lib/use-accessible-dialog";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import {
@@ -50,7 +51,6 @@ export function OwnerTokensPanel() {
   const [revealed, setRevealed] = useState<RevealedToken | null>(null);
   const revealedDialogRef = useRef<HTMLElement>(null);
   const revealedCloseRef = useRef<HTMLButtonElement>(null);
-  const [copied, setCopied] = useState(false);
   const [actionToken, setActionToken] = useState<TokenItem | null>(null);
   const [action, setAction] = useState<"rotate" | "revoke" | null>(null);
   const [actionLabel, setActionLabel] = useState("");
@@ -95,7 +95,6 @@ export function OwnerTokensPanel() {
       createKey.current = null;
       setRevealed(response.token);
       setLabel("");
-      setCopied(false);
       await load(0);
     } catch (caught) {
       setMessage(
@@ -106,12 +105,6 @@ export function OwnerTokensPanel() {
     } finally {
       setCreating(false);
     }
-  }
-
-  async function copyToken() {
-    if (!revealed) return;
-    await navigator.clipboard.writeText(revealed.rawToken);
-    setCopied(true);
   }
 
   function openAction(token: TokenItem, nextAction: "rotate" | "revoke") {
@@ -137,7 +130,6 @@ export function OwnerTokensPanel() {
           },
         );
         setRevealed(response.token);
-        setCopied(false);
       } else {
         await ownerApi(`/api/owner/tokens/${actionToken.id}/revoke`, {
           method: "POST",
@@ -228,7 +220,13 @@ export function OwnerTokensPanel() {
             <div className="flex items-start justify-between gap-3"><div><p className="eyebrow text-[var(--champagne-deep)]">Yalnızca bir kez gösterilir</p><h3 id="revealed-token-title" className="mt-2 font-display text-3xl font-semibold">Tokenı şimdi kopyala.</h3></div><Button ref={revealedCloseRef} variant="quiet" aria-label="Token penceresini kapat" className="px-4" onClick={() => setRevealed(null)}><X className="size-4" /></Button></div>
             <p className="mt-3 text-sm leading-6 text-[var(--ink-soft)]">Bu pencere kapandıktan sonra ham token geri getirilemez; gerekirse listedeki kaydı güvenle yenile.</p>
             <code className="mt-5 block break-all rounded-[22px] border border-[var(--line)] bg-white/70 p-4 text-center text-base font-extrabold tracking-[0.08em]">{revealed.rawToken}</code>
-            <Button fullWidth className="mt-4" onClick={() => void copyToken()}>{copied ? <Check className="size-4" /> : <Copy className="size-4" />}{copied ? "Kopyalandı" : "Tokenı kopyala"}</Button>
+            <CopyButton
+              text={revealed.rawToken}
+              copyLabel="Tokenı kopyala"
+              copiedLabel="Kopyalandı"
+              fullWidth
+              className="mt-4"
+            />
           </div>
         </section>
       ) : null}
