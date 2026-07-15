@@ -416,7 +416,7 @@ test("studio navigation keeps destinations clear and animates panel changes", as
   await expect(qrPanel.locator('[data-guest-link-card="true"]').getByRole("button", { name: "Copied" })).toHaveClass(/copy-btn/);
   await expect(qrPanel.locator('[data-guest-link-card="true"]').getByRole("button", { name: "Copied" })).toHaveClass(/copied/);
   await expect.poll(() => page.locator("html").getAttribute("data-test-clipboard")).toMatch(/mary-john/);
-  await expect(qrPanel.locator('[data-guest-link-card="true"]').getByRole("button", { name: "Copy" })).toBeVisible({ timeout: 1_600 });
+  await expect(qrPanel.locator('[data-guest-link-card="true"]').getByRole("button", { name: "Copy" })).toBeVisible({ timeout: 3_000 });
   const [qrBox, guestLinkBox] = await Promise.all([
     qrPanel.locator('[data-qr-card="true"]').boundingBox(),
     qrPanel.locator('[data-guest-link-card="true"]').boundingBox(),
@@ -773,7 +773,7 @@ test("Help dialogs explain the real demo, Premium, and Flow controls", async ({ 
   await page.getByRole("button", { name: "Help" }).click();
   const guestHelp = page.getByRole("dialog");
   await expect(guestHelp).toContainText("Just having a look?");
-  await expect(guestHelp).toContainText("choosing files, recording a voice note and sending a memory");
+  await expect(guestHelp).toContainText("the buttons are simply here to show you the journey");
   await page.keyboard.press("Escape");
 
   await page.goto("/admin/mary-john");

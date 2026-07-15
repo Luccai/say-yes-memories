@@ -155,7 +155,7 @@ export const copy = {
       ],
       demoHelpCard: {
         title: "Just having a look?",
-        body: "Have a little look around and see how it feels. This preview shows you the guest journey, so choosing files, recording a voice note and sending a memory are not available here.",
+        body: "You’re taking a friendly tour of the guest page. In your own studio, guests can choose a photo or video, leave a voice note and send it straight to you. Here, the buttons are simply here to show you the journey — nothing will be sent.",
       },
       helpFooter: "If sharing is taking a little pause, this page will gently let you know before you choose a file.",
     },
@@ -303,7 +303,7 @@ export const copy = {
       helpTitle: "Set it up, then enjoy the moments.",
       helpBody:
         "Make the space feel like yours before the wedding, share your QR, then come back here to enjoy every photo, video, voice note and sweet message.",
-      helpSteps: ["Guest Memories keeps each new photo, video, voice note and message in one private inbox. Use Classic, Story or Compact to browse it.", "Private Storage starts at 50 GB. Guest uploads open at local midnight on the wedding day and Classic access lasts three calendar months; Premium adds 50 GB and six months.", "Wedding Page manages your profile photo, welcome note and upload switch. Only the owner can change names or the wedding date.", "QR + guest link gives you a premium QR card: copy the link or download PNG/SVG for tables and signs.", "Flow Mode is always in your main navigation. It plays memories oldest to newest in full screen; tap or click pauses or resumes, use the arrow keys to move, and choose full screen when your device supports it.", "View Guest Page under More opens your real guest page in a new tab. Your printed QR and link stay valid after a name change."],
+      helpSteps: ["Guest Memories keeps each new photo, video, voice note and message in one private inbox. Use Classic, Story or Compact to browse it.", "Private Storage starts at 50 GB. Guest uploads open at local midnight on the wedding day and Classic access lasts three calendar months; Premium adds 50 GB and six months.", "Wedding Page lets you update your profile photo, welcome note and upload switch. To keep your plans safe, the names and wedding date are managed by the person who opened the studio.", "QR + guest link gives you a premium QR card: copy the link or download PNG/SVG for tables and signs.", "Flow Mode is always in your main navigation. It plays memories oldest to newest in full screen; tap or click pauses or resumes, use the arrow keys to move, and choose full screen when your device supports it.", "View Guest Page under More opens your real guest page in a new tab. Your printed QR and link stay valid after a name change."],
       helpCards: [
         {
           title: "Just the two of you",
@@ -320,7 +320,7 @@ export const copy = {
       ],
       demoHelpCard: {
         title: "A little look around",
-        body: "Take your time and explore the studio together. This demo is here to show you around, so saving changes, copying your couple name and upgrading to Premium are not available here.",
+        body: "Take your time and explore the studio together. This is a gentle preview of the space you’ll have as a couple. When your own studio is ready, you’ll be able to save your details, copy your couple name and choose Premium right here.",
       },
       helpFooter: "Use the navigation to wander around your studio. In Private Storage, Download all memories creates one tidy ZIP for 24 hours; every memory also keeps its own download and delete options.",
       logout: "Logout",
@@ -463,7 +463,7 @@ export const copy = {
       ],
       demoHelpCard: {
         title: "¿Solo quieres echar un vistazo?",
-        body: "Date una vuelta y descubre cómo se siente. Esta vista previa te muestra el recorrido de los invitados, así que aquí no podrás elegir archivos, grabar una nota de voz ni enviar un recuerdo.",
+        body: "Estás dando un paseo tranquilo por la página de invitados. En su propio estudio, los invitados podrán elegir una foto o vídeo, dejar una nota de voz y enviársela directamente. Aquí los botones solo muestran el recorrido: no se enviará nada.",
       },
       helpFooter: "Si compartir está en pausa, esta página te lo contará con cariño antes de elegir un archivo.",
     },
@@ -610,7 +610,7 @@ export const copy = {
       helpTitle: "Prepárenlo y disfruten cada momento.",
       helpBody:
         "Hagan suyo este espacio antes de la boda, compartan el QR y vuelvan aquí para disfrutar cada foto, vídeo, nota de voz y mensaje bonito.",
-      helpSteps: ["Recuerdos de invitados reúne cada foto, vídeo, nota de voz y mensaje en una bandeja privada. Usa Clásico, Historia o Compacto para explorarlos.", "Almacenamiento privado comienza con 50 GB. Las cargas se abren a medianoche local el día de la boda y el acceso Classic dura tres meses naturales; Premium añade 50 GB y seis meses.", "Página de la boda gestiona la foto de perfil, el mensaje y el interruptor de cargas. Solo el propietario puede cambiar nombres o fecha.", "QR + enlace ofrece una tarjeta QR premium: copia el enlace o descarga PNG/SVG para mesas y carteles.", "El Modo secuencia siempre está en la navegación principal. Reproduce los recuerdos del más antiguo al más nuevo a pantalla completa; toca o haz clic para pausar o reanudar, usa las flechas para avanzar y elige pantalla completa si tu dispositivo la admite.", "Abrir página de invitados, dentro de Más, abre la página real en una pestaña nueva. El QR y enlace impresos siguen funcionando tras cambiar un nombre."],
+      helpSteps: ["Recuerdos de invitados reúne cada foto, vídeo, nota de voz y mensaje en una bandeja privada. Usa Clásico, Historia o Compacto para explorarlos.", "Almacenamiento privado comienza con 50 GB. Las cargas se abren a medianoche local el día de la boda y el acceso Classic dura tres meses naturales; Premium añade 50 GB y seis meses.", "Página de la boda les permite actualizar la foto de perfil, el mensaje y el interruptor de cargas. Para cuidar sus planes, los nombres y la fecha los gestiona quien abrió el estudio.", "QR + enlace ofrece una tarjeta QR premium: copia el enlace o descarga PNG/SVG para mesas y carteles.", "El Modo secuencia siempre está en la navegación principal. Reproduce los recuerdos del más antiguo al más nuevo a pantalla completa; toca o haz clic para pausar o reanudar, usa las flechas para avanzar y elige pantalla completa si tu dispositivo la admite.", "Abrir página de invitados, dentro de Más, abre la página real en una pestaña nueva. El QR y enlace impresos siguen funcionando tras cambiar un nombre."],
       helpCards: [
         {
           title: "Solo ustedes dos",
@@ -627,7 +627,7 @@ export const copy = {
       ],
       demoHelpCard: {
         title: "Un pequeño vistazo",
-        body: "Tómense su tiempo y recorran el estudio juntos. Esta demo es solo para enseñarles el espacio, así que guardar cambios, copiar el nombre de la pareja y pasar a Premium no están disponibles aquí.",
+        body: "Tómense su tiempo y recorran el estudio juntos. Es una pequeña vista previa del espacio que tendrán como pareja. Cuando su estudio esté listo, podrán guardar sus detalles, copiar el nombre de la pareja y elegir Premium aquí mismo.",
       },
       helpFooter: "Usen la navegación para recorrer el estudio. En Almacenamiento privado, Descargar todos los recuerdos crea un ZIP ordenado durante 24 horas; cada recuerdo también conserva sus opciones de descarga y eliminación.",
       logout: "Cerrar sesión",
@@ -770,7 +770,7 @@ export const copy = {
       ],
       demoHelpCard: {
         title: "Envie de jeter un œil ?",
-        body: "Prenez le temps de regarder et de découvrir l’ambiance. Cet aperçu montre le parcours des invités : choisir un fichier, enregistrer un message vocal ou envoyer un souvenir n’est pas possible ici.",
+        body: "Vous faites une petite visite de la page des invités. Dans votre propre studio, les invités pourront choisir une photo ou une vidéo, laisser un message vocal et vous l’envoyer directement. Ici, les boutons montrent simplement le parcours : rien ne sera envoyé.",
       },
       helpFooter: "Si le partage fait une petite pause, cette page vous le dira doucement avant le choix du fichier.",
     },
@@ -917,7 +917,7 @@ export const copy = {
       helpTitle: "Préparez-le, puis savourez chaque instant.",
       helpBody:
         "Faites de cet espace le vôtre avant le mariage, partagez le QR puis revenez ici pour savourer chaque photo, vidéo, message vocal et petit mot.",
-      helpSteps: ["Souvenirs invités rassemble chaque photo, vidéo, message vocal et note dans une boîte privée. Utilisez Classique, Story ou Compact pour les parcourir.", "Le Stockage privé commence à 50 Go. Les envois s’ouvrent à minuit, heure locale, le jour du mariage et l’accès Classic dure trois mois calendaires ; Premium ajoute 50 Go et six mois.", "Page du mariage gère la photo de profil, le message d’accueil et l’interrupteur des envois. Seul le propriétaire peut changer les prénoms ou la date.", "QR + lien propose une carte QR premium : copiez le lien ou téléchargez un PNG/SVG pour les tables et affiches.", "Le Mode défilement reste toujours dans la navigation principale. Il lit les souvenirs du plus ancien au plus récent en plein écran ; touchez ou cliquez pour mettre en pause ou reprendre, utilisez les flèches pour naviguer et choisissez le plein écran si votre appareil le permet.", "Ouvrir la page invités, sous Plus, ouvre votre vraie page invités dans un nouvel onglet. Le QR et le lien imprimés restent valides après un changement de prénom."],
+      helpSteps: ["Souvenirs invités rassemble chaque photo, vidéo, message vocal et note dans une boîte privée. Utilisez Classique, Story ou Compact pour les parcourir.", "Le Stockage privé commence à 50 Go. Les envois s’ouvrent à minuit, heure locale, le jour du mariage et l’accès Classic dure trois mois calendaires ; Premium ajoute 50 Go et six mois.", "Page du mariage vous permet de mettre à jour la photo de profil, le message d’accueil et l’ouverture des envois. Pour protéger vos projets, les prénoms et la date sont gérés par la personne qui a ouvert le studio.", "QR + lien propose une carte QR premium : copiez le lien ou téléchargez un PNG/SVG pour les tables et affiches.", "Le Mode défilement reste toujours dans la navigation principale. Il lit les souvenirs du plus ancien au plus récent en plein écran ; touchez ou cliquez pour mettre en pause ou reprendre, utilisez les flèches pour naviguer et choisissez le plein écran si votre appareil le permet.", "Ouvrir la page invités, sous Plus, ouvre votre vraie page invités dans un nouvel onglet. Le QR et le lien imprimés restent valides après un changement de prénom."],
       helpCards: [
         {
           title: "Rien que pour vous deux",
@@ -934,7 +934,7 @@ export const copy = {
       ],
       demoHelpCard: {
         title: "Un petit tour",
-        body: "Prenez votre temps et découvrez le studio à deux. Cette démo est là pour vous le faire découvrir : enregistrer des modifications, copier le nom du couple et passer à Premium n’y sont pas possibles.",
+        body: "Prenez votre temps et découvrez le studio à deux. C’est un aperçu tout doux de l’espace que vous aurez comme couple. Quand votre studio sera prêt, vous pourrez enregistrer vos détails, copier le nom du couple et choisir Premium ici même.",
       },
       helpFooter: "Utilisez la navigation pour parcourir le studio. Dans Stockage privé, Télécharger tous les souvenirs prépare un ZIP pendant 24 heures ; chaque souvenir conserve aussi ses options de téléchargement et de suppression.",
       logout: "Déconnexion",
@@ -1077,7 +1077,7 @@ export const copy = {
       ],
       demoHelpCard: {
         title: "Nur mal umschauen?",
-        body: "Schau dich gern um und entdecke, wie es sich anfühlt. Diese Vorschau zeigt dir den Weg der Gäste; Dateien auswählen, eine Sprachnachricht aufnehmen und eine Erinnerung senden geht hier noch nicht.",
+        body: "Du machst gerade einen kleinen Rundgang durch die Gästeseite. Im eigenen Studio können Gäste ein Foto oder Video wählen, eine Sprachnachricht hinterlassen und sie direkt an euch senden. Hier zeigen die Buttons nur den Ablauf – es wird nichts verschickt.",
       },
       helpFooter: "Macht das Teilen eine kleine Pause, sagt dir diese Seite vor der Dateiauswahl freundlich Bescheid.",
     },
@@ -1224,7 +1224,7 @@ export const copy = {
       helpTitle: "Richtet es ein und genießt jeden Moment.",
       helpBody:
         "Macht diesen Ort vor der Hochzeit zu eurem, teilt euren QR und kommt hierher zurück, um jedes Foto, Video, jede Sprachnachricht und jede liebe Nachricht zu genießen.",
-      helpSteps: ["Gäste-Erinnerungen sammelt jedes neue Foto, Video, jede Sprachnachricht und Nachricht in einem privaten Postfach. Nutzt Klassisch, Story oder Kompakt zum Durchsehen.", "Privater Speicher startet mit 50 GB. Uploads öffnen am Hochzeitstag um Mitternacht Ortszeit und Classic-Zugang dauert drei Kalendermonate; Premium fügt 50 GB und sechs Monate hinzu.", "Hochzeitsseite verwaltet Profilfoto, Willkommensnachricht und Upload-Schalter. Nur der Eigentümer kann Namen oder Hochzeitsdatum ändern.", "QR + Link bietet eine hochwertige QR-Karte: Kopiert den Link oder ladet PNG/SVG für Tische und Schilder herunter.", "Der Ablaufmodus bleibt immer in der Hauptnavigation sichtbar. Er spielt Erinnerungen von alt nach neu im Vollbild ab; Tippen oder Klicken pausiert oder setzt fort, mit den Pfeiltasten wechselst du, und bei unterstützten Geräten kannst du Vollbild wählen.", "Gästeseite öffnen unter Mehr öffnet eure echte Gästeseite in einem neuen Tab. Gedruckter QR und Link bleiben nach einer Namensänderung gültig."],
+      helpSteps: ["Gäste-Erinnerungen sammelt jedes neue Foto, Video, jede Sprachnachricht und Nachricht in einem privaten Postfach. Nutzt Klassisch, Story oder Kompakt zum Durchsehen.", "Privater Speicher startet mit 50 GB. Uploads öffnen am Hochzeitstag um Mitternacht Ortszeit und Classic-Zugang dauert drei Kalendermonate; Premium fügt 50 GB und sechs Monate hinzu.", "Auf der Hochzeitsseite könnt ihr Profilfoto, Willkommensnachricht und Upload-Schalter anpassen. Damit eure Planung geschützt bleibt, werden Namen und Hochzeitsdatum von der Person verwaltet, die das Studio eröffnet hat.", "QR + Link bietet eine hochwertige QR-Karte: Kopiert den Link oder ladet PNG/SVG für Tische und Schilder herunter.", "Der Ablaufmodus bleibt immer in der Hauptnavigation sichtbar. Er spielt Erinnerungen von alt nach neu im Vollbild ab; Tippen oder Klicken pausiert oder setzt fort, mit den Pfeiltasten wechselst du, und bei unterstützten Geräten kannst du Vollbild wählen.", "Gästeseite öffnen unter Mehr öffnet eure echte Gästeseite in einem neuen Tab. Gedruckter QR und Link bleiben nach einer Namensänderung gültig."],
       helpCards: [
         {
           title: "Nur ihr zwei",
@@ -1241,7 +1241,7 @@ export const copy = {
       ],
       demoHelpCard: {
         title: "Ein kleiner Rundgang",
-        body: "Nehmt euch Zeit und entdeckt das Studio gemeinsam. Diese Demo zeigt euch alles in Ruhe; Änderungen speichern, euren Paarnamen kopieren und auf Premium erweitern geht hier noch nicht.",
+        body: "Nehmt euch Zeit und entdeckt das Studio gemeinsam. Es ist ein kleiner Vorgeschmack auf euren Raum als Paar. Sobald euer eigenes Studio bereit ist, könnt ihr eure Angaben speichern, euren Paarnamen kopieren und Premium direkt hier wählen.",
       },
       helpFooter: "Über die Navigation könnt ihr durch euer Studio schlendern. Unter Privater Speicher erstellt Alle Erinnerungen herunterladen für 24 Stunden ein ZIP; jede Erinnerung behält ihre Download- und Löschoptionen.",
       logout: "Abmelden",
@@ -1384,7 +1384,7 @@ export const copy = {
       ],
       demoHelpCard: {
         title: "Quer só dar uma olhadinha?",
-        body: "Fique à vontade para conhecer como tudo funciona. Esta prévia mostra a jornada dos convidados, por isso escolher arquivos, gravar uma mensagem de voz e enviar uma memória ainda não estão disponíveis aqui.",
+        body: "Você está fazendo uma visita tranquila pela página dos convidados. No próprio estúdio, os convidados podem escolher uma foto ou vídeo, deixar uma mensagem de voz e enviar tudo diretamente para vocês. Aqui, os botões só mostram o caminho — nada será enviado.",
       },
       helpFooter: "Se o compartilhamento estiver em uma pequena pausa, esta página vai avisar com carinho antes de você escolher um arquivo.",
     },
@@ -1531,7 +1531,7 @@ export const copy = {
       helpTitle: "Preparem e aproveitem cada momento.",
       helpBody:
         "Deixem este espaço com a cara de vocês antes do casamento, compartilhem o QR e voltem aqui para curtir cada foto, vídeo, mensagem de voz e recadinho.",
-      helpSteps: ["Memórias dos convidados reúne cada foto, vídeo, mensagem de voz e texto em uma caixa privada. Use Clássico, História ou Compacto para navegar.", "O Armazenamento privado começa com 50 GB. Os envios abrem à meia-noite local no dia do casamento e o acesso Classic dura três meses-calendário; Premium adiciona 50 GB e seis meses.", "Página do casamento gerencia a foto de perfil, a mensagem e o controle de envios. Só o proprietário pode mudar nomes ou a data do casamento.", "QR + link oferece um cartão QR premium: copie o link ou baixe PNG/SVG para mesas e placas.", "O Modo sequência fica sempre na navegação principal. Ele reproduz as memórias da mais antiga à mais nova em tela cheia; toque ou clique para pausar ou retomar, use as setas para avançar e escolha a tela cheia se o dispositivo oferecer suporte.", "Abrir página dos convidados, em Mais, abre a página real em uma nova aba. O QR e link impressos continuam válidos depois de mudar um nome."],
+      helpSteps: ["Memórias dos convidados reúne cada foto, vídeo, mensagem de voz e texto em uma caixa privada. Use Clássico, História ou Compacto para navegar.", "O Armazenamento privado começa com 50 GB. Os envios abrem à meia-noite local no dia do casamento e o acesso Classic dura três meses-calendário; Premium adiciona 50 GB e seis meses.", "Página do casamento permite atualizar a foto de perfil, a mensagem e o controle de envios. Para cuidar dos planos de vocês, os nomes e a data são gerenciados por quem abriu o estúdio.", "QR + link oferece um cartão QR premium: copie o link ou baixe PNG/SVG para mesas e placas.", "O Modo sequência fica sempre na navegação principal. Ele reproduz as memórias da mais antiga à mais nova em tela cheia; toque ou clique para pausar ou retomar, use as setas para avançar e escolha a tela cheia se o dispositivo oferecer suporte.", "Abrir página dos convidados, em Mais, abre a página real em uma nova aba. O QR e link impressos continuam válidos depois de mudar um nome."],
       helpCards: [
         {
           title: "Só vocês dois",
@@ -1548,7 +1548,7 @@ export const copy = {
       ],
       demoHelpCard: {
         title: "Um pequeno passeio",
-        body: "Fiquem à vontade para conhecer o estúdio juntos. Esta demo é só para mostrar o caminho, por isso salvar mudanças, copiar o nome do casal e passar para o Premium ainda não estão disponíveis aqui.",
+        body: "Fiquem à vontade para conhecer o estúdio juntos. É uma pequena prévia do espaço que terão como casal. Quando o estúdio de vocês estiver pronto, poderão salvar os detalhes, copiar o nome do casal e escolher Premium aqui mesmo.",
       },
       helpFooter: "Usem a navegação para passear pelo estúdio. Em Armazenamento privado, Baixar todas as memórias cria um ZIP por 24 horas; cada memória também mantém suas opções de baixar e excluir.",
       logout: "Sair",
@@ -1691,7 +1691,7 @@ export const copy = {
       ],
       demoHelpCard: {
         title: "先逛一逛吧",
-        body: "随意看看，感受一下整个流程。这一页只是带你体验宾客的分享步骤，所以暂时不能选文件、录语音或发送回忆。",
+        body: "你正在轻松逛一逛宾客页面。在你们自己的空间里，宾客可以选择照片或视频、留下语音，并直接发送给你们。这里的按钮只是带你体验流程，不会发送任何内容。",
       },
       helpFooter: "如果分享暂时休息一下，选文件前页面会温柔地告诉你。",
     },
@@ -1836,7 +1836,7 @@ export const copy = {
       helpTitle: "准备好，然后享受每一个瞬间。",
       helpBody:
         "婚礼前把这个空间布置成你们喜欢的样子，分享二维码，然后回到这里享受每张照片、每段视频、语音和暖心留言。",
-      helpSteps: ["宾客回忆会把每张新照片、视频、语音和留言汇集到一个私密收件箱。可用经典、故事或紧凑布局浏览。", "私人存储起始为 50 GB。婚礼当天当地时间零点开放上传，Classic 访问期为三个自然月；Premium 增加 50 GB 和六个月。", "婚礼页面管理头像、欢迎语和上传开关。只有所有者可以更改姓名或婚礼日期。", "二维码 + 链接提供高级二维码卡：复制链接，或下载 PNG/SVG 用于桌卡和标牌。", "回忆播放模式始终显示在主导航中，会按从旧到新的顺序全屏播放回忆；轻点或点击可暂停或继续，使用方向键切换，设备支持时可进入全屏。", "“更多”中的“打开宾客页面”会在新标签页打开真实宾客页面。改名后，已打印的二维码和链接仍然有效。"],
+      helpSteps: ["宾客回忆会把每张新照片、视频、语音和留言汇集到一个私密收件箱。可用经典、故事或紧凑布局浏览。", "私人存储起始为 50 GB。婚礼当天当地时间零点开放上传，Classic 访问期为三个自然月；Premium 增加 50 GB 和六个月。", "婚礼页面可让你们更新头像、欢迎语和上传开关。为了照顾好你们的计划，姓名和婚礼日期由开设空间的人管理。", "二维码 + 链接提供高级二维码卡：复制链接，或下载 PNG/SVG 用于桌卡和标牌。", "回忆播放模式始终显示在主导航中，会按从旧到新的顺序全屏播放回忆；轻点或点击可暂停或继续，使用方向键切换，设备支持时可进入全屏。", "“更多”中的“打开宾客页面”会在新标签页打开真实宾客页面。改名后，已打印的二维码和链接仍然有效。"],
       helpCards: [
         {
           title: "只属于你们两人",
@@ -1853,7 +1853,7 @@ export const copy = {
       ],
       demoHelpCard: {
         title: "先逛一逛吧",
-        body: "慢慢一起看看你们的工作室吧。这个演示只是带你们熟悉流程，所以暂时不能保存修改、复制新人姓名或升级 Premium。",
+        body: "慢慢一起看看你们的工作室吧。这是你们作为一对新人将拥有的空间的小小预览。自己的空间准备好后，就能在这里保存信息、复制新人姓名并选择 Premium。",
       },
       helpFooter: "用导航慢慢逛逛工作室吧。在私人存储中，“下载全部回忆”会生成一个可下载 24 小时的 ZIP 文件；每段回忆也会保留自己的下载和删除选项。",
       logout: "退出",
