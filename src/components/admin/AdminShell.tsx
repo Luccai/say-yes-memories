@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   StudioNavigation,
   type AdminPanel,
@@ -38,7 +37,6 @@ export function AdminShell({
 }: AdminShellProps) {
   const [activePanel, setActivePanel] = useState<AdminPanel>("memories");
   const [memoriesEntrySequence, setMemoriesEntrySequence] = useState(0);
-  const reduceMotion = useReducedMotion();
 
   function changePanel(panel: AdminPanel) {
     if (panel === "memories" && activePanel !== "memories") {
@@ -75,50 +73,27 @@ export function AdminShell({
           <StudioHeader wedding={wedding} onHelp={onHelp} />
 
           <div className="grid">
-            <motion.section
+            <section
               data-admin-panel="memories"
               data-panel-motion="enter-exit"
               aria-hidden={activePanel !== "memories"}
-              initial={false}
-              animate={
-                activePanel === "memories"
-                  ? { display: "grid", opacity: 1, y: 0 }
-                  : { opacity: 0, y: 8, transitionEnd: { display: "none" } }
-              }
-              transition={{
-                duration: reduceMotion ? 0 : 0.24,
-                ease: [0.22, 1, 0.36, 1],
-              }}
-              className="[grid-area:1/1] grid gap-5"
+              className={`[grid-area:1/1] gap-5 ${
+                activePanel === "memories" ? "grid" : "hidden"
+              }`}
             >
               {memoriesPanel(memoriesEntrySequence)}
-            </motion.section>
+            </section>
 
-            <AnimatePresence mode="wait" initial={false}>
-              {activePanel !== "memories" ? (
-                <motion.section
-                  key={activePanel}
-                  data-admin-panel={activePanel}
-                  data-panel-motion="enter-exit"
-                  initial={
-                    reduceMotion ? false : { opacity: 0, y: 14, scale: 0.992 }
-                  }
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={
-                    reduceMotion
-                      ? undefined
-                      : { opacity: 0, y: -6, scale: 0.996 }
-                  }
-                  transition={{
-                    duration: reduceMotion ? 0 : 0.24,
-                    ease: [0.22, 1, 0.36, 1],
-                  }}
-                  className="[grid-area:1/1] grid gap-5"
-                >
-                  {activeSecondaryPanel}
-                </motion.section>
-              ) : null}
-            </AnimatePresence>
+            {activePanel !== "memories" ? (
+              <section
+                key={activePanel}
+                data-admin-panel={activePanel}
+                data-panel-motion="enter-exit"
+                className="app-panel-enter [grid-area:1/1] grid gap-5"
+              >
+                {activeSecondaryPanel}
+              </section>
+            ) : null}
           </div>
         </div>
       </div>

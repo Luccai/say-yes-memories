@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentWeddingFromCookie } from "@/lib/auth";
-import { createSignedUploadTarget } from "@/lib/storage/storage-service";
+import { createProfileSignedUploadTarget } from "@/lib/storage/storage-service";
 
 type PrepareProfileUploadBody = {
   fileName?: string;
@@ -28,19 +28,30 @@ export async function POST(request: Request) {
   }
 
   try {
-    const upload = await createSignedUploadTarget(
+    const upload = await createProfileSignedUploadTarget(
       {
         name: String(body.fileName ?? "profile-media"),
         type: String(body.mimeType ?? "application/octet-stream"),
         size: byteSize,
       },
-      { weddingId: current.wedding.id, folder: "profile", allowedKinds: ["image"] },
+      {
+        weddingId: current.wedding.id,
+        allowedKinds: ["image"],
+        maxBytes: PROFILE_PHOTO_MAX_BYTES,
+      },
     );
 
     return NextResponse.json({ upload });
   } catch (error) {
+    const message =
+      error instanceof Error &&
+      (error.message.includes("accepted") ||
+        error.message.includes("empty") ||
+        error.message.includes("extension"))
+        ? error.message
+        : "Could not prepare profile upload. Please try again.";
     return NextResponse.json(
-      { message: error instanceof Error ? error.message : "Could not prepare profile upload." },
+      { message },
       { status: 400 },
     );
   }

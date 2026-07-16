@@ -12,7 +12,7 @@ import { createId, createStudioCode, hashToken, SESSION_MAX_AGE_SECONDS } from "
 import { toPublicWedding } from "@/lib/public-wedding";
 import { makeBaseWeddingSlug, makeCoupleName } from "@/lib/text";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { createSignedStorageUrl, deleteStoredFile } from "@/lib/storage/storage-service";
+import { createSignedStorageUrl } from "@/lib/storage/storage-service";
 import type { MediaLibraryCounts, MediaLibraryOrder } from "@/lib/media-library";
 import {
   buildActivationFallbackWindow,
@@ -828,43 +828,14 @@ export async function updateMediaForWedding(
 }
 
 export async function deleteMedia(mediaId: string, weddingId: string) {
-  const supabase = getSupabaseAdmin();
-  const { data: existing, error: existingError } = await supabase
-    .from("wedding_media")
-    .select("*")
-    .eq("id", mediaId)
-    .eq("wedding_id", weddingId)
-    .maybeSingle();
-
-  if (existingError) {
-    throw new Error(existingError.message);
-  }
-
-  if (!existing) {
-    return false;
-  }
-
-  await deleteStoredFile(existing.storage_path);
-  await deleteStoredFile(existing.thumbnail_path);
-
-  const { error } = await supabase
-    .from("wedding_media")
-    .delete()
-    .eq("id", mediaId)
-    .eq("wedding_id", weddingId);
-
+  const { data, error } = await getSupabaseAdmin().rpc("queue_media_deletion_v2", {
+    p_media_id: mediaId,
+    p_wedding_id: weddingId,
+    p_now: new Date().toISOString(),
+  });
   if (error) {
+    if (error.message.includes("Media was not found")) return false;
     throw new Error(error.message);
   }
-
-  const { error: updateWeddingError } = await supabase.rpc("decrement_wedding_storage_usage", {
-    p_wedding_id: weddingId,
-    p_byte_size: existing.byte_size,
-  });
-
-  if (updateWeddingError) {
-    throw new Error(updateWeddingError.message);
-  }
-
-  return true;
+  return Boolean(data);
 }

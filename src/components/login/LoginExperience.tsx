@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 import Link from "next/link";
-import { motion, useReducedMotion } from "motion/react";
+import dynamic from "next/dynamic";
 import {
   ArrowLeft,
   ArrowRight,
@@ -24,12 +24,10 @@ import type { PublicWedding } from "@/lib/types";
 import { BrandMark } from "@/components/shared/BrandMark";
 import { BorderBeam } from "@/components/shared/BorderBeam";
 import { Button } from "@/components/shared/Button";
-import { CalendarDatePicker } from "@/components/shared/CalendarDatePicker";
 import {
-  GuidanceDialog,
   GuidanceTriggerButton,
   HelpTriggerButton,
-} from "@/components/shared/GuidanceDialog";
+} from "@/components/shared/GuidanceTriggerButton";
 import { MediaOrb } from "@/components/shared/MediaOrb";
 import {
   forgetRememberedMembership,
@@ -40,6 +38,13 @@ import {
 import { normalizeEtsyToken } from "@/lib/auth/etsy-token";
 import { todayCalendarDate } from "@/lib/calendar-date";
 import { useAuthCopy, useCopy, useLocale } from "@/lib/i18n-client";
+
+const CalendarDatePicker = dynamic(() =>
+  import("@/components/shared/CalendarDatePicker").then((module) => module.CalendarDatePicker),
+);
+const GuidanceDialog = dynamic(() =>
+  import("@/components/shared/GuidanceDialog").then((module) => module.GuidanceDialog),
+);
 
 type LoginMode = "activate" | "token" | "recover" | "remembered";
 type ActivationStep = "token" | "details";
@@ -163,16 +168,9 @@ export function LoginExperience({
   const [error, setError] = useState("");
   const [helpOpen, setHelpOpen] = useState(false);
   const [privacyOpen, setPrivacyOpen] = useState(false);
-  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
-    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
     let active = true;
-    queueMicrotask(() => {
-      if (active) {
-        setForm((current) => ({ ...current, timezone }));
-      }
-    });
 
     if (initialSession) {
       rememberMembership(initialSession);
@@ -230,6 +228,8 @@ export function LoginExperience({
       return false;
     }
 
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    setForm((current) => ({ ...current, timezone }));
     setActivationStep("details");
     return true;
   }
@@ -325,7 +325,7 @@ export function LoginExperience({
 
   return (
     <main className="min-h-[100dvh] px-3 py-3 text-[var(--ink)] sm:px-6 sm:py-6 lg:px-10">
-      <div className="mx-auto flex min-h-[calc(100dvh-1.5rem)] max-w-[48rem] items-center justify-center overflow-hidden rounded-[30px] border border-white/65 bg-[rgba(255,250,243,0.74)] backdrop-blur-xl sm:min-h-[calc(100dvh-3rem)] sm:rounded-[38px]">
+      <div className="mx-auto flex min-h-[calc(100dvh-1.5rem)] max-w-[48rem] items-center justify-center overflow-hidden rounded-[30px] border border-white/65 bg-[rgba(255,250,243,0.74)] backdrop-blur-none sm:min-h-[calc(100dvh-3rem)] sm:rounded-[38px] sm:backdrop-blur-xl">
         <section className="w-full p-4 sm:p-8 lg:p-12">
           <div className="mx-auto w-full max-w-[34rem]">
             <div
@@ -517,12 +517,9 @@ export function LoginExperience({
                       </div>
                     ) : null}
 
-                    <motion.div
+                    <div
                       key={`${mode}-${activationStep}`}
-                      initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: prefersReducedMotion ? 0 : 0.24, ease: [0.22, 1, 0.36, 1] }}
-                      className="mt-6 grid gap-4"
+                      className="app-panel-enter mt-6 grid gap-4"
                     >
                       {mode === "activate" && activationStep === "details" ? (
                         <>
@@ -675,7 +672,7 @@ export function LoginExperience({
                           ) : null}
                         </>
                       ) : null}
-                    </motion.div>
+                    </div>
 
                     {mode === "token" ? (
                       <div className="mt-6 grid w-full justify-items-center gap-3">
@@ -734,6 +731,7 @@ export function LoginExperience({
                 {mode === "activate" ? (
                   <Link
                     href="/admin/mary-john"
+                    prefetch={false}
                     data-login-demo-action="true"
                     data-demo-icon="camera"
                     className="focus-ring mx-auto mt-3 flex min-h-12 w-full max-w-[22rem] items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white/62 px-5 py-3 text-sm font-extrabold transition hover:bg-white motion-safe:hover:-translate-y-0.5 motion-safe:active:translate-y-0 motion-safe:active:scale-[0.975]"
@@ -749,33 +747,37 @@ export function LoginExperience({
         </section>
       </div>
 
-      <GuidanceDialog
-        open={helpOpen}
-        onClose={() => setHelpOpen(false)}
-        closeLabel={text.close}
-        eyebrow={text.login.helpEyebrow}
-        title={text.login.helpTitle}
-        body={text.login.helpBody}
-        steps={text.login.steps}
-        cards={text.login.helpCards}
-        footer={text.login.helpFooter}
-      />
-      <GuidanceDialog
-        open={privacyOpen}
-        onClose={() => setPrivacyOpen(false)}
-        closeLabel={text.close}
-        eyebrow={text.privacy.eyebrow}
-        title={text.privacy.title}
-        body={text.privacy.intro}
-        steps={[]}
-        cards={text.privacy.sections}
-        footer={text.privacy.updated}
-        action={{
-          href: "https://www.cloudflare.com/en-gb/turnstile-privacy-policy/",
-          label: text.privacy.turnstileButton,
-          ariaLabel: text.privacy.turnstileLink,
-        }}
-      />
+      {helpOpen ? (
+        <GuidanceDialog
+          open
+          onClose={() => setHelpOpen(false)}
+          closeLabel={text.close}
+          eyebrow={text.login.helpEyebrow}
+          title={text.login.helpTitle}
+          body={text.login.helpBody}
+          steps={text.login.steps}
+          cards={text.login.helpCards}
+          footer={text.login.helpFooter}
+        />
+      ) : null}
+      {privacyOpen ? (
+        <GuidanceDialog
+          open
+          onClose={() => setPrivacyOpen(false)}
+          closeLabel={text.close}
+          eyebrow={text.privacy.eyebrow}
+          title={text.privacy.title}
+          body={text.privacy.intro}
+          steps={[]}
+          cards={text.privacy.sections}
+          footer={text.privacy.updated}
+          action={{
+            href: "https://www.cloudflare.com/en-gb/turnstile-privacy-policy/",
+            label: text.privacy.turnstileButton,
+            ariaLabel: text.privacy.turnstileLink,
+          }}
+        />
+      ) : null}
     </main>
   );
 }

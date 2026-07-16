@@ -142,9 +142,10 @@ export function reserveGuestUpload(input: {
   thumbnailByteSize?: number;
   guestName: string;
   note?: string;
+  abuseKeyHash: string;
   now: string;
 }) {
-  return reservationRpc("reserve_guest_upload_v1", {
+  return reservationRpc("reserve_guest_upload_v2", {
     p_id: input.id,
     p_client_request_key_hash: input.clientRequestKeyHash,
     p_secret_hash: input.secretHash,
@@ -166,6 +167,7 @@ export function reserveGuestUpload(input: {
     p_thumbnail_byte_size: input.thumbnailByteSize ?? null,
     p_guest_name: input.guestName,
     p_note: input.note ?? null,
+    p_abuse_key_hash: input.abuseKeyHash,
     p_now: input.now,
   });
 }
@@ -296,16 +298,35 @@ export async function listExpiredUploadReservations(now: string, limit = 100) {
   return ((data ?? []) as ReservationRow[]).map(reservationFromRow);
 }
 
-export async function listReleasedUploadReservations(limit = 100) {
-  const { data, error } = await getSupabaseAdmin()
+export async function listReleasedUploadReservations(now: string, limit = 100) {
+  const boundedLimit = Math.min(Math.max(Math.trunc(limit), 1), 500);
+  const supabase = getSupabaseAdmin();
+  const { data: released, error: releasedError } = await supabase
     .from("upload_reservations")
     .select("*")
     .in("status", ["aborted", "expired"])
     .is("storage_cleaned_at", null)
     .order("last_activity_at", { ascending: true })
-    .limit(Math.min(Math.max(Math.trunc(limit), 1), 500));
-  if (error) throw new Error(error.message);
-  return ((data ?? []) as ReservationRow[]).map(reservationFromRow);
+    .limit(boundedLimit);
+  if (releasedError) throw new Error(releasedError.message);
+
+  const remaining = boundedLimit - (released?.length ?? 0);
+  if (remaining <= 0) {
+    return ((released ?? []) as ReservationRow[]).map(reservationFromRow);
+  }
+  const replayWindowClosedAt = new Date(Date.parse(now) - 20 * 60 * 1000).toISOString();
+  const { data: completed, error: completedError } = await supabase
+    .from("upload_reservations")
+    .select("*")
+    .eq("status", "completed")
+    .is("storage_cleaned_at", null)
+    .lte("completed_at", replayWindowClosedAt)
+    .order("completed_at", { ascending: true })
+    .limit(remaining);
+  if (completedError) throw new Error(completedError.message);
+  return ([...(released ?? []), ...(completed ?? [])] as ReservationRow[]).map(
+    reservationFromRow,
+  );
 }
 
 export function markUploadStorageCleanup(input: {

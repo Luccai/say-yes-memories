@@ -32,6 +32,9 @@ export function parseCustomerWeddingUpdate(value: unknown): CustomerWeddingUpdat
     if (typeof input.welcomeNote !== "string") {
       throw new Error("Guest message must be text.");
     }
+    if (input.welcomeNote.length > 2000) {
+      throw new Error("Guest message must be 2,000 characters or fewer.");
+    }
     patch.welcomeNote = input.welcomeNote;
   }
 

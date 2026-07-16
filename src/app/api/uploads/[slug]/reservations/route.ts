@@ -18,6 +18,7 @@ import {
   deriveUploadIdentity,
   hashUploadRequestKey,
   hashUploadSecret,
+  hashGuestUploadAbuseKey,
 } from "@/lib/uploads/security";
 import {
   abortUploadReservation,
@@ -37,6 +38,7 @@ const defaultDependencies = {
   abortMultipartR2Upload,
   createReservationSignedTarget,
   deleteStoredFile,
+  hashGuestUploadAbuseKey,
 };
 
 type Dependencies = typeof defaultDependencies;
@@ -118,6 +120,10 @@ export function createReservationPost(
       thumbnailByteSize: input.thumbnail?.byteSize,
       guestName: input.guestName,
       note: input.note,
+      abuseKeyHash: dependencies.hashGuestUploadAbuseKey(
+        request,
+        resolved.wedding.id,
+      ),
       now: new Date().toISOString(),
     });
 

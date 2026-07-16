@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
-import { AppMotionProvider } from "@/components/shared/AppMotionProvider";
 import { I18nProvider } from "@/lib/i18n-client";
 import { authCopy, copy, detectLocale } from "@/lib/i18n";
 import "./globals.css";
@@ -38,7 +37,7 @@ export default async function RootLayout({
         suppressHydrationWarning
       >
         <I18nProvider locale={locale} text={copy[locale]} authText={authCopy[locale]}>
-          <AppMotionProvider>{children}</AppMotionProvider>
+          {children}
         </I18nProvider>
       </body>
     </html>

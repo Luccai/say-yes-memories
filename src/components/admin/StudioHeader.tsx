@@ -1,6 +1,6 @@
 "use client";
 
-import { HelpTriggerButton } from "@/components/shared/GuidanceDialog";
+import { HelpTriggerButton } from "@/components/shared/GuidanceTriggerButton";
 import { MediaOrb } from "@/components/shared/MediaOrb";
 import { useCopy } from "@/lib/i18n-client";
 import type { Wedding } from "@/lib/types";
@@ -22,6 +22,7 @@ export function StudioHeader({ wedding, onHelp }: StudioHeaderProps) {
         <MediaOrb
           media={wedding.profileMedia}
           label={wedding.coupleName}
+          priority={false}
           className="h-[4.5rem] w-[3.5rem] shrink-0 sm:h-24 sm:w-20"
         />
         <div className="relative min-w-0 flex-1 pr-12 [container-type:inline-size]">

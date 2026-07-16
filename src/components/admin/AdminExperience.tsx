@@ -8,22 +8,17 @@ import {
   useRef,
   useState,
 } from "react";
+import dynamic from "next/dynamic";
 import type { Wedding, WeddingMedia } from "@/lib/types";
 import {
   clearRetainedMediaCache,
   evictCachedMedia,
   storeInstantMediaCache,
 } from "@/components/shared/CachedMediaImage";
-import { GuidanceDialog } from "@/components/shared/GuidanceDialog";
 import { AppToast, type AppToastMessage } from "@/components/shared/AppToast";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { MemoriesPanel } from "@/components/admin/panels/MemoriesPanel";
-import { StoragePanel } from "@/components/admin/panels/StoragePanel";
-import {
-  WeddingPagePanel,
-  type CustomerWeddingPatch,
-} from "@/components/admin/panels/WeddingPagePanel";
-import { QrPanel } from "@/components/admin/panels/QrPanel";
+import type { CustomerWeddingPatch } from "@/components/admin/panels/WeddingPagePanel";
 import { compressProfilePhoto } from "@/components/admin/profile-photo";
 import { requestProfileMediaRemoval } from "@/components/admin/profile-photo-removal";
 import type {
@@ -48,6 +43,21 @@ import {
   localizeDemoMedia,
   localizeDemoWedding,
 } from "@/lib/demo-content";
+
+const StoragePanel = dynamic(() =>
+  import("@/components/admin/panels/StoragePanel").then((module) => module.StoragePanel),
+);
+const WeddingPagePanel = dynamic(() =>
+  import("@/components/admin/panels/WeddingPagePanel").then(
+    (module) => module.WeddingPagePanel,
+  ),
+);
+const QrPanel = dynamic(() =>
+  import("@/components/admin/panels/QrPanel").then((module) => module.QrPanel),
+);
+const GuidanceDialog = dynamic(() =>
+  import("@/components/shared/GuidanceDialog").then((module) => module.GuidanceDialog),
+);
 
 type AdminExperienceProps = {
   initialWedding: Wedding;
@@ -139,6 +149,7 @@ export function AdminExperience({
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState("");
   const demoHydratedRef = useRef(!demoMode);
+  const [demoHydrated, setDemoHydrated] = useState(!demoMode);
   const toastIdRef = useRef(0);
   const [toast, setToast] = useState<AppToastMessage | null>(null);
   const text = useCopy();
@@ -222,6 +233,7 @@ export function AdminExperience({
       setMediaCounts(countMediaLibrary(nextMedia));
       persistDemoLocalState(nextWedding, nextMedia);
       demoHydratedRef.current = true;
+      setDemoHydrated(true);
 
       if (!subscribed) {
         subscribed = true;
@@ -231,12 +243,11 @@ export function AdminExperience({
       }
     }
 
-    const timeoutId = window.setTimeout(() => void hydrateDemoState(), 5_000);
+    void hydrateDemoState();
 
     return () => {
       active = false;
       unsubscribe();
-      window.clearTimeout(timeoutId);
     };
   }, [demoMode, initialMedia, initialWedding, locale]);
 
@@ -254,30 +265,44 @@ export function AdminExperience({
     }
 
     let active = true;
+    let syncController: AbortController | null = null;
     const syncMedia = async () => {
-      const searchParams = new URLSearchParams({ order: mediaOrder });
-      const response = await fetch(`/api/weddings/current/media?${searchParams}`, {
-        cache: "no-store",
-      });
+      syncController?.abort();
+      const controller = new AbortController();
+      syncController = controller;
+      try {
+        const searchParams = new URLSearchParams({ order: mediaOrder });
+        const response = await fetch(`/api/weddings/current/media?${searchParams}`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
 
-      if (!response.ok || !active) {
-        return;
-      }
+        if (!response.ok || !active || syncController !== controller) {
+          return;
+        }
 
-      const payload = (await response.json()) as {
-        media: WeddingMedia[];
-        wedding?: Wedding;
-        counts?: MediaLibraryCounts;
-        hasMore?: boolean;
-        nextOffset?: number;
-      };
-      setMedia(payload.media ?? []);
-      setMediaCounts(payload.counts ?? countMediaLibrary(payload.media ?? []));
-      setMediaHasMore(Boolean(payload.hasMore));
-      setMediaNextOffset(payload.nextOffset ?? payload.media?.length ?? 0);
+        const payload = (await response.json()) as {
+          media: WeddingMedia[];
+          wedding?: Wedding;
+          counts?: MediaLibraryCounts;
+          hasMore?: boolean;
+          nextOffset?: number;
+        };
+        if (!active || controller.signal.aborted || syncController !== controller) {
+          return;
+        }
+        setMedia(payload.media ?? []);
+        setMediaCounts(payload.counts ?? countMediaLibrary(payload.media ?? []));
+        setMediaHasMore(Boolean(payload.hasMore));
+        setMediaNextOffset(payload.nextOffset ?? payload.media?.length ?? 0);
 
-      if (payload.wedding) {
-        setWedding(payload.wedding);
+        if (payload.wedding) {
+          setWedding(payload.wedding);
+        }
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          // The fallback interval and the next realtime event retry silently.
+        }
       }
     };
     const syncIfVisible = () => {
@@ -312,6 +337,7 @@ export function AdminExperience({
 
     return () => {
       active = false;
+      syncController?.abort();
       window.clearInterval(interval);
       window.removeEventListener("focus", syncIfVisible);
       document.removeEventListener("visibilitychange", syncIfVisible);
@@ -621,7 +647,7 @@ export function AdminExperience({
             key={`${wedding.brideName}|${wedding.groomName}|${wedding.eventDate ?? ""}|${wedding.welcomeNote}`}
             wedding={wedding}
             demoMode={demoMode}
-            saving={saving}
+            saving={saving || !demoHydrated}
             profileUploading={profileUploading}
             profileRemoving={profileRemoving}
             onUploadProfileMedia={uploadProfileMedia}
@@ -637,17 +663,19 @@ export function AdminExperience({
         }
       />
       <AppToast toast={toast} closeLabel={text.close} onClose={dismissToast} />
-      <GuidanceDialog
-        open={helpOpen}
-        onClose={() => setHelpOpen(false)}
-        closeLabel={text.close}
-        eyebrow={adminText.helpEyebrow}
-        title={adminText.helpTitle}
-        body={adminText.helpBody}
-        steps={adminText.helpSteps}
-        cards={adminHelpCards}
-        footer={adminText.helpFooter}
-      />
+      {helpOpen ? (
+        <GuidanceDialog
+          open
+          onClose={() => setHelpOpen(false)}
+          closeLabel={text.close}
+          eyebrow={adminText.helpEyebrow}
+          title={adminText.helpTitle}
+          body={adminText.helpBody}
+          steps={adminText.helpSteps}
+          cards={adminHelpCards}
+          footer={adminText.helpFooter}
+        />
+      ) : null}
     </>
   );
 }

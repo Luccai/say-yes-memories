@@ -82,6 +82,24 @@ export async function finalizeOwnerCleanup(weddingId: string, now: string) {
   if (error) throw new Error(error.message);
 }
 
+export async function pruneOperationalMetadata(now: string, limit = 500) {
+  const { data, error } = await getSupabaseAdmin().rpc(
+    "prune_operational_metadata_v1",
+    { p_now: now, p_limit: limit },
+  );
+  if (error) throw new Error(error.message);
+  const row = rows<{
+    upload_reservations_deleted: number;
+    deletion_jobs_deleted: number;
+    rate_limit_buckets_deleted: number;
+  }>(data)[0];
+  return {
+    uploadReservationsDeleted: Number(row?.upload_reservations_deleted ?? 0),
+    deletionJobsDeleted: Number(row?.deletion_jobs_deleted ?? 0),
+    rateLimitBucketsDeleted: Number(row?.rate_limit_buckets_deleted ?? 0),
+  };
+}
+
 export async function checkSupabaseConnection() {
   const startedAt = performance.now();
   const { error } = await getSupabaseAdmin()

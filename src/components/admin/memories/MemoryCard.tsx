@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Film, Image as ImageIcon, Mic, Play } from "lucide-react";
-import { AnimatePresence, motion, type Transition } from "motion/react";
 import type { StoredMediaObject, WeddingMedia } from "@/lib/types";
 import {
   CachedMediaImage,
@@ -67,6 +66,7 @@ function GalleryThumbnailImage({
           retainInMemory
           cacheByteSize={thumbnail.byteSize}
           cacheResponse={thumbnail.byteSize <= 1024 * 1024}
+          displaySourceWhileCaching
           loading={priority ? "eager" : "lazy"}
           fetchPriority={priority ? "high" : "auto"}
         />
@@ -102,8 +102,6 @@ type MemoryCardProps = {
   index: number;
   gridLayout: MemoryGridLayout;
   useOriginalImage: boolean;
-  layoutTransition: Transition;
-  reduceMotion: boolean;
   onOpen: (item: WeddingMedia) => void;
   text: AdminCopy;
 };
@@ -113,24 +111,22 @@ export function MemoryCard({
   index,
   gridLayout,
   useOriginalImage,
-  layoutTransition,
-  reduceMotion,
   onOpen,
   text,
 }: MemoryCardProps) {
   const thumbnail = galleryThumbnailFor(item, useOriginalImage);
 
   return (
-    <motion.button
-      layout="position"
-      transition={{ layout: layoutTransition }}
-      whileHover={reduceMotion ? undefined : { y: -2 }}
-      whileTap={reduceMotion ? undefined : { scale: 0.985 }}
+    <button
       type="button"
       data-memory-id={item.id}
-      aria-label={`${item.guestName}. ${item.note || text.noNote}`}
+      aria-label={
+        gridLayout === "compact"
+          ? `${item.guestName}. ${item.note || text.noNote}`
+          : undefined
+      }
       onClick={() => onOpen(item)}
-      className={`focus-ring group w-full min-w-0 max-w-full overflow-hidden border border-[var(--line)] bg-white/60 text-left hover:bg-white ${memoryCardClasses[gridLayout]}`}
+      className={`focus-ring group w-full min-w-0 max-w-full overflow-hidden border border-[var(--line)] bg-white/60 text-left transition-transform hover:-translate-y-0.5 hover:bg-white active:scale-[0.985] motion-reduce:transform-none ${memoryCardClasses[gridLayout]}`}
     >
       <div
         className={`relative w-full min-w-0 max-w-full overflow-hidden bg-[#ede1d3] ${memoryMediaFrameClasses[gridLayout]}`}
@@ -140,7 +136,7 @@ export function MemoryCard({
             <GalleryThumbnailImage
               thumbnail={thumbnail}
               alt={item.note ?? item.fileName}
-              priority={index === 0}
+              priority={index < 2}
             />
           ) : item.kind === "video" ? (
             <video
@@ -184,36 +180,26 @@ export function MemoryCard({
         </div>
       </div>
 
-      <AnimatePresence initial={false}>
-        {gridLayout !== "compact" ? (
-          <motion.div
-            key="memory-caption"
-            layout
-            initial={reduceMotion ? false : { opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={reduceMotion ? undefined : { opacity: 0, height: 0 }}
-            transition={layoutTransition}
-            className="overflow-hidden px-1 pb-1 pt-2"
+      {gridLayout !== "compact" ? (
+        <div className="overflow-hidden px-1 pb-1 pt-2">
+          <p
+            className={`block max-w-full truncate font-bold text-[var(--ink)] ${
+              gridLayout === "story" ? "text-sm" : "text-xs"
+            }`}
           >
-            <p
-              className={`block max-w-full truncate font-bold text-[var(--ink)] ${
-                gridLayout === "story" ? "text-sm" : "text-xs"
-              }`}
-            >
-              {item.guestName}
-            </p>
-            <p
-              className={`block max-w-full text-[var(--ink-soft)] ${
-                gridLayout === "story"
-                  ? "mt-1 line-clamp-2 min-h-[2.3rem] text-sm leading-snug"
-                  : "truncate text-xs"
-              }`}
-            >
-              {item.note || text.noNote}
-            </p>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
-    </motion.button>
+            {item.guestName}
+          </p>
+          <p
+            className={`block max-w-full text-[var(--ink-soft)] ${
+              gridLayout === "story"
+                ? "mt-1 line-clamp-2 min-h-[2.3rem] text-sm leading-snug"
+                : "truncate text-xs"
+            }`}
+          >
+            {item.note || text.noNote}
+          </p>
+        </div>
+      ) : null}
+    </button>
   );
 }

@@ -17,7 +17,9 @@ import { getR2Client, R2_BUCKET } from "@/lib/storage/r2-client";
 import {
   MAX_GUEST_UPLOAD_BYTES,
   MAX_THUMBNAIL_UPLOAD_BYTES,
+  mediaSignatureMatches,
   supportedMediaKind,
+  validateMediaFileName,
 } from "@/lib/uploads/domain";
 
 export const MAX_MEDIA_UPLOAD_BYTES = MAX_GUEST_UPLOAD_BYTES;
@@ -116,6 +118,7 @@ export async function createReservationSignedTarget(input: {
       Bucket: R2_BUCKET,
       Key: input.storagePath,
       ContentType: mimeType,
+      ContentLength: input.byteSize,
     }),
     { expiresIn: 15 * 60 },
   );
@@ -143,6 +146,7 @@ export async function createSignedMultipartPart(input: {
   storagePath: string;
   uploadId: string;
   partNumber: number;
+  expectedByteSize: number;
 }) {
   const uploadUrl = await getSignedUrl(
     getR2Client(),
@@ -151,6 +155,7 @@ export async function createSignedMultipartPart(input: {
       Key: input.storagePath,
       UploadId: input.uploadId,
       PartNumber: input.partNumber,
+      ContentLength: input.expectedByteSize,
     }),
     { expiresIn: 15 * 60 },
   );
@@ -238,6 +243,24 @@ export async function headR2Object(storagePath: string) {
   }
 }
 
+export async function assertStoredMediaSignature(
+  storagePath: string,
+  mimeType: string,
+) {
+  const response = await getR2Client().send(
+    new GetObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: storagePath,
+      Range: "bytes=0-63",
+    }),
+  );
+  if (!response.Body) throw new Error("Uploaded file could not be inspected.");
+  const bytes = await response.Body.transformToByteArray();
+  if (!mediaSignatureMatches(bytes, mimeType)) {
+    throw new Error("Uploaded content does not match its declared media type.");
+  }
+}
+
 function copySource(storagePath: string) {
   const encodedPath = storagePath
     .split("/")
@@ -257,6 +280,7 @@ export async function promoteStagedObject(input: {
     if (finalObject.byteSize !== input.expectedByteSize) {
       throw new Error("Final upload size does not match its reservation.");
     }
+    await deleteStoredFile(input.stagingPath);
     return;
   }
 
@@ -342,11 +366,10 @@ function storagePrefixFor(weddingId: string, folder: StorageFolder) {
   return `weddings/${weddingId}/${folder}`;
 }
 
-export async function createSignedUploadTarget(
+export async function createProfileSignedUploadTarget(
   file: { name: string; type: string; size: number },
   options: {
     weddingId: string;
-    folder: StorageFolder;
     allowedKinds?: MediaKind[];
     maxBytes?: number;
   },
@@ -357,8 +380,9 @@ export async function createSignedUploadTarget(
     allowedKinds: options.allowedKinds,
     maxBytes: options.maxBytes,
   });
+  validateMediaFileName(file.name, mimeType);
   const id = createId("asset");
-  const storagePath = `${storagePrefixFor(options.weddingId, options.folder)}/${id}-${sanitizeFileName(file.name)}`;
+  const storagePath = `profile-staging/${options.weddingId}/${id}-${sanitizeFileName(file.name)}`;
   const headers = {
     "Content-Type": mimeType,
   };
@@ -368,8 +392,9 @@ export async function createSignedUploadTarget(
       Bucket: R2_BUCKET,
       Key: storagePath,
       ContentType: mimeType,
+      ContentLength: file.size,
     }),
-    { expiresIn: 60 * 60 },
+    { expiresIn: 5 * 60 },
   );
 
   return {
@@ -388,11 +413,10 @@ export async function createSignedUploadTarget(
   };
 }
 
-export function assertUploadBelongsToWedding(
+export function assertProfileUploadBelongsToWedding(
   object: PendingStoredMediaObject,
   options: {
     weddingId: string;
-    folder: StorageFolder;
     allowedKinds?: MediaKind[];
     maxBytes?: number;
   },
@@ -403,34 +427,61 @@ export function assertUploadBelongsToWedding(
     allowedKinds: options.allowedKinds,
     maxBytes: options.maxBytes,
   });
+  validateMediaFileName(object.fileName, object.mimeType);
 
-  const expectedPrefix = `${storagePrefixFor(options.weddingId, options.folder)}/${object.id}-`;
+  const expectedPath = `profile-staging/${options.weddingId}/${object.id}-${sanitizeFileName(object.fileName)}`;
 
   if (!/^asset_[a-f0-9]{24}$/.test(object.id)) {
     throw new Error("Upload id is invalid.");
   }
 
-  if (!object.storagePath.startsWith(expectedPrefix)) {
+  if (object.storagePath !== expectedPath) {
     throw new Error("Upload path does not belong to this wedding.");
   }
 }
 
-export async function finalizeSignedUpload(
+export async function finalizeProfileSignedUpload(
   object: PendingStoredMediaObject,
+  weddingId: string,
 ): Promise<StoredMediaObject> {
-  const response = await getR2Client().send(
-    new HeadObjectCommand({
-      Bucket: R2_BUCKET,
-      Key: object.storagePath,
-    }),
-  );
-
-  if (response.ContentLength !== undefined && response.ContentLength !== object.byteSize) {
-    throw new Error("Uploaded file size does not match its metadata.");
-  }
+  const finalPath = `${storagePrefixFor(weddingId, "profile")}/${object.id}-${sanitizeFileName(object.fileName)}`;
+  await assertStoredMediaSignature(object.storagePath, object.mimeType);
+  await promoteStagedObject({
+    stagingPath: object.storagePath,
+    finalPath,
+    expectedByteSize: object.byteSize,
+    mimeType: object.mimeType,
+  });
 
   return {
     ...object,
-    url: await createSignedStorageUrl(object.storagePath),
+    storagePath: finalPath,
+    url: await createSignedStorageUrl(finalPath),
   };
+}
+
+export async function listStaleProfileStagingObjects(
+  cutoff: Date,
+  limit = 200,
+) {
+  const keys: string[] = [];
+  let continuationToken: string | undefined;
+  do {
+    const page = await getR2Client().send(
+      new ListObjectsV2Command({
+        Bucket: R2_BUCKET,
+        Prefix: "profile-staging/",
+        ContinuationToken: continuationToken,
+        MaxKeys: 1000,
+      }),
+    );
+    for (const object of page.Contents ?? []) {
+      if (object.Key && object.LastModified && object.LastModified <= cutoff) {
+        keys.push(object.Key);
+        if (keys.length >= limit) return keys;
+      }
+    }
+    continuationToken = page.IsTruncated ? page.NextContinuationToken : undefined;
+  } while (continuationToken);
+  return keys;
 }

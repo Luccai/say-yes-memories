@@ -1,6 +1,5 @@
 "use client";
 
-import { LayoutGroup, type Transition } from "motion/react";
 import type { WeddingMedia } from "@/lib/types";
 import { Button } from "@/components/shared/Button";
 import { BlurFade } from "@/components/shared/BlurFade";
@@ -21,11 +20,8 @@ type MemoryGridProps = {
   gridLayout: MemoryGridLayout;
   entrySequence: number;
   enteredMediaIds: Set<string>;
-  demoMode: boolean;
   hasMore: boolean;
   loadingMore: boolean;
-  reduceMotion: boolean;
-  layoutTransition: Transition;
   onOpen: (item: WeddingMedia) => void;
   onLoadMore: () => void;
   text: AdminCopy;
@@ -37,32 +33,27 @@ export function MemoryGrid({
   gridLayout,
   entrySequence,
   enteredMediaIds,
-  demoMode,
   hasMore,
   loadingMore,
-  reduceMotion,
-  layoutTransition,
   onOpen,
   onLoadMore,
   text,
 }: MemoryGridProps) {
   return (
     <div className="relative">
-      <LayoutGroup id="memory-grid-layout">
         <div className={memoryGridClasses[gridLayout]}>
           {media.map((item, index) => {
             const matchesFilter = filter === "all" || item.kind === filter;
             const useOriginalImage =
               item.kind === "image" &&
-              ((demoMode && item.url.startsWith("/demo/")) ||
-                (gridLayout === "story" &&
-                  item.byteSize <= STORY_ORIGINAL_IMAGE_MAX_BYTES));
+              gridLayout === "story" &&
+              item.byteSize <= STORY_ORIGINAL_IMAGE_MAX_BYTES;
 
             return (
               <BlurFade
                 key={item.id}
                 replayKey={entrySequence}
-                replayOnMount={!enteredMediaIds.has(item.id)}
+                replayOnMount={index >= 4 && !enteredMediaIds.has(item.id)}
                 onEntered={() => enteredMediaIds.add(item.id)}
                 delay={0.15 + Math.min(index, 10) * 0.05}
                 className={matchesFilter ? undefined : "hidden"}
@@ -72,8 +63,6 @@ export function MemoryGrid({
                   index={index}
                   gridLayout={gridLayout}
                   useOriginalImage={useOriginalImage}
-                  layoutTransition={layoutTransition}
-                  reduceMotion={reduceMotion}
                   onOpen={onOpen}
                   text={text}
                 />
@@ -81,7 +70,6 @@ export function MemoryGrid({
             );
           })}
         </div>
-      </LayoutGroup>
 
       {hasMore ? (
         <div className="mt-5 flex justify-center">

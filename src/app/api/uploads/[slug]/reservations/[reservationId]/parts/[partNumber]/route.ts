@@ -50,6 +50,7 @@ export async function POST(
       storagePath: state.reservation.stagingObjectPath,
       uploadId: state.reservation.r2UploadId,
       partNumber,
+      expectedByteSize,
     });
     return uploadJson({ partNumber, expectedByteSize, upload });
   } catch (error) {

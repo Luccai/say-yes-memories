@@ -20,15 +20,23 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ message: "Session not found." }, { status: 401 });
   }
 
+  let patch;
   try {
-    const patch = parseCustomerWeddingUpdate(await request.json());
+    patch = parseCustomerWeddingUpdate(await request.json());
+  } catch (error) {
+    return NextResponse.json(
+      { message: error instanceof Error ? error.message : "Wedding page changes are invalid." },
+      { status: 400 },
+    );
+  }
+  try {
     const wedding = await updateWedding(current.wedding.id, patch);
 
     return NextResponse.json({ wedding });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
-      { message: error instanceof Error ? error.message : "Wedding page could not be saved." },
-      { status: 400 },
+      { message: "Wedding page could not be saved. Please try again." },
+      { status: 500 },
     );
   }
 }

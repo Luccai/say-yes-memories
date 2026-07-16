@@ -8,25 +8,34 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
+import dynamic from "next/dynamic";
 import {
   CalendarDays,
   Check,
   ChevronsUpDown,
   LayoutGrid,
 } from "lucide-react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { WeddingMedia } from "@/lib/types";
 import type { MediaLibraryCounts, MediaLibraryOrder } from "@/lib/media-library";
 import { Button } from "@/components/shared/Button";
 import { MemoryGrid } from "@/components/admin/memories/MemoryGrid";
-import { MemoryLightbox } from "@/components/admin/memories/MemoryLightbox";
-import { DeleteMemoryDialog } from "@/components/admin/memories/DeleteMemoryDialog";
 import type {
   AdminCopy,
   FilterKey,
   MemoryGridLayout,
 } from "@/components/admin/types";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
+
+const MemoryLightbox = dynamic(() =>
+  import("@/components/admin/memories/MemoryLightbox").then(
+    (module) => module.MemoryLightbox,
+  ),
+);
+const DeleteMemoryDialog = dynamic(() =>
+  import("@/components/admin/memories/DeleteMemoryDialog").then(
+    (module) => module.DeleteMemoryDialog,
+  ),
+);
 
 function MemoryControlMenu<T extends string>({
   label,
@@ -45,7 +54,6 @@ function MemoryControlMenu<T extends string>({
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const reduceMotion = useReducedMotion();
   const selectedIndex = options.findIndex((option) => option.value === value);
   const selected = options[selectedIndex] ?? options[0];
 
@@ -124,25 +132,13 @@ function MemoryControlMenu<T extends string>({
         <ChevronsUpDown className="size-3.5 shrink-0 text-[var(--ink-soft)]" />
       </Button>
 
-      <AnimatePresence>
-        {open ? (
-          <motion.div
+      {open ? (
+          <div
             ref={menuRef}
             role="menu"
             aria-label={label}
             onKeyDown={navigateMenu}
-            initial={reduceMotion ? false : { opacity: 0, y: -5, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={
-              reduceMotion
-                ? { opacity: 0 }
-                : { opacity: 0, y: -4, scale: 0.985 }
-            }
-            transition={{
-              duration: reduceMotion ? 0 : 0.16,
-              ease: [0.22, 1, 0.36, 1],
-            }}
-            className="absolute right-0 top-[calc(100%+0.5rem)] z-30 grid w-40 gap-1 rounded-[22px] border border-white/85 bg-[rgba(255,250,243,0.96)] p-1.5 shadow-[0_16px_40px_rgba(58,40,25,0.16)] backdrop-blur-xl"
+            className="modal-shell absolute right-0 top-[calc(100%+0.5rem)] z-30 grid w-40 gap-1 rounded-[22px] border border-white/85 bg-[rgba(255,250,243,0.96)] p-1.5 shadow-[0_16px_40px_rgba(58,40,25,0.16)] backdrop-blur-xl"
           >
             {options.map((option) => {
               const active = option.value === value;
@@ -167,9 +163,8 @@ function MemoryControlMenu<T extends string>({
                 </button>
               );
             })}
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+          </div>
+      ) : null}
     </div>
   );
 }
@@ -222,7 +217,7 @@ export function MemoriesPanel({
     () => (filter === "all" ? media : media.filter((item) => item.kind === filter)),
     [filter, media],
   );
-  const reduceMotion = useReducedMotion();
+  const [reduceMotion, setReduceMotion] = useState(false);
   const filters: { key: FilterKey; label: string; count: number }[] = [
     { key: "all", label: text.all, count: mediaCounts.all },
     { key: "image", label: text.photos, count: mediaCounts.image },
@@ -238,9 +233,14 @@ export function MemoriesPanel({
     { value: "newest", label: text.sortNewest },
     { value: "oldest", label: text.sortOldest },
   ];
-  const layoutTransition = reduceMotion
-    ? { duration: 0 }
-    : { duration: 0.22, ease: [0.22, 1, 0.36, 1] as const };
+
+  useEffect(() => {
+    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setReduceMotion(query.matches);
+    sync();
+    query.addEventListener("change", sync);
+    return () => query.removeEventListener("change", sync);
+  }, []);
 
   useBodyScrollLock(Boolean(selectedMedia || deleteTarget));
 
@@ -350,11 +350,8 @@ export function MemoriesPanel({
               gridLayout={gridLayout}
               entrySequence={entrySequence}
               enteredMediaIds={enteredMediaIds}
-              demoMode={demoMode}
               hasMore={hasMore}
               loadingMore={loadingMore}
-              reduceMotion={Boolean(reduceMotion)}
-              layoutTransition={layoutTransition}
               onOpen={setSelectedMedia}
               onLoadMore={onLoadMore}
               text={text}
@@ -375,6 +372,7 @@ export function MemoriesPanel({
         )}
       </article>
 
+      {selectedMedia ? (
       <MemoryLightbox
         selectedMedia={selectedMedia}
         media={visibleMedia}
@@ -390,7 +388,9 @@ export function MemoriesPanel({
         }}
         text={text}
       />
+      ) : null}
 
+      {deleteTarget ? (
       <DeleteMemoryDialog
         target={deleteTarget}
         deleting={deleting}
@@ -400,6 +400,7 @@ export function MemoriesPanel({
         onConfirm={() => void confirmDelete()}
         text={text}
       />
+      ) : null}
     </>
   );
 }

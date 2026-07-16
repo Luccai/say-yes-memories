@@ -2,8 +2,7 @@
 
 import { ExternalLink, HelpCircle, type LucideIcon, X } from "lucide-react";
 import { createPortal } from "react-dom";
-import { useRef, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { useRef } from "react";
 import { Button } from "@/components/shared/Button";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import { useAccessibleDialog } from "@/lib/use-accessible-dialog";
@@ -85,41 +84,25 @@ export function GuidanceDialog({
 }: GuidanceDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
-  const reduceMotion = useReducedMotion();
-  const [exiting, setExiting] = useState(false);
-  const dialogActive = open || exiting;
 
-  useBodyScrollLock(dialogActive);
+  useBodyScrollLock(open);
   useAccessibleDialog({
-    open: dialogActive,
+    open,
     containerRef: dialogRef,
     initialFocusRef: closeButtonRef,
     onClose,
   });
 
-  if (typeof document === "undefined") {
+  if (!open || typeof document === "undefined") {
     return null;
   }
 
   return createPortal(
-    <AnimatePresence onExitComplete={() => setExiting(false)}>
-      {open ? (
-        <motion.div
-          className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-[rgba(31,23,18,0.42)] px-4 py-6 backdrop-blur-sm"
-          initial={reduceMotion ? false : { opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: reduceMotion ? 0 : 0.18 }}
-          onAnimationStart={() => setExiting(true)}
-        >
+        <div className="guidance-overlay-enter fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-[rgba(31,23,18,0.42)] px-4 py-6 backdrop-blur-sm">
           <div className="absolute inset-0 cursor-default" aria-hidden="true" onClick={onClose} />
-          <motion.div
+          <div
             ref={dialogRef}
-            className="relative z-10 w-full max-w-[34rem] overflow-hidden rounded-[30px] border border-white/75 bg-[var(--paper-soft)] shadow-[0_28px_80px_rgba(31,23,18,0.24)]"
-            initial={reduceMotion ? false : { opacity: 0, y: 16, scale: 0.985 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 10, scale: 0.99 }}
-            transition={{ duration: reduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="guidance-card-enter relative z-10 w-full max-w-[34rem] overflow-hidden rounded-[30px] border border-white/75 bg-[var(--paper-soft)] shadow-[0_28px_80px_rgba(31,23,18,0.24)]"
             role="dialog"
             aria-modal="true"
             aria-labelledby="help-title"
@@ -203,10 +186,8 @@ export function GuidanceDialog({
             </a>
           ) : null}
         </div>
-          </motion.div>
-        </motion.div>
-      ) : null}
-    </AnimatePresence>,
+          </div>
+        </div>,
     document.body,
   );
 }

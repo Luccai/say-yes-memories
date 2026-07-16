@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import {
+  archiveDisabledResponse,
+  archiveFeatureIsEnabled,
+} from "@/lib/archives/feature";
 import { getCurrentWeddingFromCookie } from "@/lib/auth";
 import {
   archiveStartCanBeRetried,
@@ -82,6 +86,7 @@ type ArchiveCurrentDependencies = {
   getLatestArchiveJob: typeof getLatestArchiveJob;
   archiveRunnerIsConfigured: typeof archiveRunnerIsConfigured;
   dispatchArchiveJob: typeof dispatchArchiveJob;
+  archiveFeatureIsEnabled: typeof archiveFeatureIsEnabled;
 };
 
 const defaultDependencies: ArchiveCurrentDependencies = {
@@ -93,6 +98,7 @@ const defaultDependencies: ArchiveCurrentDependencies = {
   getLatestArchiveJob,
   archiveRunnerIsConfigured,
   dispatchArchiveJob,
+  archiveFeatureIsEnabled,
 };
 
 export function createArchiveCurrentHandlers(
@@ -100,6 +106,7 @@ export function createArchiveCurrentHandlers(
 ) {
   return {
     GET: async () => {
+      if (!dependencies.archiveFeatureIsEnabled()) return archiveDisabledResponse();
       const current = await dependencies.getCurrentWeddingFromCookie();
       if (!current) {
         return NextResponse.json({ message: "Session not found." }, { status: 401 });
@@ -118,6 +125,7 @@ export function createArchiveCurrentHandlers(
     },
 
     POST: async () => {
+      if (!dependencies.archiveFeatureIsEnabled()) return archiveDisabledResponse();
       const current = await dependencies.getCurrentWeddingFromCookie();
       if (!current) {
         return NextResponse.json({ message: "Session not found." }, { status: 401 });

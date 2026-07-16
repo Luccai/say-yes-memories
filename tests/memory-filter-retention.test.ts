@@ -17,7 +17,7 @@ const blurFadeSource = readFileSync(
 describe("memory filter thumbnail retention", () => {
   test("does not replay a card's entrance when it returns from another filter", () => {
     expect(memoryGridSource).toContain(
-      "replayOnMount={!enteredMediaIds.has(item.id)}",
+      "replayOnMount={index >= 4 && !enteredMediaIds.has(item.id)}",
     );
     expect(memoryGridSource).toContain(
       "onEntered={() => enteredMediaIds.add(item.id)}",

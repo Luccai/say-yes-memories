@@ -71,6 +71,7 @@ function baseDependencies(): MaintenanceOverrides {
     listExpiredUploadReservations: async () => [],
     expireUploadReservation: async () => releasedReservation,
     listReleasedUploadReservations: async () => [],
+    listStaleProfileStagingObjects: async () => [],
     abortMultipartR2Upload: async () => undefined,
     isNoSuchMultipartUpload: () => false,
     deleteStoredFile: async (path) => {
@@ -97,6 +98,11 @@ function baseDependencies(): MaintenanceOverrides {
     recordSystemHealth: async (input) => {
       recordedHealthDetails = input.details;
     },
+    pruneOperationalMetadata: async () => ({
+      uploadReservationsDeleted: 0,
+      deletionJobsDeleted: 0,
+      rateLimitBucketsDeleted: 0,
+    }),
   };
 }
 
@@ -167,6 +173,18 @@ describe("daily maintenance", () => {
     expect(recordedHealthDetails).toMatchObject({
       failedReservationCleanups: 1,
     });
+  });
+
+  test("removes expired profile staging objects so old signed URLs cannot leave orphans", async () => {
+    const stagingPath = "profile-staging/wed_test/asset_test-photo.jpg";
+    const result = await runDailyMaintenance({
+      ...baseDependencies(),
+      listStaleProfileStagingObjects: async () => [stagingPath],
+    });
+
+    expect(result.cleanedProfileStagingObjects).toBe(1);
+    expect(result.failedProfileStagingCleanups).toBe(0);
+    expect(deletedPaths).toContain(stagingPath);
   });
 
   test("records a deletion-job claim failure instead of reporting a healthy run", async () => {

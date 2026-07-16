@@ -244,6 +244,7 @@ export function WeddingPagePanel({
               <Button
                 onClick={() => onSave({ uploadLocked: !wedding.uploadLocked })}
                 variant="paper"
+                disabled={saving}
                 aria-pressed={!wedding.uploadLocked}
                 size="compact"
                 className="min-w-0 w-fit whitespace-nowrap px-3 sm:px-4"

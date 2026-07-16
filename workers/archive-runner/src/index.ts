@@ -237,7 +237,12 @@ export class ArchiveContainer extends Container<Env> {
           attemptId: task.attemptId,
         });
       }
-    } catch {
+    } catch (error) {
+      console.error("archive_process_failed", {
+        jobId: task.jobId,
+        attemptId: task.attemptId,
+        error: error instanceof Error ? error.message : "unknown",
+      });
       const current = await this.ctx.storage.get<{ attemptId: string }>("archive-state");
       if (current?.attemptId === task.attemptId) {
         await this.reportFailure(task, "ARCHIVE_PROCESS_FAILED");
@@ -263,16 +268,32 @@ export class ArchiveContainer extends Container<Env> {
       task.callbackSecret,
       canonicalRequest({ timestamp, method: "POST", path: target.pathname, body }),
     );
-    await fetch(target, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-archive-timestamp": timestamp,
-        "x-archive-signature": signature,
-        "x-archive-attempt": task.attemptId,
-      },
-      body,
-    }).catch(() => undefined);
+    try {
+      const response = await fetch(target, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-archive-timestamp": timestamp,
+          "x-archive-signature": signature,
+          "x-archive-attempt": task.attemptId,
+        },
+        body,
+      });
+      if (!response.ok) {
+        console.error("archive_failure_callback_rejected", {
+          jobId: task.jobId,
+          attemptId: task.attemptId,
+          status: response.status,
+        });
+      }
+      await response.body?.cancel().catch(() => undefined);
+    } catch (error) {
+      console.error("archive_failure_callback_failed", {
+        jobId: task.jobId,
+        attemptId: task.attemptId,
+        error: error instanceof Error ? error.message : "unknown",
+      });
+    }
   }
 }
 

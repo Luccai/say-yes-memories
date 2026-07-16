@@ -16,7 +16,8 @@ export function BrandMark({ compact = false }: { compact?: boolean }) {
           height={192}
           className="relative z-10 h-full w-full rounded-[24px] object-contain"
           style={{ filter: "contrast(1.22) brightness(0.94)" }}
-          priority
+          loading="eager"
+          fetchPriority="low"
         />
       </div>
       {!compact ? (

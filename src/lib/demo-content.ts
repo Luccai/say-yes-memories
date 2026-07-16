@@ -2,7 +2,7 @@ import type { Wedding, WeddingMedia } from "@/lib/types";
 import { CLASSIC_STORAGE_BYTES } from "@/lib/storage/quota";
 
 export const DEMO_GUEST_SLUG = "mary-john-demo";
-export const DEMO_CONTENT_VERSION = "demo-couple-webp-v6";
+export const DEMO_CONTENT_VERSION = "demo-couple-webp-v7";
 const DEMO_STORAGE_VERSION_KEY = "sayyes.demo.content.version";
 const DEMO_WEDDING_STORAGE_KEY = "sayyes.demo.wedding";
 const DEMO_MEDIA_STORAGE_KEY = "sayyes.demo.media";
@@ -16,7 +16,7 @@ const demoPhotos = [
     fileName: "demo-couple-1.webp",
     byteSize: 141652,
     thumbnailFileName: "demo-couple-1-thumb.webp",
-    thumbnailByteSize: 17724,
+    thumbnailByteSize: 15234,
     createdAt: "2027-06-14T19:18:00.000Z",
     favorite: true,
   },
@@ -25,7 +25,7 @@ const demoPhotos = [
     fileName: "demo-couple-2.webp",
     byteSize: 129204,
     thumbnailFileName: "demo-couple-2-thumb.webp",
-    thumbnailByteSize: 15784,
+    thumbnailByteSize: 13420,
     createdAt: "2027-06-14T19:42:00.000Z",
     favorite: false,
   },
@@ -34,7 +34,7 @@ const demoPhotos = [
     fileName: "demo-couple-3.webp",
     byteSize: 129592,
     thumbnailFileName: "demo-couple-3-thumb.webp",
-    thumbnailByteSize: 16626,
+    thumbnailByteSize: 14294,
     createdAt: "2027-06-14T20:08:00.000Z",
     favorite: false,
   },
@@ -43,7 +43,7 @@ const demoPhotos = [
     fileName: "demo-couple-4.webp",
     byteSize: 186080,
     thumbnailFileName: "demo-couple-4-thumb.webp",
-    thumbnailByteSize: 18080,
+    thumbnailByteSize: 14984,
     createdAt: "2027-06-14T20:31:00.000Z",
     favorite: true,
   },
@@ -52,7 +52,7 @@ const demoPhotos = [
     fileName: "demo-couple-5.webp",
     byteSize: 113252,
     thumbnailFileName: "demo-couple-5-thumb.webp",
-    thumbnailByteSize: 13086,
+    thumbnailByteSize: 11148,
     createdAt: "2027-06-14T21:03:00.000Z",
     favorite: false,
   },
@@ -61,7 +61,7 @@ const demoPhotos = [
     fileName: "demo-couple-6.webp",
     byteSize: 139734,
     thumbnailFileName: "demo-couple-6-thumb.webp",
-    thumbnailByteSize: 17636,
+    thumbnailByteSize: 15208,
     createdAt: "2027-06-14T21:27:00.000Z",
     favorite: false,
   },
@@ -70,7 +70,7 @@ const demoPhotos = [
     fileName: "demo-couple-7.webp",
     byteSize: 112182,
     thumbnailFileName: "demo-couple-7-thumb.webp",
-    thumbnailByteSize: 12356,
+    thumbnailByteSize: 10642,
     createdAt: "2027-06-14T22:02:00.000Z",
     favorite: true,
   },
@@ -420,7 +420,7 @@ export const demoWedding: Wedding = {
     kind: "image",
     mimeType: "image/webp",
     fileName: "demo-couple-1-thumb.webp",
-    byteSize: 17724,
+    byteSize: 15234,
     createdAt: "2026-06-20T17:00:00.000Z",
   },
 };

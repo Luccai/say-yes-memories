@@ -327,7 +327,9 @@ export function OwnerCouplesPanel() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<OwnerWeddingDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState(false);
   const detailRef = useRef<HTMLElement | null>(null);
+  const detailRequestRef = useRef<AbortController | null>(null);
 
   const loadList = useCallback(async (query: string) => {
     setError(false);
@@ -339,11 +341,20 @@ export function OwnerCouplesPanel() {
   }, []);
 
   async function loadDetail(id: string) {
+    detailRequestRef.current?.abort();
+    const controller = new AbortController();
+    detailRequestRef.current = controller;
     setSelectedId(id);
     setDetailLoading(true);
+    setDetailError(false);
     try {
-      setDetail(await ownerApi<OwnerWeddingDetail>(`/api/owner/couples/${id}`));
+      const nextDetail = await ownerApi<OwnerWeddingDetail>(`/api/owner/couples/${id}`, {
+        signal: controller.signal,
+      });
+      if (controller.signal.aborted || detailRequestRef.current !== controller) return;
+      setDetail(nextDetail);
       requestAnimationFrame(() => {
+        if (detailRequestRef.current !== controller) return;
         const reduceMotion = window.matchMedia(
           "(prefers-reduced-motion: reduce)",
         ).matches;
@@ -352,10 +363,21 @@ export function OwnerCouplesPanel() {
           block: "start",
         });
       });
+    } catch (caught) {
+      if (caught instanceof DOMException && caught.name === "AbortError") return;
+      if (detailRequestRef.current === controller) {
+        setDetail(null);
+        setDetailError(true);
+      }
     } finally {
-      setDetailLoading(false);
+      if (detailRequestRef.current === controller) {
+        detailRequestRef.current = null;
+        setDetailLoading(false);
+      }
     }
   }
+
+  useEffect(() => () => detailRequestRef.current?.abort(), []);
 
   useEffect(() => {
     queueMicrotask(() => void loadList(""));
@@ -365,8 +387,12 @@ export function OwnerCouplesPanel() {
     event.preventDefault();
     const query = search.trim();
     setSubmittedSearch(query);
+    detailRequestRef.current?.abort();
+    detailRequestRef.current = null;
     setSelectedId(null);
     setDetail(null);
+    setDetailLoading(false);
+    setDetailError(false);
     void loadList(query);
   }
 
@@ -394,6 +420,7 @@ export function OwnerCouplesPanel() {
       ) : null}
 
       {detailLoading ? <div className="mt-4"><OwnerLoading label="Çift detayı yükleniyor" /></div> : null}
+      {detailError && selectedId ? <OwnerErrorState retry={() => void loadDetail(selectedId)} /> : null}
       {detail && !detailLoading ? (
         <div ref={(node) => { detailRef.current = node; }}>
           <CoupleDetail key={detail.wedding.updatedAt} detail={detail} onClose={() => { setSelectedId(null); setDetail(null); }} onRefresh={async () => { await Promise.all([loadDetail(detail.wedding.id), loadList(submittedSearch)]); }} />

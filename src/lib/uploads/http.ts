@@ -19,6 +19,9 @@ export function classifyUploadError(error: unknown) {
   if (message.includes("Storage quota")) {
     return uploadError("STORAGE_QUOTA_FULL", 409);
   }
+  if (message.includes("Upload rate limit exceeded")) {
+    return uploadError("UPLOAD_RATE_LIMITED", 429);
+  }
   if (
     message.includes("Guest uploads are unavailable") ||
     message.includes("Wedding membership is unavailable")

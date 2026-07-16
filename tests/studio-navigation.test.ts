@@ -30,10 +30,12 @@ describe("mobile studio navigation", () => {
     expect(navigationSource).toContain("grid-cols-5");
     expect(navigationSource).toContain('data-mobile-navigation-style="c"');
     expect(navigationSource).toContain("item.mobileLabel");
-    expect(navigationSource).toContain('aria-label={mode === "mobile" ? item.label : undefined}');
+    expect(navigationSource).toContain('`${item.mobileLabel}: ${item.label}`');
     expect(navigationSource).toContain("truncate text-center");
     expect(navigationSource).toContain("min-h-16");
-    expect(navigationSource).toContain("text-[var(--ink-soft)] opacity-70");
+    expect(navigationSource).toContain(
+      'text-[var(--ink-soft)] hover:bg-white/36 hover:text-[var(--ink)]',
+    );
   });
 
   test("keeps every desktop sidebar label at Flow mode's text weight", () => {

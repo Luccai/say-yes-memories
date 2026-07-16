@@ -36,9 +36,14 @@ describe("archive database contract", () => {
     expect(migration).toContain("    null,");
   });
 
-  test("does not commit Wrangler-generated runtime declarations", () => {
-    expect(
-      existsSync(resolve(root, "workers/archive-runner/worker-configuration.d.ts")),
-    ).toBe(false);
+  test("commits Wrangler runtime declarations so config drift can be checked", () => {
+    const declarations = resolve(
+      root,
+      "workers/archive-runner/worker-configuration.d.ts",
+    );
+    expect(existsSync(declarations)).toBe(true);
+    expect(readFileSync(declarations, "utf8")).toContain(
+      "ARCHIVE_CONTAINER: DurableObjectNamespace",
+    );
   });
 });

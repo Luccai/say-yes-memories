@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { getCurrentWeddingFromCookie } from "@/lib/auth";
 import { getArchiveJobForWedding } from "@/lib/archives/store";
 import { createSignedStorageUrl } from "@/lib/storage/storage-service";
+import {
+  archiveDisabledResponse,
+  archiveFeatureIsEnabled,
+} from "@/lib/archives/feature";
 
 export const dynamic = "force-dynamic";
 
@@ -9,12 +13,14 @@ type ArchiveDownloadDependencies = {
   getCurrentWeddingFromCookie: typeof getCurrentWeddingFromCookie;
   getArchiveJobForWedding: typeof getArchiveJobForWedding;
   createSignedStorageUrl: typeof createSignedStorageUrl;
+  archiveFeatureIsEnabled: typeof archiveFeatureIsEnabled;
 };
 
 const defaultDependencies: ArchiveDownloadDependencies = {
   getCurrentWeddingFromCookie,
   getArchiveJobForWedding,
   createSignedStorageUrl,
+  archiveFeatureIsEnabled,
 };
 
 export function createArchiveDownloadGet(
@@ -24,6 +30,7 @@ export function createArchiveDownloadGet(
     _request: Request,
     context: { params: Promise<{ id: string }> },
   ) {
+    if (!dependencies.archiveFeatureIsEnabled()) return archiveDisabledResponse();
     const current = await dependencies.getCurrentWeddingFromCookie();
     if (!current) {
       return NextResponse.json({ message: "Session not found." }, { status: 401 });

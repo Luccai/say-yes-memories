@@ -22,9 +22,10 @@ import {
   X,
 } from "lucide-react";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import type { MediaKind, PublicWedding } from "@/lib/types";
 import { Button } from "@/components/shared/Button";
-import { GuidanceDialog, HelpTriggerButton } from "@/components/shared/GuidanceDialog";
+import { HelpTriggerButton } from "@/components/shared/GuidanceTriggerButton";
 import { MediaOrb } from "@/components/shared/MediaOrb";
 import {
   TurnstileGate,
@@ -43,6 +44,10 @@ import {
   MAX_GUEST_UPLOAD_BYTES,
   supportedMediaKind,
 } from "@/lib/uploads/domain";
+
+const GuidanceDialog = dynamic(() =>
+  import("@/components/shared/GuidanceDialog").then((module) => module.GuidanceDialog),
+);
 
 type GuestExperienceProps = {
   wedding: PublicWedding;
@@ -141,6 +146,7 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
   const [error, setError] = useState("");
   const [helpOpen, setHelpOpen] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [recordingStarting, setRecordingStarting] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [recordedUrl, setRecordedUrl] = useState("");
@@ -151,6 +157,8 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const turnstileRef = useRef<TurnstileGateHandle | null>(null);
   const recorderRef = useRef<VoiceRecorder | null>(null);
+  const recordingStartingRef = useRef(false);
+  const recordingStartAttemptRef = useRef(0);
   const successHeadingRef = useRef<HTMLParagraphElement | null>(null);
   const uploadsNotStarted = Boolean(
     displayWedding.uploadsOpenAt &&
@@ -194,6 +202,8 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
 
   useEffect(() => {
     return () => {
+      recordingStartAttemptRef.current += 1;
+      recordingStartingRef.current = false;
       const recorder = recorderRef.current;
 
       if (!recorder) {
@@ -311,15 +321,23 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
   }
 
   async function startRecording() {
-    if (demoMode) return;
+    if (demoMode || recording || recordingStartingRef.current || recorderRef.current) return;
 
     setError("");
+    recordingStartingRef.current = true;
+    setRecordingStarting(true);
+    const attempt = recordingStartAttemptRef.current + 1;
+    recordingStartAttemptRef.current = attempt;
+    let stream: MediaStream | null = null;
 
     try {
       if (typeof MediaRecorder === "undefined") {
         throw new Error("MediaRecorder is unavailable.");
       }
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (recordingStartAttemptRef.current !== attempt) {
+        return;
+      }
       const mimeType = recorderMimeType();
       const recorder = mimeType
         ? new MediaRecorder(stream, { mimeType })
@@ -343,6 +361,7 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
           return url;
         });
       };
+      recorder.start(1000);
       const startedAt = Date.now();
       const intervalId = window.setInterval(() => {
         setRecordingSeconds(
@@ -354,7 +373,7 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
         stopRecording();
       }, MAX_RECORDING_SECONDS * 1000);
       recorderRef.current = { recorder, chunks, stream, intervalId, timeoutId };
-      recorder.start(1000);
+      stream = null;
 
       setFile(null);
       setFilePreviewUrl("");
@@ -366,7 +385,15 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
       setRecordingSeconds(0);
       setRecording(true);
     } catch {
-      setError(text.guest.micDenied);
+      if (recordingStartAttemptRef.current === attempt) {
+        setError(text.guest.micDenied);
+      }
+    } finally {
+      stream?.getTracks().forEach((track) => track.stop());
+      if (recordingStartAttemptRef.current === attempt) {
+        recordingStartingRef.current = false;
+        setRecordingStarting(false);
+      }
     }
   }
 
@@ -389,8 +416,10 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (demoMode) return;
+    if (demoMode || abortControllerRef.current) return;
 
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
     setSubmitting(true);
     setError("");
     setUploadFailed(false);
@@ -422,14 +451,15 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
       if (!recordedBlob && needsAudioNormalization(uploadFile)) {
         const { normalizeAudioFileToMp3 } = await import("@/lib/audio-encoding");
         uploadFile = await normalizeAudioFileToMp3(uploadFile);
+        controller.signal.throwIfAborted();
       }
 
       const { createMediaThumbnail } = await import("@/lib/media-thumbnails");
       const thumbnailFile = await createMediaThumbnail(uploadFile);
-      const turnstileToken = await turnstileRef.current?.execute();
+      controller.signal.throwIfAborted();
+      const turnstileToken = await turnstileRef.current?.execute(controller.signal);
       if (!turnstileToken) throw new Error("UPLOAD_VERIFICATION_UNAVAILABLE");
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
+      controller.signal.throwIfAborted();
       const { uploadGuestMemory } = await import("@/lib/uploads/client");
       await uploadGuestMemory({
         slug: wedding.slug,
@@ -454,13 +484,18 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
         setRecordedUrl("");
       }
     } catch (error) {
+      if (abortControllerRef.current !== controller) {
+        return;
+      }
       if (error instanceof DOMException && error.name === "AbortError") {
         setError(text.guest.uploadCancelled);
       } else {
         const code =
           error && typeof error === "object" && "code" in error
             ? String(error.code)
-            : undefined;
+            : error instanceof Error
+              ? error.message
+              : undefined;
         setError(
           code === "STORAGE_QUOTA_FULL"
             ? text.guest.storageFull
@@ -477,13 +512,23 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
       }
       setUploadFailed(true);
     } finally {
-      abortControllerRef.current = null;
-      setSubmitting(false);
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+        setSubmitting(false);
+      }
     }
   }
 
   function cancelUpload() {
-    abortControllerRef.current?.abort();
+    const controller = abortControllerRef.current;
+    if (!controller) return;
+    controller.abort();
+    if (abortControllerRef.current === controller) {
+      abortControllerRef.current = null;
+      setSubmitting(false);
+      setError(text.guest.uploadCancelled);
+      setUploadFailed(true);
+    }
   }
 
   const Shell: "div" | "main" = embedded ? "div" : "main";
@@ -738,7 +783,8 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
                     type="button"
                     onClick={recording ? stopRecording : startRecording}
                     variant="paper"
-                    disabled={submitting}
+                    disabled={submitting || recordingStarting}
+                    aria-busy={recordingStarting}
                     aria-pressed={recording}
                     className="grid min-h-28 w-full place-content-center gap-2 rounded-[26px] border-dashed bg-white/58 p-5 text-center hover:bg-white"
                   >
@@ -932,17 +978,19 @@ export function GuestExperience({ wedding, demoMode = false, embedded = false }:
           </section>
         </div>
       </Shell>
-      <GuidanceDialog
-        open={helpOpen}
-        onClose={() => setHelpOpen(false)}
-        closeLabel={text.close}
-        eyebrow={text.guest.helpEyebrow}
-        title={text.guest.helpTitle}
-        body={text.guest.helpBody}
-        steps={text.guest.helpSteps}
-        cards={guestHelpCards}
-        footer={text.guest.helpFooter}
-      />
+      {helpOpen ? (
+        <GuidanceDialog
+          open
+          onClose={() => setHelpOpen(false)}
+          closeLabel={text.close}
+          eyebrow={text.guest.helpEyebrow}
+          title={text.guest.helpTitle}
+          body={text.guest.helpBody}
+          steps={text.guest.helpSteps}
+          cards={guestHelpCards}
+          footer={text.guest.helpFooter}
+        />
+      ) : null}
     </>
   );
 }

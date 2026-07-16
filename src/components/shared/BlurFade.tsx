@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useEffectEvent, type ReactNode } from "react";
-import { motion, useAnimationControls, useReducedMotion } from "motion/react";
+import { useEffect, useEffectEvent, useRef, type ReactNode } from "react";
 
 type BlurFadeProps = {
   children: ReactNode;
@@ -12,9 +11,6 @@ type BlurFadeProps = {
   className?: string;
 };
 
-const hidden = { opacity: 0, filter: "blur(10px)", y: 10 };
-const visible = { opacity: 1, filter: "blur(0px)", y: 0 };
-
 export function BlurFade({
   children,
   delay = 0,
@@ -23,41 +19,44 @@ export function BlurFade({
   onEntered,
   className = "",
 }: BlurFadeProps) {
-  const controls = useAnimationControls();
-  const reduceMotion = useReducedMotion();
+  const rootRef = useRef<HTMLDivElement>(null);
   const getDelay = useEffectEvent(() => delay);
   const markEntered = useEffectEvent(() => onEntered?.());
 
   useEffect(() => {
-    if (reduceMotion) {
-      controls.set(visible);
-      markEntered();
-      return;
-    }
-
-    if (!replayOnMount) {
-      controls.set(visible);
-      return;
-    }
-
-    controls.set(hidden);
     markEntered();
-    void controls.start(visible, {
-      delay: getDelay(),
-      duration: 0.34,
-      ease: [0.22, 1, 0.36, 1],
-    });
-  }, [controls, reduceMotion, replayKey, replayOnMount]);
+    if (
+      !replayOnMount ||
+      !rootRef.current ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
+    }
+
+    const animation = rootRef.current.animate(
+      [
+        { opacity: 0, filter: "blur(10px)", transform: "translateY(10px)" },
+        { opacity: 1, filter: "blur(0px)", transform: "translateY(0)" },
+      ],
+      {
+        delay: getDelay() * 1_000,
+        duration: 340,
+        easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+        fill: "both",
+      },
+    );
+
+    return () => animation.cancel();
+  }, [replayKey, replayOnMount]);
 
   return (
-    <motion.div
+    <div
+      ref={rootRef}
       data-memory-blur-fade={replayKey}
       data-memory-replay={replayOnMount ? "true" : "false"}
-      initial={reduceMotion || !replayOnMount ? false : hidden}
-      animate={controls}
       className={`min-w-0 w-full ${className}`}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }

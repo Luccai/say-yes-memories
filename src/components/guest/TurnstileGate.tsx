@@ -37,13 +37,15 @@ declare global {
 }
 
 export type TurnstileGateHandle = {
-  execute: () => Promise<string>;
+  execute: (signal?: AbortSignal) => Promise<string>;
 };
 
 type PendingChallenge = {
   resolve: (token: string) => void;
   reject: (error: Error) => void;
   timer: number;
+  signal?: AbortSignal;
+  abortHandler?: () => void;
 };
 
 let turnstileScriptPromise: Promise<void> | null = null;
@@ -55,8 +57,23 @@ function loadTurnstileScript() {
   turnstileScriptPromise = new Promise<void>((resolve, reject) => {
     const existing = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null;
     const script = existing ?? document.createElement("script");
-    const onLoad = () => resolve();
+    const cleanup = () => {
+      script.removeEventListener("load", onLoad);
+      script.removeEventListener("error", onError);
+    };
+    const onLoad = () => {
+      cleanup();
+      if (window.turnstile) {
+        resolve();
+        return;
+      }
+      script.remove();
+      turnstileScriptPromise = null;
+      reject(new Error("UPLOAD_VERIFICATION_UNAVAILABLE"));
+    };
     const onError = () => {
+      cleanup();
+      script.remove();
       turnstileScriptPromise = null;
       reject(new Error("UPLOAD_VERIFICATION_UNAVAILABLE"));
     };
@@ -81,13 +98,22 @@ export const TurnstileGate = forwardRef<TurnstileGateHandle>(
     const pendingRef = useRef<PendingChallenge | null>(null);
     const sitekey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
 
+    const clearPending = useCallback((pending: PendingChallenge) => {
+      window.clearTimeout(pending.timer);
+      if (pending.signal && pending.abortHandler) {
+        pending.signal.removeEventListener("abort", pending.abortHandler);
+      }
+      if (pendingRef.current === pending) {
+        pendingRef.current = null;
+      }
+    }, []);
+
     const rejectPending = useCallback((code = "UPLOAD_VERIFICATION_FAILED") => {
       const pending = pendingRef.current;
       if (!pending) return;
-      window.clearTimeout(pending.timer);
+      clearPending(pending);
       pending.reject(new Error(code));
-      pendingRef.current = null;
-    }, []);
+    }, [clearPending]);
 
     const ensureWidget = useCallback(async () => {
       if (widgetIdRef.current && window.turnstile) {
@@ -109,9 +135,8 @@ export const TurnstileGate = forwardRef<TurnstileGateHandle>(
             callback: (token) => {
               const pending = pendingRef.current;
               if (!pending) return;
-              window.clearTimeout(pending.timer);
+              clearPending(pending);
               pending.resolve(token);
-              pendingRef.current = null;
             },
             "error-callback": () => rejectPending(),
             "expired-callback": () => rejectPending(),
@@ -125,7 +150,7 @@ export const TurnstileGate = forwardRef<TurnstileGateHandle>(
         });
       }
       return widgetPromiseRef.current;
-    }, [rejectPending, sitekey]);
+    }, [clearPending, rejectPending, sitekey]);
 
     useEffect(() => {
       return () => {
@@ -141,8 +166,11 @@ export const TurnstileGate = forwardRef<TurnstileGateHandle>(
     useImperativeHandle(
       ref,
       () => ({
-        execute: async () => {
+        execute: async (signal?: AbortSignal) => {
           const widgetId = await ensureWidget();
+          if (signal?.aborted) {
+            throw new DOMException("Upload cancelled.", "AbortError");
+          }
           return new Promise<string>((resolve, reject) => {
             if (!window.turnstile) {
               reject(new Error("UPLOAD_VERIFICATION_UNAVAILABLE"));
@@ -153,13 +181,22 @@ export const TurnstileGate = forwardRef<TurnstileGateHandle>(
               () => rejectPending("UPLOAD_VERIFICATION_TIMEOUT"),
               2 * 60 * 1000,
             );
-            pendingRef.current = { resolve, reject, timer };
+            const pending: PendingChallenge = { resolve, reject, timer, signal };
+            if (signal) {
+              pending.abortHandler = () => {
+                if (pendingRef.current !== pending) return;
+                clearPending(pending);
+                reject(new DOMException("Upload cancelled.", "AbortError"));
+              };
+              signal.addEventListener("abort", pending.abortHandler, { once: true });
+            }
+            pendingRef.current = pending;
             window.turnstile.reset(widgetId);
             window.turnstile.execute(widgetId);
           });
         },
       }),
-      [ensureWidget, rejectPending],
+      [clearPending, ensureWidget, rejectPending],
     );
 
     return <div ref={containerRef} aria-hidden="true" className="min-h-0" />;

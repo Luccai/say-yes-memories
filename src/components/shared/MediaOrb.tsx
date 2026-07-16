@@ -7,9 +7,10 @@ type MediaOrbProps = {
   media?: StoredMediaObject;
   label: string;
   className?: string;
+  priority?: boolean;
 };
 
-export function MediaOrb({ media, label, className = "" }: MediaOrbProps) {
+export function MediaOrb({ media, label, className = "", priority = true }: MediaOrbProps) {
   const initials = label
     .split(/\s+|&/)
     .filter(Boolean)
@@ -31,7 +32,7 @@ export function MediaOrb({ media, label, className = "" }: MediaOrbProps) {
           className="h-full w-full object-cover"
           loading="eager"
           decoding="async"
-          fetchPriority="high"
+          fetchPriority={priority ? "high" : "low"}
         />
       ) : media?.kind === "image" ? (
         <CachedMediaImage

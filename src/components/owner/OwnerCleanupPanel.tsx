@@ -127,7 +127,7 @@ export function OwnerCleanupPanel() {
       ) : null}
 
       {selected ? (
-        <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="cleanup-confirm-title" tabIndex={-1} className="fixed inset-0 z-50 grid place-items-end overflow-y-auto bg-black/40 p-3 backdrop-blur-sm sm:place-items-center sm:p-6">
+        <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="cleanup-confirm-title" tabIndex={-1} data-scroll-lock-allow="true" className="fixed inset-0 z-50 grid place-items-end overflow-y-auto bg-black/40 p-3 backdrop-blur-sm sm:place-items-center sm:p-6">
           <div className="modal-shell w-full max-w-xl rounded-[32px] border border-white/80 bg-[var(--paper-soft)] p-5 shadow-[0_30px_100px_rgba(0,0,0,0.28)] sm:p-7">
             <div className="flex items-start justify-between gap-3"><div><p className="eyebrow text-[var(--rosewood)]">Geri alınamaz onay</p><h3 id="cleanup-confirm-title" className="mt-2 font-display text-3xl font-semibold">{selected.coupleName}</h3></div><Button ref={closeRef} variant="quiet" aria-label="Temizlik penceresini kapat" className="px-4" onClick={() => setSelected(null)}><X className="size-4" /></Button></div>
             <p className="mt-4 text-sm leading-6 text-[var(--ink-soft)]">Önce {selected.mediaCount} medya kaydı ve profil dosyası silme kuyruğuna girer. Bütün R2 işleri tamamlanınca tokenlar kapanır, eski linkler kaldırılır ve üyelik anonimleştirilir.</p>

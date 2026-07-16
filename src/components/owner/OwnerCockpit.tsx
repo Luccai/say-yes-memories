@@ -203,6 +203,7 @@ export function OwnerCockpit() {
   const [sessionState, setSessionState] = useState<OwnerSessionState>({ state: "loading" });
   const [activeSection, setActiveSection] = useState<OwnerSection>("overview");
   const [loggingOut, setLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState(false);
 
   async function loadSession() {
     try {
@@ -214,18 +215,31 @@ export function OwnerCockpit() {
   }
 
   useEffect(() => {
+    const previousLanguage = document.documentElement.lang || "en";
+    document.documentElement.lang = "tr";
     queueMicrotask(() => void loadSession());
     const expired = () => setSessionState({ state: "login" });
     window.addEventListener("sayyes-owner-session-expired", expired);
-    return () => window.removeEventListener("sayyes-owner-session-expired", expired);
+    return () => {
+      window.removeEventListener("sayyes-owner-session-expired", expired);
+      if (document.documentElement.lang === "tr") {
+        document.documentElement.lang = previousLanguage;
+      }
+    };
   }, []);
 
   async function logout() {
     setLoggingOut(true);
+    setLogoutError(false);
     try {
-      await fetch("/api/owner/logout", { method: "POST" });
-    } finally {
+      const response = await fetch("/api/owner/logout", { method: "POST" });
+      if (!response.ok) {
+        throw new Error("OWNER_LOGOUT_FAILED");
+      }
       setSessionState({ state: "login" });
+    } catch {
+      setLogoutError(true);
+    } finally {
       setLoggingOut(false);
     }
   }
@@ -342,6 +356,12 @@ export function OwnerCockpit() {
               })}
             </nav>
           </header>
+
+          {logoutError ? (
+            <p role="alert" className="mt-4 rounded-[20px] border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-[var(--rosewood)]">
+              Güvenli çıkış tamamlanamadı. Bağlantını kontrol edip tekrar dene.
+            </p>
+          ) : null}
 
           <AnimatePresence mode="wait" initial={false}>
             <motion.div

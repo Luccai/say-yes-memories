@@ -12,6 +12,7 @@ type CachedMediaImageProps = {
   retainInMemory?: boolean;
   cacheByteSize?: number;
   cacheResponse?: boolean;
+  displaySourceWhileCaching?: boolean;
   loading?: "eager" | "lazy";
   fetchPriority?: "high" | "low" | "auto";
   onReady?: () => void;
@@ -281,6 +282,7 @@ export function CachedMediaImage({
   retainInMemory = false,
   cacheByteSize,
   cacheResponse = true,
+  displaySourceWhileCaching = false,
   loading = "lazy",
   fetchPriority = "auto",
   onReady,
@@ -291,8 +293,10 @@ export function CachedMediaImage({
     typeof cacheByteSize === "number" &&
     cacheByteSize > 0 &&
     cacheByteSize <= RETAINED_MEDIA_MAX_ITEM_BYTES;
+  const retainedAtMount =
+    canRetainInMemory && Boolean(getRetainedMediaBlob(cacheIdentity, false));
   const [displaySrc, setDisplaySrc] = useState(() =>
-    canRetainInMemory ? "" : src,
+    canRetainInMemory && (retainedAtMount || !displaySourceWhileCaching) ? "" : src,
   );
   const getLatestSource = useEffectEvent(() => src);
 
@@ -301,17 +305,17 @@ export function CachedMediaImage({
       return;
     }
 
-    setDisplaySrc("");
     const blob = getRetainedMediaBlob(cacheIdentity, true);
 
     if (!blob) {
+      setDisplaySrc(displaySourceWhileCaching ? src : "");
       return;
     }
 
     const objectUrl = URL.createObjectURL(blob);
     setDisplaySrc(objectUrl);
     return () => URL.revokeObjectURL(objectUrl);
-  }, [cacheIdentity, canRetainInMemory]);
+  }, [cacheIdentity, canRetainInMemory, displaySourceWhileCaching, src]);
 
   useEffect(() => {
     let cancelled = false;
@@ -377,15 +381,13 @@ export function CachedMediaImage({
             void storeInstantMediaCache(cacheKey, blob);
           }
 
-          const objectUrl = URL.createObjectURL(blob);
-
-          objectUrlToRevoke = objectUrl;
-
           if (canRetainInMemory) {
             retainMediaBlob(cacheIdentity, blob);
           }
 
           if (!cancelled) {
+            const objectUrl = URL.createObjectURL(blob);
+            objectUrlToRevoke = objectUrl;
             setDisplaySrc(objectUrl);
           }
 
@@ -413,15 +415,13 @@ export function CachedMediaImage({
           void storeInstantMediaCache(cacheKey, blob);
         }
 
-        const objectUrl = URL.createObjectURL(blob);
-
-        objectUrlToRevoke = objectUrl;
-
         if (canRetainInMemory) {
           retainMediaBlob(cacheIdentity, blob);
         }
 
         if (!cancelled) {
+          const objectUrl = URL.createObjectURL(blob);
+          objectUrlToRevoke = objectUrl;
           setDisplaySrc(objectUrl);
         }
       } catch {
@@ -431,17 +431,34 @@ export function CachedMediaImage({
       }
     }
 
-    void loadImage();
+    const cacheTimer = displaySourceWhileCaching
+      ? window.setTimeout(() => void loadImage(), 3_000)
+      : undefined;
+
+    if (cacheTimer === undefined) {
+      void loadImage();
+    }
 
     return () => {
       cancelled = true;
       controller.abort();
 
+      if (cacheTimer !== undefined) {
+        window.clearTimeout(cacheTimer);
+      }
+
       if (objectUrlToRevoke) {
         URL.revokeObjectURL(objectUrlToRevoke);
       }
     };
-  }, [cacheIdentity, cacheKey, cacheResponse, canRetainInMemory, instantCache]);
+  }, [
+    cacheIdentity,
+    cacheKey,
+    cacheResponse,
+    canRetainInMemory,
+    displaySourceWhileCaching,
+    instantCache,
+  ]);
 
   if (!displaySrc) {
     return (

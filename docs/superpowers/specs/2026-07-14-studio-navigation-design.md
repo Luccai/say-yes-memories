@@ -27,12 +27,11 @@ More sheet içeriği:
 
 - Storage — mevcut storage panelini açar.
 - View Guest Page — yeni sekmede misafir sayfasını açar.
-- Help — bağlama özel yardım modalını açar.
 - Logout — mevcut güvenli logout akışını başlatır.
 
 More sheet backdrop dokunuşu, Close düğmesi ve Escape ile kapanır; odak sheet içinde tutulur ve kapanınca More düğmesine döner. Alt bar içerikle çakışmasın diye ana alana güvenli alt boşluk eklenir. Aktif panel siyah mürekkep dolgulu pill ile belirtilir. Flow Mode ayrı route olduğu için stüdyo ekranında aktif panel gibi işaretlenmez.
 
-Mockupta üstte görünen ayrı Help düğmesi uygulanmayacaktır; Help yalnızca More içindedir. Hamburger düğmesi ve eski popup menü tamamen kaldırılır.
+Help mobil kimlik kartında çift adının sağındaki kompakt ikon düğmesidir; More içinde yinelenmez. Hamburger düğmesi ve eski popup menü tamamen kaldırılır.
 
 ## Masaüstü bilgi mimarisi
 
@@ -49,10 +48,9 @@ Altındaki `More` grubu daraltılmaz; keşfedilebilirlik için şu seçenekler s
 
 - Storage
 - View Guest Page
-- Help
 - Logout
 
-Logout sidebar'ın altına yaslanır. Aktif panel aynı siyah mürekkep pill dilini kullanır. Çift fotoğrafı ve adı sidebar'ın üstünde bağlam sağlar; mevcut ana içerik kartları yeniden tasarlanmaz.
+Help ve Logout sidebar'ın altına yaslanır; Help, Logout'un hemen üstünde tam genişlikte bir aksiyon olarak görünür. Masaüstünde çift adının yanında ikinci bir Help düğmesi bulunmaz. Aktif panel aynı siyah mürekkep pill dilini kullanır. Çift fotoğrafı ve adı sidebar'ın üstünde bağlam sağlar; mevcut ana içerik kartları yeniden tasarlanmaz.
 
 ## Bileşen yapısı
 
@@ -74,7 +72,7 @@ Logout sidebar'ın altına yaslanır. Aktif panel aynı siyah mürekkep pill dil
 ## Otomatik doğrulama
 
 - iPhone 17 Pro Max'te beş navigasyon öğesi görünür ve yatay taşma olmaz.
-- More sheet dört doğru aksiyonu gösterir; Help ve Logout üst alanda yinelenmez.
+- More sheet Storage, View Guest Page ve Logout aksiyonlarını gösterir; Help üst mobil kimlik kartında kalır.
 - Memories → Wedding Page → QR → Storage geçişleri doğru paneli açar.
 - Guest Memories panelinden çıkıp dönünce thumbnail DOM/cache korunur.
 - Flow Mode doğru demo/gerçek route'una gider; View Guest Page yeni sekme hedefini korur.

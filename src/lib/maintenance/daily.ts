@@ -4,6 +4,7 @@ import {
   deleteArchiveJobPrefix,
   abortMultipartR2Upload,
   isNoSuchMultipartUpload,
+  listStaleProfileStagingObjects,
 } from "@/lib/storage/storage-service";
 import {
   expireUploadReservation,
@@ -19,6 +20,7 @@ import {
   finishMediaDeletionJob,
   listPendingCleanupWeddingIds,
   recordSystemHealth,
+  pruneOperationalMetadata,
 } from "@/lib/maintenance/store";
 import {
   claimExpiredArchiveJobs,
@@ -31,6 +33,7 @@ const defaultDependencies = {
   deleteArchiveJobPrefix,
   abortMultipartR2Upload,
   isNoSuchMultipartUpload,
+  listStaleProfileStagingObjects,
   expireUploadReservation,
   listExpiredUploadReservations,
   listReleasedUploadReservations,
@@ -42,6 +45,7 @@ const defaultDependencies = {
   finishMediaDeletionJob,
   listPendingCleanupWeddingIds,
   recordSystemHealth,
+  pruneOperationalMetadata,
   claimExpiredArchiveJobs,
   markArchiveStorageCleanup,
 };
@@ -112,6 +116,12 @@ export async function runDailyMaintenance(
     failedWeddingFinalizations: 0,
     cleanedArchives: 0,
     failedArchiveCleanups: 0,
+    cleanedProfileStagingObjects: 0,
+    failedProfileStagingCleanups: 0,
+    prunedUploadReservations: 0,
+    prunedDeletionJobs: 0,
+    prunedRateLimitBuckets: 0,
+    failedMetadataPrunes: 0,
   };
 
   const expired = await dependencies.listExpiredUploadReservations(now, 200);
@@ -127,12 +137,30 @@ export async function runDailyMaintenance(
     }
   }
 
-  const released = await dependencies.listReleasedUploadReservations(200);
+  const released = await dependencies.listReleasedUploadReservations(now, 200);
   for (const reservation of released) {
     if (await cleanReleasedReservation(reservation, dependencies, now)) {
       result.cleanedReservations += 1;
     } else {
       result.failedReservationCleanups += 1;
+    }
+  }
+
+  const staleProfileObjects = await dependencies
+    .listStaleProfileStagingObjects(
+      new Date(Date.parse(now) - 10 * 60 * 1000),
+      200,
+    )
+    .catch(() => {
+      result.failedProfileStagingCleanups += 1;
+      return [];
+    });
+  for (const storagePath of staleProfileObjects) {
+    try {
+      await dependencies.deleteStoredFile(storagePath);
+      result.cleanedProfileStagingObjects += 1;
+    } catch {
+      result.failedProfileStagingCleanups += 1;
     }
   }
 
@@ -207,6 +235,15 @@ export async function runDailyMaintenance(
     }
   }
 
+  try {
+    const pruned = await dependencies.pruneOperationalMetadata(now, 500);
+    result.prunedUploadReservations = pruned.uploadReservationsDeleted;
+    result.prunedDeletionJobs = pruned.deletionJobsDeleted;
+    result.prunedRateLimitBuckets = pruned.rateLimitBucketsDeleted;
+  } catch {
+    result.failedMetadataPrunes += 1;
+  }
+
   let supabaseLatencyMs: number | undefined;
   let r2LatencyMs: number | undefined;
   let supabaseOk = false;
@@ -244,7 +281,9 @@ export async function runDailyMaintenance(
       result.failedDeletionJobClaims === 0 &&
       result.failedDeletionJobs === 0 &&
       result.failedWeddingFinalizations === 0 &&
-      result.failedArchiveCleanups === 0,
+      result.failedArchiveCleanups === 0 &&
+      result.failedProfileStagingCleanups === 0 &&
+      result.failedMetadataPrunes === 0,
     ...result,
     supabaseOk,
     r2Ok,

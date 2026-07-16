@@ -15,7 +15,9 @@ function configuredRunnerUrl() {
   const value = process.env.ARCHIVE_RUNNER_URL?.trim();
   if (!value) return null;
   try {
-    return new URL(value);
+    const url = new URL(value);
+    if (url.protocol !== "https:" || url.username || url.password) return null;
+    return url;
   } catch {
     return null;
   }

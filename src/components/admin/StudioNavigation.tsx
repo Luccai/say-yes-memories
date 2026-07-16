@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type ComponentType } from "react";
 import {
+  CircleHelp,
   ExternalLink,
   HardDrive,
   Image as ImageIcon,
@@ -13,9 +14,7 @@ import {
   Settings2,
   X,
 } from "lucide-react";
-import { motion, useReducedMotion } from "motion/react";
 import { Button } from "@/components/shared/Button";
-import { HelpTriggerButton } from "@/components/shared/GuidanceDialog";
 import { MediaOrb } from "@/components/shared/MediaOrb";
 import { useCopy } from "@/lib/i18n-client";
 import type { Wedding } from "@/lib/types";
@@ -60,7 +59,7 @@ function mobileNavigationControlClass(active: boolean) {
   return `focus-ring flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-0 font-black transition motion-safe:active:scale-[0.96] ${
     active
       ? "text-[var(--ink)]"
-      : "text-[var(--ink-soft)] opacity-70 hover:bg-white/36 hover:opacity-100"
+      : "text-[var(--ink-soft)] hover:bg-white/36 hover:text-[var(--ink)]"
   }`;
 }
 
@@ -81,7 +80,6 @@ export function StudioNavigation({
   const copy = useCopy();
   const text = copy.admin;
   const close = copy.close;
-  const reduceMotion = useReducedMotion();
   const [moreOpen, setMoreOpen] = useState(false);
   const moreDialogRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -161,18 +159,16 @@ export function StudioNavigation({
           <MediaOrb
             media={wedding.profileMedia}
             label={wedding.coupleName}
+            priority={false}
             className="h-[4.25rem] w-[3.4rem] shrink-0"
           />
-          <div className="relative min-w-0 flex-1 pr-12">
+          <div className="min-w-0 flex-1">
             <p className="text-[0.64rem] font-black uppercase tracking-[0.2em] text-[var(--champagne-deep)]">
               {text.studioGroup}
             </p>
             <h1 className="mt-1 truncate font-serif text-xl font-bold text-[var(--ink)]">
               {wedding.coupleName}
             </h1>
-            <div className="absolute right-0 top-0">
-              <HelpTriggerButton label={copy.help} onClick={openHelp} iconOnly />
-            </div>
           </div>
         </div>
 
@@ -211,7 +207,12 @@ export function StudioNavigation({
             />
           </div>
 
-          <div className="mt-auto pt-4">
+          <div className="mt-auto grid gap-1.5 pt-4">
+            <SecondaryAction
+              icon={CircleHelp}
+              label={copy.help}
+              onClick={openHelp}
+            />
             <Button
               onClick={onLogout}
               disabled={loggingOut}
@@ -236,7 +237,7 @@ export function StudioNavigation({
         data-studio-navigation="mobile"
         data-mobile-navigation-style="c"
         aria-label={text.navigation}
-        className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-[70] grid w-[min(calc(100vw-0.5rem),32rem)] -translate-x-1/2 grid-cols-5 rounded-[28px] border border-white/80 bg-[rgba(255,250,243,0.9)] px-2 py-1.5 shadow-[0_18px_48px_rgba(58,40,25,0.2)] backdrop-blur-xl lg:hidden"
+        className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-[70] grid w-[min(calc(100vw-0.5rem),32rem)] -translate-x-1/2 grid-cols-5 rounded-[28px] border border-white/80 bg-[rgba(255,250,243,0.9)] px-2 py-1.5 shadow-none backdrop-blur-xl lg:hidden"
       >
         {primaryItems.map((item) => (
           <NavigationControl
@@ -270,17 +271,14 @@ export function StudioNavigation({
             className="absolute inset-0 bg-[rgba(31,23,18,0.22)] backdrop-blur-[2px]"
             onClick={() => setMoreOpen(false)}
           />
-          <motion.div
+          <div
             ref={moreDialogRef}
             role="dialog"
             aria-modal="true"
             aria-label={text.more}
             tabIndex={-1}
-            initial={reduceMotion ? false : { opacity: 0, y: 24, scale: 0.985 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: reduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
             data-scroll-lock-allow="true"
-            className="absolute bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+5.25rem)] left-1/2 max-h-[calc(100dvh-6.25rem-env(safe-area-inset-bottom))] w-[min(calc(100vw-1rem),32rem)] -translate-x-1/2 overflow-y-auto overscroll-contain rounded-[30px] border border-white/80 bg-[rgba(255,250,243,0.96)] p-3 shadow-[0_24px_70px_rgba(58,40,25,0.24)] backdrop-blur-xl"
+            className="modal-shell absolute bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+5.25rem)] left-1/2 max-h-[calc(100dvh-6.25rem-env(safe-area-inset-bottom))] w-[min(calc(100vw-1rem),32rem)] -translate-x-1/2 overflow-y-auto overscroll-contain rounded-[30px] border border-white/80 bg-[rgba(255,250,243,0.96)] p-3 shadow-[0_24px_70px_rgba(58,40,25,0.24)] backdrop-blur-xl"
           >
               <div className="mb-2 flex items-center justify-between px-2 py-1">
                 <p className="font-serif text-2xl font-bold text-[var(--ink)]">{text.more}</p>
@@ -324,7 +322,7 @@ export function StudioNavigation({
                   </p>
                 ) : null}
               </div>
-          </motion.div>
+          </div>
         </div>
       ) : null}
     </>
@@ -374,7 +372,9 @@ function NavigationControl({
         <Link
           href={item.href}
           prefetch={false}
-          aria-label={mode === "mobile" ? item.label : undefined}
+          aria-label={
+            mode === "mobile" ? `${item.mobileLabel}: ${item.label}` : undefined
+          }
           className={className}
         >
           {content}
@@ -387,7 +387,9 @@ function NavigationControl({
         href={item.href}
         target="_blank"
         rel="noreferrer"
-        aria-label={mode === "mobile" ? item.label : undefined}
+        aria-label={
+          mode === "mobile" ? `${item.mobileLabel}: ${item.label}` : undefined
+        }
         className={className}
       >
         {content}
@@ -400,7 +402,9 @@ function NavigationControl({
       type="button"
       onClick={() => onPanelChange(item.panel)}
       aria-current={active ? "page" : undefined}
-      aria-label={mode === "mobile" ? item.label : undefined}
+      aria-label={
+        mode === "mobile" ? `${item.mobileLabel}: ${item.label}` : undefined
+      }
       className={className}
     >
       {content}

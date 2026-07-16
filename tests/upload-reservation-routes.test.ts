@@ -111,6 +111,7 @@ const prepareReservation = createReservationPost({
     headers: { "Content-Type": "image/jpeg" },
   }),
   deleteStoredFile: async () => undefined,
+  hashGuestUploadAbuseKey: () => "c".repeat(64),
 });
 
 const completeReservation = createReservationCompletePost({
@@ -123,6 +124,7 @@ const completeReservation = createReservationCompletePost({
   completeMultipartR2Upload: async () => {
     multipartCompleteCalls += 1;
   },
+  assertStoredMediaSignature: async () => undefined,
   deleteStoredFile: async () => undefined,
   headR2Object: async (storagePath) =>
     finalAlreadyPromoted && storagePath === storedReservation.objectPath

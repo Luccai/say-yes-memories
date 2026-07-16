@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { getCurrentWeddingFromCookie } from "@/lib/auth";
 import { updateWedding } from "@/lib/supabase-store";
 import {
-  assertUploadBelongsToWedding,
+  assertProfileUploadBelongsToWedding,
   deleteStoredFile,
-  finalizeSignedUpload,
+  finalizeProfileSignedUpload,
   type PendingStoredMediaObject,
 } from "@/lib/storage/storage-service";
 
@@ -28,10 +28,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    assertUploadBelongsToWedding(body.object, {
+    assertProfileUploadBelongsToWedding(body.object, {
       weddingId: current.wedding.id,
-      folder: "profile",
       allowedKinds: ["image"],
+      maxBytes: PROFILE_PHOTO_MAX_BYTES,
     });
 
     if (body.object.byteSize > PROFILE_PHOTO_MAX_BYTES) {
@@ -41,7 +41,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const profileMedia = await finalizeSignedUpload(body.object);
+    const profileMedia = await finalizeProfileSignedUpload(
+      body.object,
+      current.wedding.id,
+    );
     const previousPath = current.wedding.profileMedia?.storagePath;
     const wedding = await updateWedding(current.wedding.id, { profileMedia });
 
@@ -55,8 +58,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ wedding });
   } catch (error) {
+    console.warn("Profile upload completion failed.", error);
     return NextResponse.json(
-      { message: error instanceof Error ? error.message : "Profile upload could not be completed." },
+      { message: "Profile upload could not be completed. Please try again." },
       { status: 400 },
     );
   }

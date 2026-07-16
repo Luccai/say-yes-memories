@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 
 function sha256(value: string) {
   return createHash("sha256").update(value, "utf8").digest("hex");
@@ -10,6 +10,26 @@ export function hashUploadRequestKey(requestKey: string) {
 
 export function hashUploadSecret(secret: string) {
   return sha256(`upload-secret\0${secret}`);
+}
+
+function trustedRequestIp(request: Request) {
+  const forwarded = (
+    request.headers.get("x-vercel-forwarded-for") ??
+    request.headers.get("x-forwarded-for")
+  )
+    ?.split(",")[0]
+    ?.trim();
+  return forwarded || request.headers.get("x-real-ip")?.trim() || "unknown";
+}
+
+export function hashGuestUploadAbuseKey(request: Request, weddingId: string) {
+  const secret = process.env.AUTH_RATE_LIMIT_SECRET ?? "";
+  if (Buffer.byteLength(secret, "utf8") < 32) {
+    throw new Error("AUTH_RATE_LIMIT_SECRET must contain at least 32 bytes.");
+  }
+  return createHmac("sha256", secret)
+    .update(`guest-upload\0${weddingId}\0${trustedRequestIp(request)}`, "utf8")
+    .digest("hex");
 }
 
 export function deriveUploadIdentity(requestKey: string) {

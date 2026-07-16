@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, type ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 import type {
   AuthenticationCopy,
   CustomerCopy,
@@ -21,12 +21,6 @@ export function I18nProvider({
   authText,
   children,
 }: I18nContextValue & { children: ReactNode }) {
-  useEffect(() => {
-    if (!window.location.pathname.startsWith("/owner")) {
-      document.documentElement.lang = locale;
-    }
-  }, [locale]);
-
   return (
     <I18nContext.Provider value={{ locale, text, authText }}>
       {children}

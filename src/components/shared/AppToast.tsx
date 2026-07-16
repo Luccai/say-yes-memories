@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Check, CircleAlert, X } from "lucide-react";
 
 export type AppToastMessage = {
@@ -19,8 +18,6 @@ export function AppToast({
   closeLabel: string;
   onClose: () => void;
 }) {
-  const reduceMotion = useReducedMotion();
-
   useEffect(() => {
     if (!toast) return;
     const timeoutId = window.setTimeout(
@@ -31,18 +28,14 @@ export function AppToast({
   }, [onClose, toast]);
 
   return (
-    <AnimatePresence>
+    <>
       {toast ? (
-        <motion.div
+        <div
           key={toast.id}
           role={toast.tone === "error" ? "alert" : "status"}
           aria-live={toast.tone === "error" ? "assertive" : "polite"}
           data-app-toast={toast.tone}
-          initial={reduceMotion ? false : { opacity: 0, y: -10, x: "-50%" }}
-          animate={{ opacity: 1, y: 0, x: "-50%" }}
-          exit={reduceMotion ? { opacity: 0, x: "-50%" } : { opacity: 0, y: -8, x: "-50%" }}
-          transition={{ duration: reduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
-          className={`fixed left-1/2 top-[max(1rem,env(safe-area-inset-top))] z-[100] flex w-[calc(100%-2rem)] max-w-md items-start gap-3 rounded-[22px] border px-4 py-3 shadow-[0_18px_44px_rgba(58,40,25,0.16)] backdrop-blur-xl ${
+          className={`app-toast-enter fixed left-1/2 top-[max(1rem,env(safe-area-inset-top))] z-[100] flex w-[calc(100%-2rem)] max-w-md items-start gap-3 rounded-[22px] border px-4 py-3 shadow-[0_18px_44px_rgba(58,40,25,0.16)] backdrop-blur-xl ${
             toast.tone === "error"
               ? "border-[rgba(140,81,68,0.24)] bg-[rgba(255,248,244,0.94)] text-[var(--rosewood)]"
               : "border-[rgba(104,125,96,0.24)] bg-[rgba(248,250,243,0.94)] text-[var(--ink)]"
@@ -73,8 +66,8 @@ export function AppToast({
           >
             <X aria-hidden="true" className="size-4" />
           </button>
-        </motion.div>
+        </div>
       ) : null}
-    </AnimatePresence>
+    </>
   );
 }

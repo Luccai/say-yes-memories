@@ -85,11 +85,34 @@ function currentDependencies(
     getLatestArchiveJob: async () => null,
     archiveRunnerIsConfigured: () => true,
     dispatchArchiveJob: async () => undefined,
+    archiveFeatureIsEnabled: () => true,
     ...overrides,
   };
 }
 
 describe("archive customer routes", () => {
+  test("keeps the launch-deferred archive route closed before any DB work", async () => {
+    let sessionCalls = 0;
+    let createCalls = 0;
+    const handlers = createArchiveCurrentHandlers(
+      currentDependencies({
+        archiveFeatureIsEnabled: () => false,
+        getCurrentWeddingFromCookie: async () => {
+          sessionCalls += 1;
+          return { wedding, session };
+        },
+        createOrReuseArchiveJob: async () => {
+          createCalls += 1;
+          return { job: archive, created: true };
+        },
+      }),
+    );
+    const response = await handlers.POST();
+    expect(response.status).toBe(404);
+    expect(sessionCalls).toBe(0);
+    expect(createCalls).toBe(0);
+  });
+
   test("requires a customer session before exposing archive status", async () => {
     const handlers = createArchiveCurrentHandlers(
       currentDependencies({ getCurrentWeddingFromCookie: async () => null }),
@@ -142,6 +165,7 @@ describe("archive customer routes", () => {
       expiresAt: new Date(Date.now() + 60_000).toISOString(),
     };
     const get = createArchiveDownloadGet({
+      archiveFeatureIsEnabled: () => true,
       getCurrentWeddingFromCookie: async () => ({ wedding, session }),
       getArchiveJobForWedding: async (jobId, weddingId) => {
         lookups.push({ jobId, weddingId });

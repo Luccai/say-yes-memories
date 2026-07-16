@@ -30,6 +30,7 @@ Gerçek müşteri kaydı, tokenı, kotası, paketi veya dosyası üzerinde write
 3. `AUTH_PASSWORD_PEPPER`, `AUTH_RATE_LIMIT_SECRET`, `OWNER_SETUP_SECRET`, `CRON_SECRET`, `ARCHIVE_DISPATCH_SECRET` ve `ARCHIVE_CALLBACK_SECRET` birbirinden bağımsız, en az 32 byte rastgele değerlerdir.
 4. Aynı Supabase veritabanını kullanan deploy'lar aynı `AUTH_PASSWORD_PEPPER` değerini kullanır.
 5. `NEXT_PUBLIC_` almayan secret değerler istemci bundle'ına açılmaz.
+6. Launch'ta `ENABLE_ARCHIVE_DOWNLOADS=false` (veya tanımsız) kalır. Bu durumda customer archive route'ları DB'ye dokunmadan `404` döner.
 
 ## 4. Supabase migration sırası
 
@@ -42,6 +43,8 @@ Dosya adına göre sırayla uygula:
 5. `20260712143000_add_daily_maintenance.sql`
 6. `20260712160000_add_presentation_media_index.sql`
 7. `20260714133000_add_memory_archives.sql`
+8. `20260716120000_product_readiness_hardening.sql`
+9. `20260716123000_validate_product_readiness_constraints.sql`
 
 Migration'lar eklemelidir. Başarısız deploy'da tabloları aceleyle geri silme; önce önceki Vercel deployment'ına dön.
 
@@ -51,9 +54,11 @@ Migration'lar eklemelidir. Başarısız deploy'da tabloları aceleyle geri silme
 bun run verify:release
 ```
 
-Bu komut lint, TypeScript, birim/kontrat testleri, production build, iPhone 17 Pro Max emülasyonu, 360/390 px Android ve masaüstü Playwright akışları ile Lighthouse mobil eşiklerini çalıştırır. Hedefler: performans en az 85, erişilebilirlik en az 95, LCP en fazla 2,5 saniye ve CLS en fazla 0,1.
+Bu komut lint, TypeScript, birim testleri, production build, iPhone 17 Pro Max emülasyonu, 360/390 px Android ve masaüstü Playwright akışları, rollback-only Postgres kontratları ile Lighthouse mobil eşiklerini çalıştırır. Hedefler: performans en az 85, erişilebilirlik en az 95, LCP en fazla 2,5 saniye ve CLS en fazla 0,1.
 
-Supabase SQL kontratları canlıda yalnız `BEGIN ... ROLLBACK` içinde çalıştırılır.
+`bun run test:db-contract` varsayılan olarak PGlite üzerinde geçici, bellekte çalışan gerçek PostgreSQL açar; Supabase rol/storage iskeletini kurar, repo'daki bütün migration'ları dosya sırasıyla sıfırdan uygular ve üç SQL kontratını tek bir rollback-only transaction'da çalıştırır. Böylece URL, Docker veya ücretli cloud branch gerekmez.
+
+`SUPABASE_DB_URL` veya `DATABASE_URL` yalnız ayrı bir doğrulama veritabanını hedeflemek için verilebilir; bu durumda `psql` gerekir ve `product_ready_contract.sql` kullanılır. Production müşteri DB'si write-test için hiçbir zaman kullanılmaz.
 
 ## 6. Preview ve geçici üyelik
 
@@ -78,4 +83,6 @@ Supabase SQL kontratları canlıda yalnız `BEGIN ... ROLLBACK` içinde çalış
 
 Toplu ZIP indirme launch'ta kapalıdır; Cloudflare'ın ücretli Container planını
 gerektirir. Ürün satışa geçip bu kolaylık gerçek ihtiyaç olursa archive runner
-deploy akışı ayrıca planlanır ve geçici üyelikte uçtan uca doğrulanır.
+deploy akışı ayrıca planlanır ve geçici üyelikte uçtan uca doğrulanır. Runner,
+Container planı ve tüm secret'lar hazır olmadan `ENABLE_ARCHIVE_DOWNLOADS=true`
+yapılmaz.

@@ -1,5 +1,6 @@
 "use client";
 
+import "react-day-picker/style.css";
 import { useState } from "react";
 import { CalendarDays } from "lucide-react";
 import {

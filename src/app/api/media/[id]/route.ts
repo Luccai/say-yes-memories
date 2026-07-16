@@ -31,9 +31,9 @@ export async function DELETE(
 
   try {
     deleted = await deleteMedia(id, current.wedding.id);
-  } catch (error) {
+  } catch {
     return NextResponse.json(
-      { message: error instanceof Error ? error.message : "Could not delete this file. Please try again." },
+      { message: "Could not delete this file. Please try again." },
       { status: 500 },
     );
   }
@@ -42,7 +42,7 @@ export async function DELETE(
     return NextResponse.json({ message: "Media not found." }, { status: 404 });
   }
 
-  await broadcastWeddingMediaChange(current.wedding.realtimeTopic);
+  await broadcastWeddingMediaChange(current.wedding.realtimeTopic).catch(() => undefined);
 
   return NextResponse.json({ ok: true });
 }

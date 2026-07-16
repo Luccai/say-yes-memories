@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentWeddingFromCookie } from "@/lib/auth";
 import { getWeddingMediaById } from "@/lib/supabase-store";
 import { createSignedStorageUrl } from "@/lib/storage/storage-service";
+import { safeDownloadFileName } from "@/lib/uploads/domain";
 
 export async function GET(
   _request: Request,
@@ -21,11 +22,15 @@ export async function GET(
   }
 
   try {
-    const url = await createSignedStorageUrl(media.storagePath, 10 * 60, media.fileName);
+    const url = await createSignedStorageUrl(
+      media.storagePath,
+      10 * 60,
+      safeDownloadFileName(media.fileName, media.mimeType),
+    );
     return NextResponse.redirect(url);
-  } catch (error) {
+  } catch {
     return NextResponse.json(
-      { message: error instanceof Error ? error.message : "Download could not be prepared." },
+      { message: "Download could not be prepared." },
       { status: 500 },
     );
   }

@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { expect, test, type Page } from "playwright/test";
+import { DEMO_CONTENT_VERSION } from "../src/lib/demo-content";
 
 async function expectNoHorizontalOverflow(page: Page) {
   await expect
@@ -167,6 +168,15 @@ test("responsive studio navigation exposes the couple's primary tasks", async ({
 
   if ((page.viewportSize()?.width ?? 1024) < 1024) {
     await expect(navigation).toHaveAttribute("data-studio-navigation", "mobile");
+    const navigationShadow = await navigation.evaluate((element) =>
+      getComputedStyle(element).boxShadow,
+    );
+    const shadowAlphaValues = Array.from(
+      navigationShadow.matchAll(/rgba\([^)]*,\s*(\d*\.?\d+)\)/g),
+      (match) => Number.parseFloat(match[1] ?? "1"),
+    );
+    expect(shadowAlphaValues.length).toBeGreaterThan(0);
+    expect(shadowAlphaValues.every((alpha) => alpha === 0)).toBe(true);
     const studioIdentity = page.locator("[data-studio-identity='mobile']");
     const identityHelp = studioIdentity.getByRole("button", { name: "Help" });
     await expect(identityHelp).toBeVisible();
@@ -188,17 +198,27 @@ test("responsive studio navigation exposes the couple's primary tasks", async ({
     await expect(navigation).toHaveAttribute("data-studio-navigation", "desktop");
     const studioIdentity = page.locator("[data-studio-identity='desktop']");
     const identityHelp = studioIdentity.getByRole("button", { name: "Help" });
-    await expect(identityHelp).toBeVisible();
-    await expect(identityHelp).toHaveClass(/size-12/);
-    await identityHelp.click();
+    await expect(identityHelp).toHaveCount(0);
+    const sidebarHelp = navigation.getByRole("button", { name: "Help" });
+    const logout = navigation.getByRole("button", { name: "Logout" });
+    await expect(sidebarHelp).toBeVisible();
+    await expect
+      .poll(async () => {
+        const [helpBox, logoutBox] = await Promise.all([
+          sidebarHelp.boundingBox(),
+          logout.boundingBox(),
+        ]);
+        return Boolean(helpBox && logoutBox && helpBox.y + helpBox.height <= logoutBox.y);
+      })
+      .toBe(true);
+    await sidebarHelp.click();
     await expect(page.getByRole("dialog")).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).toBeHidden();
     await expect(navigation.getByText("More", { exact: true })).toBeVisible();
     await expect(navigation.getByRole("button", { name: "Storage" })).toBeVisible();
     await expect(navigation.getByRole("link", { name: "View guest page" })).toBeVisible();
-    await expect(navigation.getByRole("button", { name: "Help" })).toHaveCount(0);
-    await expect(navigation.getByRole("button", { name: "Logout" })).toHaveAttribute(
+    await expect(logout).toHaveAttribute(
       "data-app-button",
       "quiet",
     );
@@ -500,7 +520,7 @@ test("demo storage keeps bulk archive downloads out of the launch experience", a
 test("guest-memory thumbnails return from the studio cache after a route visit", async ({ page }) => {
   const thumbnailRequests: string[] = [];
   page.on("request", (request) => {
-    if (request.url().includes("-thumb.webp")) {
+    if (request.resourceType() === "fetch" && request.url().includes("-thumb.webp")) {
       thumbnailRequests.push(request.url());
     }
   });
@@ -511,7 +531,16 @@ test("guest-memory thumbnails return from the studio cache after a route visit",
   await expect
     .poll(() =>
       thumbnails.evaluateAll((images) =>
-        images.length > 1 && images.every((image) => image.getAttribute("src")?.startsWith("blob:")),
+        images.length > 1 && images.every((image) => !image.getAttribute("src")?.startsWith("blob:")),
+      ),
+    )
+    .toBe(true);
+  await expect.poll(() => thumbnailRequests.length).toBeGreaterThan(0);
+  await expect
+    .poll(() =>
+      thumbnails.evaluateAll((images) =>
+        images.length > 1 &&
+        images.every((image) => image.getAttribute("src")?.startsWith("blob:")),
       ),
     )
     .toBe(true);
@@ -907,21 +936,23 @@ test("wedding page explains guest setup and makes upload availability unmistakab
 });
 
 test("an empty couple profile exposes the compact image picker", async ({ page }) => {
+  await page.addInitScript(
+    ({ version }) => {
+      window.localStorage.setItem("sayyes.demo.content.version", version);
+      // `localizeDemoWedding` fills the omitted fields from the canonical demo
+      // while the explicit null removes its seeded profile image.
+      window.localStorage.setItem(
+        "sayyes.demo.wedding",
+        JSON.stringify({
+          id: "demo-wedding-mary-john",
+          welcomeNote: "",
+          profileMedia: null,
+        }),
+      );
+    },
+    { version: DEMO_CONTENT_VERSION },
+  );
   await page.goto("/admin/mary-john");
-  await expect
-    .poll(() => page.evaluate(() => Boolean(window.localStorage.getItem("sayyes.demo.wedding"))))
-    .toBe(true);
-  await page.evaluate(() => {
-    const storedWedding = window.localStorage.getItem("sayyes.demo.wedding");
-    if (!storedWedding) throw new Error("Demo wedding state is missing.");
-    const wedding = JSON.parse(storedWedding) as { profileMedia?: unknown };
-    // `localizeDemoWedding` merges the persisted state onto the seeded demo
-    // record. `undefined` disappears during JSON serialization, so `null` is
-    // required to deliberately override its seeded profile image.
-    wedding.profileMedia = null;
-    window.localStorage.setItem("sayyes.demo.wedding", JSON.stringify(wedding));
-  });
-  await page.reload();
   await openStudioPanel(page, "Wedding page");
 
   const profilePicker = page.locator('[data-profile-media-empty-picker="true"]');
@@ -1018,8 +1049,8 @@ test("flow mode gives photos and videos the full viewport stage", async ({ page 
 
 test("flow mode plays a voice note in its centered card", async ({ page }) => {
   await page.goto("/admin/mary-john/presentation");
-  await page.evaluate(() => {
-    window.localStorage.setItem("sayyes.demo.content.version", "demo-couple-webp-v6");
+  await page.evaluate((demoContentVersion) => {
+    window.localStorage.setItem("sayyes.demo.content.version", demoContentVersion);
     window.localStorage.setItem(
       "sayyes.demo.media",
       JSON.stringify([
@@ -1040,7 +1071,7 @@ test("flow mode plays a voice note in its centered card", async ({ page }) => {
         },
       ]),
     );
-  });
+  }, DEMO_CONTENT_VERSION);
   await page.reload();
   await page.getByRole("button", { name: "Start flow mode" }).click();
 
@@ -1074,6 +1105,8 @@ test("flow mode advances with its matching memory note", async ({ page }) => {
     { timeout: 8_000 },
   );
   await page.getByRole("button", { name: "Pause" }).click();
+  await expect(currentMemory).toHaveCount(1);
+  await expect(caption).toHaveCount(1);
   const advancedMediaId = await currentMemory.getAttribute("data-presentation-media-id");
   expect(advancedMediaId).toBeTruthy();
   expect(advancedMediaId).not.toBe("demo-photo-1");

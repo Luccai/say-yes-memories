@@ -10,18 +10,19 @@
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
     "test": "bun test tests",
+    "test:db-contract": "bun run scripts/run-db-contract.ts",
     "test:e2e": "bun run build && playwright test",
     "test:e2e:built": "playwright test",
     "audit:lighthouse": "bun run build && bun run scripts/lighthouse-audit.mjs",
     "audit:lighthouse:built": "bun run scripts/lighthouse-audit.mjs",
-    "check": "bun run lint && bun run typecheck && bun run test && bun run build && bun run test:e2e:built",
+    "check": "bun run lint && bun run typecheck && bun run test && bun run test:db-contract && bun run build && bun run test:e2e:built",
     "verify:release": "bun run check && bun run audit:lighthouse:built",
     "prepare-hooks": "git config core.hooksPath .githooks",
     "tokens:generate": "bun run scripts/generate-tokens.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1075.0",
-    "@aws-sdk/s3-request-presigner": "^3.1075.0",
+    "@aws-sdk/client-s3": "^3.1088.0",
+    "@aws-sdk/s3-request-presigner": "^3.1088.0",
     "@breezystack/lamejs": "^1.2.7",
     "@supabase/supabase-js": "2.108.2",
     "date-fns": "^4.4.0",
@@ -34,6 +35,7 @@
     "react-dom": "19.2.7"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.4",
     "@tailwindcss/postcss": "4.3.1",
     "@types/bun": "1.3.9",
     "@types/node": "latest",
@@ -46,6 +48,10 @@
     "lighthouse": "^13.4.0",
     "playwright": "1.61.0",
     "tailwindcss": "4.3.1",
-    "typescript": "latest"
+    "typescript": "6.0.3"
+  },
+  "overrides": {
+    "@opentelemetry/core": "2.8.0",
+    "postcss": "8.5.10"
   }
 }

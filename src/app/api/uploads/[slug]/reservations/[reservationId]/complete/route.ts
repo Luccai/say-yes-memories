@@ -2,6 +2,7 @@ import { resolveWeddingRecordBySlug } from "@/lib/supabase-store";
 import { broadcastWeddingMediaChange } from "@/lib/supabase/realtime";
 import {
   completeMultipartR2Upload,
+  assertStoredMediaSignature,
   deleteStoredFile,
   headR2Object,
   promoteStagedObject,
@@ -22,6 +23,7 @@ const defaultDependencies = {
   resolveWeddingRecordBySlug,
   broadcastWeddingMediaChange,
   completeMultipartR2Upload,
+  assertStoredMediaSignature,
   deleteStoredFile,
   headR2Object,
   promoteStagedObject,
@@ -86,6 +88,10 @@ export function createReservationCompletePost(
         }
       }
 
+      await dependencies.assertStoredMediaSignature(
+        reservation.stagingObjectPath,
+        reservation.mimeType,
+      );
       await dependencies.promoteStagedObject({
         stagingPath: reservation.stagingObjectPath,
         finalPath: reservation.objectPath,
@@ -107,6 +113,10 @@ export function createReservationCompletePost(
           reservation.thumbnailStagingPath,
         );
         if (thumbnail.exists && thumbnail.byteSize === reservation.thumbnailByteSize) {
+          await dependencies.assertStoredMediaSignature(
+            reservation.thumbnailStagingPath,
+            reservation.thumbnailMimeType,
+          );
           await dependencies.promoteStagedObject({
             stagingPath: reservation.thumbnailStagingPath,
             finalPath: reservation.thumbnailPath,
